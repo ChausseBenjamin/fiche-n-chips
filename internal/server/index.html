@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1yr.ca - terminal pastebin</title>
+    <meta name="description" content="1yr.ca - A free terminal-based pastebin hosted in Canada. Files stored up to 1 year.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d0d0d;
+            --bg-alt: #1a1a1a;
+            --fg: #e0e0e0;
+            --fg-muted: #808080;
+            --red: #d62828;
+            --red-bright: #ef233c;
+            --border: #333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            font-size: 16px;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: var(--bg);
+            color: var(--fg);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        ::selection {
+            background-color: var(--red);
+            color: var(--fg);
+        }
+
+        a {
+            color: var(--red-bright);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        a:hover {
+            color: var(--fg);
+            text-decoration: underline;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        header {
+            border-bottom: 1px dashed var(--border);
+            padding-bottom: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--fg);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo span {
+            color: var(--red-bright);
+        }
+
+        .tagline {
+            color: var(--fg-muted);
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .tagline::before {
+            content: "$ ";
+            color: var(--red);
+        }
+
+        .prompt {
+            color: var(--red);
+        }
+
+        h2 {
+            color: var(--red-bright);
+            font-size: 1.1rem;
+            margin-top: 2.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        h2::before {
+            content: "##";
+            color: var(--fg-muted);
+        }
+
+        h3 {
+            color: var(--fg);
+            font-size: 0.95rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        h3::before {
+            content: "### ";
+            color: var(--fg-muted);
+        }
+
+        p {
+            margin-bottom: 1rem;
+            color: var(--fg-muted);
+        }
+
+        code {
+            background-color: var(--bg-alt);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0.8rem 1rem;
+            display: block;
+            margin: 0.75rem 0;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            color: var(--fg);
+        }
+
+        code::before {
+            content: "$ ";
+            color: var(--red);
+        }
+
+        code.output::before {
+            content: "";
+        }
+
+        code.output {
+            color: var(--fg-muted);
+            border-left: 3px solid var(--red);
+        }
+
+        .inline-code {
+            display: inline;
+            padding: 0.2rem 0.4rem;
+            margin: 0;
+        }
+
+        .inline-code::before {
+            content: "";
+        }
+
+        section {
+            margin-bottom: 2rem;
+        }
+
+        .feature-grid {
+            display: grid;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .feature {
+            background-color: var(--bg-alt);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--red);
+            padding: 1rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .feature .material-symbols-outlined {
+            color: var(--red-bright);
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .feature-text strong {
+            color: var(--fg);
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .feature-text span {
+            color: var(--fg-muted);
+            font-size: 0.85rem;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px dashed var(--border);
+            margin: 1.5rem 0;
+        }
+
+        .os-section {
+            margin: 1rem 0;
+        }
+
+        .os-label {
+            color: var(--fg-muted);
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .os-label::before {
+            content: "# ";
+            color: var(--red);
+        }
+
+        footer {
+            border-top: 1px dashed var(--border);
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            text-align: center;
+            color: var(--fg-muted);
+            font-size: 0.85rem;
+        }
+
+        footer .maple {
+            color: var(--red-bright);
+        }
+
+        .contact-line {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .contact-line .material-symbols-outlined {
+            color: var(--red);
+            font-size: 1rem;
+        }
+
+        ul {
+            list-style: none;
+            margin: 1rem 0;
+        }
+
+        ul li {
+            color: var(--fg-muted);
+            margin-bottom: 0.5rem;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        ul li::before {
+            content: "→";
+            color: var(--red);
+            position: absolute;
+            left: 0;
+        }
+
+        .footnote {
+            font-size: 0.8rem;
+            color: var(--fg-muted);
+            margin-top: 1.5rem;
+            font-style: italic;
+        }
+
+        @media (max-width: 600px) {
+            html {
+                font-size: 14px;
+            }
+
+            .container {
+                padding: 1.5rem 1rem;
+            }
+
+            code {
+                font-size: 0.8rem;
+                padding: 0.6rem 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo"><span>1yr</span>.ca</div>
+            <p class="tagline">terminal pastebin &mdash; hosted in Canada for up to 1 year</p>
+        </header>
+
+        <main>
+            <section>
+                <h2>usage</h2>
+
+                <h3>examples</h3>
+
+                <p>Send some text and read it back:</p>
+                <code>echo Tim Hortons | nc 1yr.ca 443</code>
+                <code class="output">https://1yr.ca/x7kq</code>
+                <code>curl https://1yr.ca/x7kq</code>
+                <code class="output">Tim Hortons</code>
+
+                <p>Send file contents:</p>
+                <code>cat ~/some_file.txt | nc 1yr.ca 443</code>
+
+                <p>Send list of files in the current directory:</p>
+                <code>ls -la | nc 1yr.ca 443</code>
+
+                <h3>requirements</h3>
+
+                <p>There is only one requirement to use this service: <strong>netcat</strong>. To check if you already have it installed, type in terminal <code class="inline-code">nc</code> or <code class="inline-code">ncat</code> or <code class="inline-code">netcat</code>.</p>
+
+                <p>Netcat is available on most platforms, including Windows, macOS and Linux.</p>
+
+                <h3>alias</h3>
+
+                <p>To simplify usage, you can add an alias to your shell configuration.</p>
+
+                <hr>
+
+                <div class="os-section">
+                    <div class="os-label">linux (.bashrc)</div>
+                    <code>echo 'alias pb="nc 1yr.ca 443"' >> ~/.bashrc</code>
+                </div>
+
+                <hr>
+
+                <div class="os-section">
+                    <div class="os-label">mac (.zshrc)</div>
+                    <code>echo 'alias pb="nc 1yr.ca 443"' >> ~/.zshrc</code>
+                </div>
+
+                </section>
+
+            <section>
+                <h2>about</h2>
+
+                <div class="feature-grid">
+                    <div class="feature">
+                        <span class="material-symbols-outlined">schedule</span>
+                        <div class="feature-text">
+                            <strong>1 Year Retention</strong>
+                            <span>Your pastes are stored for up to 365 days*. No more disappearing links.</span>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <span class="material-symbols-outlined">location_on</span>
+                        <div class="feature-text">
+                            <strong>Hosted in Canada</strong>
+                            <span>Data sovereignty matters. All data stored on Canadian servers.</span>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <span class="material-symbols-outlined">terminal</span>
+                        <div class="feature-text">
+                            <strong>Terminal Native</strong>
+                            <span>No browser required. Pipe, paste, share &mdash; all from your shell.</span>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <span class="material-symbols-outlined">bolt</span>
+                        <div class="feature-text">
+                            <strong>Fast &amp; Simple</strong>
+                            <span>Zero dependencies. Just netcat and a single command.</span>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <span class="material-symbols-outlined">text_snippet</span>
+                        <div class="feature-text">
+                            <strong>Text Only</strong>
+                            <span>Plain text content only. No images, binaries, or zip files.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="footnote">*Older links may be purged if the service reaches its allocated cache size.</p>
+
+                <h3>request delete</h3>
+
+                <p>For the first 10 minutes after creating a paste, you can delete it from the same IP address by sending a POST request:</p>
+
+                <code>curl -X POST "https://1yr.ca/delete?slug=abc123"</code>
+
+                <p>If you need a paste removed after that time, please send a request to the email address listed below.</p>
+
+                <h3>contact</h3>
+
+                <div class="contact-line">
+                    <span class="material-symbols-outlined">mail</span>
+                    <span>benjamin [at] chausse.xyz</span>
+                </div>
+
+                <h3>acceptable use policy</h3>
+
+                <ul>
+                    <li>Do not post illegal content, personal information, or credentials</li>
+                    <li>Respect intellectual property rights</li>
+                    <li>IP addresses are logged for security purposes</li>
+                    <li>Violations may result in a permanent ban</li>
+                    <li>Service owner is not liable for user-posted content</li>
+                </ul>
+            </section>
+        </main>
+
+        <footer>
+            <p>made with <span class="maple">&#127809;</span> in Canada</p>
+            <p style="margin-top: 0.5rem; font-size: 0.8rem;">&copy; <span id="year"></span> 1yr.ca</p>
+        </footer>
+    </div>
+    <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+</body>
+</html>
