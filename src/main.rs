@@ -1,10 +1,11 @@
 mod internal;
+mod slog;
 
 use std::{fmt::format, io::Result};
 
 use actix_web::{get, web, App, HttpServer, Responder};
-
 use clap::Parser;
+
 use crate::internal::{config, logging};
 
 #[get("/")]

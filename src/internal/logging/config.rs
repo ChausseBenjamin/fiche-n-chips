@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{io, path::PathBuf, str::FromStr};
+use std::{fmt::Display, io, path::PathBuf, str::FromStr};
 
 use clap::ValueEnum;
 
@@ -7,7 +7,7 @@ use crate::internal::util;
 
 const DEFAULT_LOGFILE: &str = "fiche-n-chips.log";
 
-#[derive(Clone, Debug, ValueEnum)]
+#[derive(Clone, Debug, ValueEnum, strum::Display)]
 pub enum LogFmt {
 	Plain,
 	Json,
@@ -33,17 +33,13 @@ impl FromStr for LogOutput {
 	}
 }
 
-impl ToString for LogOutput {
-	fn to_string(&self) -> String {
+impl Display for LogOutput {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
-			LogOutput::Stdout => "stdout".into(),
-			LogOutput::Stderr => "stderr".into(),
-			LogOutput::File(path) => {
-				if let Some(v) = path.to_str() {
-					v.into()
-				} else {
-					"".to_string()
-				}
+			LogOutput::Stdout => f.write_str("stdout"),
+			LogOutput::Stderr => f.write_str("stderr"),
+			LogOutput::File(path_buf) => {
+				f.write_str(path.to_str().unwrap_or_default())
 			}
 		}
 	}
