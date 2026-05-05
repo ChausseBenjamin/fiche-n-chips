@@ -1,16 +1,20 @@
+use core::fmt;
 use std::{io, path::PathBuf, str::FromStr};
 
-use crate::internal::util::valid_filepath;
+use clap::ValueEnum;
+
+use crate::internal::util;
 
 const DEFAULT_LOGFILE: &str = "fiche-n-chips.log";
 
+#[derive(Clone, Debug, ValueEnum)]
 pub enum LogFmt {
 	Plain,
 	Json,
 	None,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum LogOutput {
 	Stdout,
 	Stderr,
@@ -20,11 +24,27 @@ pub enum LogOutput {
 impl FromStr for LogOutput {
 	type Err = io::Error;
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		let output: Result<Self, YourErrorType> = match s.trim() {
+		let output: Result<Self, io::Error> = match s.trim() {
 			"stdout" | "-" => Ok(Self::Stdout),
 			"stderr" | "err" => Ok(Self::Stderr),
-			v => Ok(Self::File(valid_filepath(v, DEFAULT_LOGFILE)?)),
+			f => Ok(Self::File(util::valid_filepath(f, DEFAULT_LOGFILE)?)),
 		};
 		output
+	}
+}
+
+impl ToString for LogOutput {
+	fn to_string(&self) -> String {
+		match self {
+			LogOutput::Stdout => "stdout".into(),
+			LogOutput::Stderr => "stderr".into(),
+			LogOutput::File(path) => {
+				if let Some(v) = path.to_str() {
+					v.into()
+				} else {
+					"".to_string()
+				}
+			}
+		}
 	}
 }

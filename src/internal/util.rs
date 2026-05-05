@@ -1,7 +1,8 @@
-use std::path::PathBuf;
-
-use fs::{metadata, OpenOptions};
-use io::Error;
+use std::{
+	fs::{metadata, OpenOptions},
+	io::{Error, ErrorKind},
+	path::PathBuf,
+};
 
 /// Validates and normalizes a file path for file-based configuration outputs.
 ///
