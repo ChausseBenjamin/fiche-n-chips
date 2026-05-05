@@ -1,0 +1,32 @@
+# Rustfmt Config Options Matching Your Go Preferences
+
+## 80 column limit
+max_width = 80
+
+## Tabs for indentation
+hard_tabs = true
+tab_spaces = 2
+
+## Braces on same line
+brace_style = "SameLineWhere"
+
+## Maximum alignment
+struct_field_align_threshold = 0
+
+## 3 import groups (stdlib, external, project)
+group_imports = "StdExternalCrate"
+imports_granularity = "Crate"
+
+## Comment formatting
+comment_width = 80
+wrap_comments = true
+
+## Method chain length
+chain_width = 80
+
+## Import and derive organization
+reorder_imports = true
+merge_derives = true
+
+## Rust edition for syntax rules
+edition = "2021"

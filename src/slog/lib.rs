@@ -1,0 +1,1 @@
+struct LogLevel(i64);

@@ -4,4 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tokio = { version = "1", features = ["full"] }
+actix-web = "4.13.0"
+clap = { version = "4.6.1", features = ["derive"] }
+serde = "1.0.228"
