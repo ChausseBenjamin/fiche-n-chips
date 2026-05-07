@@ -38,9 +38,7 @@ impl Display for LogOutput {
 		match self {
 			LogOutput::Stdout => f.write_str("stdout"),
 			LogOutput::Stderr => f.write_str("stderr"),
-			LogOutput::File(path_buf) => {
-				f.write_str(path.to_str().unwrap_or_default())
-			}
+			LogOutput::File(path) => f.write_str(path.to_str().unwrap_or_default()),
 		}
 	}
 }
