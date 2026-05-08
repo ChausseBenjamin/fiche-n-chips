@@ -1,5 +1,4 @@
 mod internal;
-mod slog;
 
 use std::{fmt::format, io::Result};
 
