@@ -1,11 +1,11 @@
 use std::time::SystemTime;
 
-use crate::attr::Attr;
+use crate::{attr::Attr, level::Level, source::Source};
 
-pub struct Record {
+pub struct Record<T: Level> {
 	time: SystemTime,
 	message: String,
-	// TODO: level
-	// TODO: source/caller
+	level: T,
+	src: Option<Source>,
 	attrs: Vec<Attr>,
 }

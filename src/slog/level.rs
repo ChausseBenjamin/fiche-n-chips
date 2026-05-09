@@ -1,19 +1,20 @@
 use core::fmt::Result;
 use std::{
-	cmp::Ordering,
+	cmp::{Ord, Ordering},
 	fmt::{Display, Formatter},
 	ops::Sub,
 };
 
-/// The general trait anyone can implement if
-/// - wants ready-made log levels, use the provided ones
-/// - wants more granular levels without a custom implementation, wrap new u8
-///   values within SlogLevel
-/// - truly wants granularity, they can alway implement their own implementation
-///   of the Level trait
-pub trait Level<T: Display + Ord> {}
+/// Fuly extensible trait for logging so users can extend as they please
+pub trait Level {
+	fn disp(&self, f: &mut Formatter<'_>) -> Result;
+	fn value(&self) -> i8;
+}
 
-#[derive(Eq, Ord, PartialEq, PartialOrd, Clone, Copy)]
+/// Good default for the lib
+/// - no user implentation needed
+/// - somewhat extensible beyon 4 levels with SlogLevel(n) without requiring a
+///   custom implementation
 pub struct SlogLevel(i8);
 
 pub const DEBUG: SlogLevel = SlogLevel(-4);
@@ -46,12 +47,22 @@ impl Display for SlogLevel {
 			&WARN => write!(f, "WARN"),
 			&ERROR => write!(f, "ERROR"),
 
-			l if self > &ERROR => write!(f, "ERROR+{}", *self - ERROR),
-			l if self > &WARN => write!(f, "WARN+{}", *self - WARN),
-			l if self > &INFO => write!(f, "INFO+{}", *self - INFO),
-			l if self > &DEBUG => write!(f, "INFO{}", *self - INFO), /* neg */
-			_ => write!(f, "DEBUG{}", *self - DEBUG),                /* neg */
+			l if self > &ERROR => write!(f, "ERROR+{}", self.0 - ERROR.0),
+			l if self > &WARN => write!(f, "WARN+{}", self.0 - WARN.0),
+			l if self > &INFO => write!(f, "INFO+{}", self.0 - INFO.0),
+			l if self > &DEBUG => write!(f, "INFO{}", self.0 - INFO.0), /* neg */
+			_ => write!(f, "DEBUG{}", self.0 - DEBUG.0),                /* neg */
 		}
+	}
+}
+
+impl Level for SlogLevel {
+	fn disp(&self, f: &mut Formatter<'_>) -> Result {
+		self.fmt(f)
+	}
+
+	fn value(&self) -> i8 {
+		self.0
 	}
 }
 
@@ -83,5 +94,43 @@ mod tests {
 			.iter()
 			.enumerate()
 			.for_each(|(i, output)| assert_eq!(format!("{}", output), expected[i]));
+	}
+
+	#[test]
+	fn sloglevel_values() {
+		let inputs: Vec<SlogLevel> = (-5..9).map(|lvl| SlogLevel(lvl)).collect();
+
+		const IS_LT_DEBUG: usize = 0;
+		const IS_LT_INFO: usize = 1;
+		const IS_LT_WARN: usize = 2;
+		const IS_LT_ERROR: usize = 3;
+		const IS_GT_ERROR: usize = 4;
+		let truth_table = vec![
+			// lt_debug lt_info lt_warn lt_err gt_err
+			[true, true, true, true, false],     // -5
+			[false, true, true, true, false],    // -4
+			[false, true, true, true, false],    // -3
+			[false, true, true, true, false],    // -2
+			[false, true, true, true, false],    // -1
+			[false, false, true, true, false],   // 00
+			[false, false, true, true, false],   // 01
+			[false, false, true, true, false],   // 02
+			[false, false, true, true, false],   // 03
+			[false, false, false, true, false],  // 04
+			[false, false, false, true, false],  // 05
+			[false, false, false, true, false],  // 06
+			[false, false, false, true, false],  // 07
+			[false, false, false, false, false], // 08
+			[false, false, false, false, true],  // 09
+		];
+
+		inputs.iter().enumerate().for_each(|(i, v)| {
+			let lvl = v.value();
+			assert_eq!(lvl < DEBUG.value(), truth_table[i][IS_LT_DEBUG]);
+			assert_eq!(lvl < INFO.value(), truth_table[i][IS_LT_INFO]);
+			assert_eq!(lvl < WARN.value(), truth_table[i][IS_LT_WARN]);
+			assert_eq!(lvl < ERROR.value(), truth_table[i][IS_LT_ERROR]);
+			assert_eq!(lvl > ERROR.value(), truth_table[i][IS_GT_ERROR]);
+		});
 	}
 }
