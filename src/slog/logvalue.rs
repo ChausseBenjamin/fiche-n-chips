@@ -7,17 +7,14 @@ pub trait LogValuer {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum LogValue<D: Display, L: LogValuer> {
-	Vanilla(D),
-	LogFmt(L),
+pub struct LogValue<T> {
+	inner: T,
+	display_fn: fn(&T, &mut Formatter<'_>) -> Result,
 }
 
-impl<D: Display, L: LogValuer> Display for LogValue<D, L> {
+impl<T> Display for LogValue<T> {
 	fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-		match self {
-			Self::Vanilla(v) => v.fmt(f),
-			Self::LogFmt(l) => l.fmt_logged(f),
-		}
+		(self.display_fn)(&self.inner, f)
 	}
 }
 
@@ -27,40 +24,31 @@ pub mod __prefer_log_fmt {
 
 	use super::{LogValue, LogValuer};
 
-	#[derive(Debug, PartialEq)]
-	pub enum Never {}
-	impl Display for Never {
-		fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-			match *self {}
-		}
-	}
-	impl LogValuer for Never {
-		fn fmt_logged(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-			match *self {}
-		}
-	}
-
 	pub struct Wrap<T>(pub T);
 
 	// Inherent impl -> wins over trait impl when T: LogValuer.
 	// Returns FooBar<Never, T>: The Display slot is dead.
 	impl<T: LogValuer> Wrap<T> {
-		pub fn resolve(self) -> LogValue<Never, T> {
-			LogValue::LogFmt(self.0)
+		pub fn resolve(self) -> LogValue<T> {
+			LogValue {
+				inner: self.0,
+				display_fn: |v, f| v.fmt_logged(f),
+			}
 		}
 	}
 
-	// Fallback trait -> only reached when T: !LogValuer.
-	// Returns LogValue<T, Never>: The LogFmt slot is dead.
 	pub trait ResolveFallback {
 		type Inner: Display;
-		fn resolve(self) -> LogValue<Self::Inner, Never>;
+		fn resolve(self) -> LogValue<Self::Inner>;
 	}
 
 	impl<T: Display> ResolveFallback for Wrap<T> {
 		type Inner = T;
-		fn resolve(self) -> LogValue<T, Never> {
-			LogValue::Vanilla(self.0)
+		fn resolve(self) -> LogValue<T> {
+			LogValue {
+				inner: self.0,
+				display_fn: |v, f| Display::fmt(v, f),
+			}
 		}
 	}
 }
@@ -123,11 +111,9 @@ mod tests {
 		let input = OnlyDisplay;
 		let input_wrapped = log_val!(input.clone());
 
-		let expected_wrap = LogValue::Vanilla(OnlyDisplay);
 		let expected_disp = "When displayed: `regular value`";
 		let expected_log = "When logged: `regular value`";
 
-		assert_eq!(input_wrapped, expected_wrap);
 		assert_eq!(format!("{}`{}`", DISP_TMPL, input), expected_disp);
 		assert_eq!(format!("{}`{}`", LOG_TMPL, input_wrapped), expected_log);
 	}
@@ -137,11 +123,9 @@ mod tests {
 		let input = OnlyLogfmt;
 		let input_wrapped = log_val!(input.clone());
 
-		let expected_wrap = LogValue::LogFmt(OnlyLogfmt);
 		// Cannot display: Not tested
 		let expected_log = "When logged: `special logging format`";
 
-		assert_eq!(input_wrapped, expected_wrap);
 		assert_eq!(format!("{}`{}`", LOG_TMPL, input_wrapped), expected_log);
 	}
 
@@ -150,11 +134,9 @@ mod tests {
 		let input = DisplayAndLog;
 		let input_wrapped = log_val!(input.clone());
 
-		let expected_wrap = LogValue::LogFmt(DisplayAndLog);
 		let expected_disp = "When displayed: `Pa$$w0rd`";
 		let expected_log = "When logged: `REDACTED`";
 
-		assert_eq!(input_wrapped, expected_wrap);
 		assert_eq!(format!("{}`{}`", DISP_TMPL, input), expected_disp);
 		assert_eq!(format!("{}`{}`", LOG_TMPL, input_wrapped), expected_log);
 	}

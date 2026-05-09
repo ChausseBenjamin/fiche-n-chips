@@ -1,6 +1,8 @@
-pub mod logvalue;
+use attr::*;
+use logvalue::*;
 
-pub mod attr;
+mod attr;
+mod logvalue;
 
 // tmp contains example code, I don't want it compiled in the binary...
 #[cfg(test)]
