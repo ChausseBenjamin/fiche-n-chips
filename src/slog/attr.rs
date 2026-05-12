@@ -11,13 +11,13 @@ pub enum Attr {
 
 #[derive(Debug, PartialEq)]
 pub struct AttrGroup {
-	key: Arc<str>,
-	attrs: Arc<[Attr]>,
+	pub key: Arc<str>,
+	pub attrs: Arc<[Attr]>,
 }
 
 pub struct AttrLeaf {
-	key: Arc<str>,
-	value: Box<dyn Display>,
+	pub key: Arc<str>,
+	pub value: Box<dyn Display>,
 }
 
 impl std::fmt::Debug for AttrLeaf {

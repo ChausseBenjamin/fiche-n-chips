@@ -1,9 +1,9 @@
-# Slog
 
 This is an attempt made by a Go user to try and feel like home when writing Rust.
 
 This port aims to keep the spirit behind `log/slog` from the Go stdlib while
-implementing it in the most idiomatic way for a Rust dev.
+implementing it using idiomatic Rust patterns for ergonomics and efficiency,
+and speed.
 
 
 ## Implementation decisions:

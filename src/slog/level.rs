@@ -15,6 +15,7 @@ pub trait Level {
 /// - no user implentation needed
 /// - somewhat extensible beyon 4 levels with SlogLevel(n) without requiring a
 ///   custom implementation
+#[derive(Eq, Ord, PartialEq, PartialOrd)]
 pub struct SlogLevel(i8);
 
 pub const DEBUG: SlogLevel = SlogLevel(-4);
