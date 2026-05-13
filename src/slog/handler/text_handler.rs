@@ -1,17 +1,11 @@
-use std::{error::Error, io::Write, sync::Arc};
+use std::{
+	collections::VecDeque, error::Error, io::Write, rc::Rc, sync::Arc,
+	time::SystemTime,
+};
 
-use crate::{Attr, Context, Handler, HandlerError, Level, Record, INFO};
+use crate::{Attr, Context, Handler, Level, Record, INFO};
 
-pub struct TextHandler<W: Write> {
-	// can be useful in for sorting if multiple apps log in the same stream
-	app_name: Option<Arc<str>>,
-	min_level: i8,
-	attach_time: bool,
-	attach_source: bool,
-	writer: W,
-
-	attrs: Arc<str>, // not Attr -> pre-computed as a string ahead of time
-}
+pub struct TextHandler<W: Write> {}
 
 impl<W: Write> TextHandler<W> {
 	pub fn new(writer: W) -> Self {
@@ -45,6 +39,11 @@ impl<W: Write> TextHandler<W> {
 		self
 	}
 
+	fn time_str(t: SystemTime) -> Rc<str> {
+		todo!()
+	}
+}
+
 impl<L: Level, C: Context, W: Write> Handler<L, C> for TextHandler<W> {
 	type Error = crate::HandlerError;
 
@@ -52,15 +51,16 @@ impl<L: Level, C: Context, W: Write> Handler<L, C> for TextHandler<W> {
 		lvl.value() >= self.min_level
 	}
 
-	fn handle(&self, ctx: C, rec: Record<L>) -> Result<(), Self::Error> {
+	fn handle(&mut self, ctx: C, rec: Record<L>) -> Result<(), Error> {
 		todo!()
 	}
 
 	fn with_attrs(&self, attrs: Arc<[Attr]>) -> Self {
-		todo!()
+		self.attrs.append(self.flatten_attrs(attrs));
+		*self
 	}
 
 	fn with_group(&self, name: Arc<str>) -> Self {
-		todo!()
+		self.groups.push_back(name) * self
 	}
 }

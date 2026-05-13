@@ -48,10 +48,10 @@ impl Display for SlogLevel {
 			&WARN => write!(f, "WARN"),
 			&ERROR => write!(f, "ERROR"),
 
-			l if self > &ERROR => write!(f, "ERROR+{}", self.0 - ERROR.0),
-			l if self > &WARN => write!(f, "WARN+{}", self.0 - WARN.0),
-			l if self > &INFO => write!(f, "INFO+{}", self.0 - INFO.0),
-			l if self > &DEBUG => write!(f, "INFO{}", self.0 - INFO.0), /* neg */
+			_ if self > &ERROR => write!(f, "ERROR+{}", self.0 - ERROR.0),
+			_ if self > &WARN => write!(f, "WARN+{}", self.0 - WARN.0),
+			_ if self > &INFO => write!(f, "INFO+{}", self.0 - INFO.0),
+			_ if self > &DEBUG => write!(f, "INFO{}", self.0 - INFO.0), /* neg */
 			_ => write!(f, "DEBUG{}", self.0 - DEBUG.0),                /* neg */
 		}
 	}

@@ -1,4 +1,4 @@
-use std::{error::Error as StdError, fmt, io};
+use std::io;
 
 #[derive(Debug)]
 pub enum HandlerError {
