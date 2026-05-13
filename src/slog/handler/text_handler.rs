@@ -45,46 +45,6 @@ impl<W: Write> TextHandler<W> {
 		self
 	}
 
-	pub fn flatten_attrs(
-		attrs: Arc<[Attr]>,
-		prefix: Option<&str>,
-	) -> Result<Arc<str>, HandlerError> {
-		// Helper to join a list of pieces with ", " and return String
-		fn join_pieces<I>(iter: I) -> String
-		where
-			I: IntoIterator<Item = String>,
-		{
-			iter.into_iter().collect::<Vec<_>>().join(", ")
-		}
-
-		// Build top-level pieces by mapping each Attr to a String (recursing for
-		// groups).
-		let pieces = attrs.iter().map(|a| match a {
-			Attr::Obj(leaf) => {
-				// key (with optional prefix)
-				let key = if let Some(p) = prefix {
-					format!("{}.{}", p, leaf.key)
-				} else {
-					leaf.key.to_string()
-				};
-				format!("{}=\"{}\"", key, leaf.value);
-			}
-			Attr::Grp(group) => {
-				// new prefix: either prefix + "." + group.key or just group.key
-				let new_prefix = if let Some(p) = prefix {
-					format!("{}.{}", p, group.key)
-				} else {
-					group.key.to_string()
-				};
-				// Recurse to format group's attrs with new_prefix
-				self.flatten_attrs(group.attrs.clone(), Some(&new_prefix)).to_string()
-			}
-		});
-
-		Ok(Arc::from(join_pieces(pieces)))
-	}
-}
-
 impl<L: Level, C: Context, W: Write> Handler<L, C> for TextHandler<W> {
 	type Error = crate::HandlerError;
 
