@@ -1,5 +1,5 @@
-[package]
+[workspace]
 members = [
-	"src",
-	"slog",
+	"app",
+	"rslog",
 ]

@@ -3,8 +3,11 @@ name = "rslog"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-
 [features]
-actix = []
-axum = []
+json = []
+actix = ["dep:actix-web"]
+axum = ["dep:axum"]
+
+[dependencies]
+actix-web = { version = ">=1", optional = true }
+axum = { version = ">=0.7", optional = true }

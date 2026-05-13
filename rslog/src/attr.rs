@@ -3,18 +3,19 @@ use std::{
 	sync::Arc,
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Attr {
 	Obj(AttrLeaf),
 	Grp(AttrGroup),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct AttrGroup {
 	pub key: Arc<str>,
 	pub attrs: Arc<[Attr]>,
 }
 
+#[derive(Clone)]
 pub struct AttrLeaf {
 	pub key: Arc<str>,
 	pub value: Box<dyn Display>,
@@ -32,7 +33,10 @@ impl std::fmt::Debug for AttrLeaf {
 
 impl PartialEq for AttrLeaf {
 	fn eq(&self, other: &Self) -> bool {
-		self.key == other.key // only compare keys for test
+		let mut fail = false;
+		fail |= self.key != other.key;
+		fail |= format!("{}", self.value) != format!("{}", other.value);
+		!fail
 	}
 }
 
