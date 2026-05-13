@@ -1,15 +1,5 @@
 [package]
-name = "fiche-n-chips"
-version = "0.1.0"
-edition = "2021"
-
-[lib]
-path = "src/slog/lib.rs"
-
-[dependencies]
-clap = { version = "4.6.1", features = ["derive", "env"] }
-
-[dev-dependencies]
-tokio = { version = "1", features = ["rt", "macros"] }
-
-[features]
+members = [
+	"src",
+	"slog",
+]
