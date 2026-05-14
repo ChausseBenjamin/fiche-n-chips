@@ -1,7 +1,7 @@
-use std::{error::Error, io, io::Write, rc::Rc, sync::Arc, time::SystemTime};
+use std::{io, io::Write, sync::Arc};
 
 use super::CommonHandler;
-use crate::{Attr, Context, Handler, Level, Record, INFO};
+use crate::{Attr, Context, Handler, Level, Record};
 
 const TIME_NOT_DONE: &str = "Unimplemented: time in logs";
 
@@ -62,7 +62,7 @@ impl<L: Level, C: Context, W: Write> Handler<L, C> for TextHandler<W> {
 		lvl.value() >= self.0.min_level
 	}
 
-	fn handle(&mut self, ctx: C, rec: Record<L>) -> Result<(), Self::Error> {
+	fn handle(&mut self, _ctx: C, rec: Record<L>) -> Result<(), Self::Error> {
 		// TODO: Format time in the finishe version
 		let lvl = rec.level.disp();
 		let rhs: String = Self::str_attrs(self.0.attrs.clone(), None).join(", ");
@@ -74,7 +74,8 @@ impl<L: Level, C: Context, W: Write> Handler<L, C> for TextHandler<W> {
 				format!("{} {}| {}: {}", lvl, TIME_NOT_DONE, name, rec.msg)
 			}
 		};
-		writeln!(self.0.writer, "{}: {}", lhs, rhs)
+		let mut writer = self.0.writer.lock().unwrap_or_else(|e| e.into_inner());
+		writeln!(writer, "{}: {}", lhs, rhs)
 	}
 
 	fn with_attrs(&mut self, attrs: Vec<Attr>) -> Self {

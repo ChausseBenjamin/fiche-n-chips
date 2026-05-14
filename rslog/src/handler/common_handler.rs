@@ -1,6 +1,6 @@
-use std::{io::Write, sync::Arc};
+use std::{io::Write, sync::{Arc, Mutex}};
 
-use crate::{group, Attr, AttrGroup, Level, INFO};
+use crate::{Attr, AttrGroup, Level, INFO};
 
 // pub fn ReplaceAttr(groups: &[&str],attr: Attr) -> Attr;
 
@@ -11,7 +11,7 @@ pub(super) struct CommonHandler<W: Write> {
 	pub attach_time: bool,
 	pub attach_source: bool,
 	// XXX: might need a mutex if writers shit the bed with concurent calls
-	pub writer: Arc<W>,
+	pub writer: Arc<Mutex<W>>,
 
 	// This is a low-effort implementation leaving lots of performance on the
 	// table. Pre-computing attrs belonging to a handler as ready-made string
@@ -64,7 +64,7 @@ impl<W: Write> CommonHandler<W> {
 			attach_time: true,
 			attach_source: false,
 			attrs: Default::default(),
-			writer: Arc::new(writer),
+			writer: Arc::new(Mutex::new(writer)),
 		}
 	}
 
