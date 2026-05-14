@@ -9,9 +9,7 @@ pub struct TextHandler<W: Write>(CommonHandler<W>);
 
 impl<W: Write> TextHandler<W> {
 	pub fn new(writer: W) -> Self {
-		Self {
-			0: CommonHandler::new(writer),
-		}
+		Self(CommonHandler::new(writer))
 	}
 
 	pub fn app_name(mut self, name: impl Into<Arc<str>>) -> Self {
@@ -19,8 +17,8 @@ impl<W: Write> TextHandler<W> {
 		self
 	}
 
-	pub fn min_level<L: Level>(mut self, level: L) -> Self {
-		self.0.min_level = level.value();
+	pub fn min_level(mut self, level: i8) -> Self {
+		self.0.min_level = level;
 		self
 	}
 
@@ -39,7 +37,6 @@ impl<W: Write> TextHandler<W> {
 			.iter()
 			.flat_map(|a| match a {
 				Attr::Obj(leaf) => {
-					// TODO: escape strings and shit?
 					vec![format!("{}=\"{}\"", leaf.key, leaf.value).to_string()]
 				}
 				Attr::Grp(group) => {
@@ -55,23 +52,21 @@ impl<W: Write> TextHandler<W> {
 	}
 }
 
-impl<L: Level, C: Context, W: Write> Handler<L, C> for TextHandler<W> {
+impl<W: Write> Handler for TextHandler<W> {
 	type Error = io::Error;
 
-	fn enabled(&self, _ctx: C, lvl: L) -> bool {
+	fn enabled<C: Context, L: Level>(&self, _ctx: &C, lvl: &L) -> bool {
 		lvl.value() >= self.0.min_level
 	}
 
-	fn handle(&mut self, _ctx: C, rec: Record<L>) -> Result<(), Self::Error> {
-		// TODO: Format time in the finishe version
-		let lvl = rec.level.disp();
+	fn handle<C: Context, L: Level>(&mut self, _ctx: &C, rec: Record<L>) -> Result<(), Self::Error> {
 		let rhs: String = Self::str_attrs(self.0.attrs.clone(), None).join(", ");
 		let lhs: String = match (self.0.app_name.clone(), self.0.attach_time) {
-			(None, false) => format!("{} {}", lvl, rec.msg),
-			(None, true) => format!("{} {}| {}", lvl, TIME_NOT_DONE, rec.msg),
-			(Some(name), false) => format!("{} {}: {}", lvl, name, rec.msg),
+			(None, false) => format!("{} {}", rec.level, rec.msg),
+			(None, true) => format!("{} {}| {}", rec.level, TIME_NOT_DONE, rec.msg),
+			(Some(name), false) => format!("{} {}: {}", rec.level, name, rec.msg),
 			(Some(name), true) => {
-				format!("{} {}| {}: {}", lvl, TIME_NOT_DONE, name, rec.msg)
+				format!("{} {}| {}: {}", rec.level, TIME_NOT_DONE, name, rec.msg)
 			}
 		};
 		let mut writer = self.0.writer.lock().unwrap_or_else(|e| e.into_inner());
@@ -79,14 +74,10 @@ impl<L: Level, C: Context, W: Write> Handler<L, C> for TextHandler<W> {
 	}
 
 	fn with_attrs(&mut self, attrs: Vec<Attr>) -> Self {
-		Self {
-			0: self.0.with_attrs(attrs),
-		}
+		Self(self.0.with_attrs(attrs))
 	}
 
 	fn with_group(&mut self, name: Arc<str>) -> Self {
-		Self {
-			0: self.0.with_group(name),
-		}
+		Self(self.0.with_group(name))
 	}
 }

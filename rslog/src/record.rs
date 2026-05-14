@@ -6,6 +6,6 @@ pub struct Record<L: Level> {
 	pub time: SystemTime,
 	pub msg: String,
 	pub level: L,
-	pub src: Option<Source>,
+	pub src: Source,
 	pub attrs: Vec<Attr>,
 }

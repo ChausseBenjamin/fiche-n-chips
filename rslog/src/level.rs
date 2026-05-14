@@ -6,14 +6,13 @@ use std::{
 };
 
 /// Fuly extensible trait for logging so users can extend as they please
-pub trait Level {
-	fn disp(&self) -> String;
+pub trait Level: Display {
 	fn value(&self) -> i8;
 }
 
 /// Good default for the lib
 /// - no user implentation needed
-/// - somewhat extensible beyon 4 levels with SlogLevel(n) without requiring a
+/// - somewhat extensible beyond 4 levels with SlogLevel(n) without requiring a
 ///   custom implementation
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
 pub struct SlogLevel(i8);
@@ -58,10 +57,6 @@ impl Display for SlogLevel {
 }
 
 impl Level for SlogLevel {
-	fn disp(&self) -> String {
-		format!("{}", self)
-	}
-
 	fn value(&self) -> i8 {
 		self.0
 	}
