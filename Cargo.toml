@@ -3,3 +3,4 @@ members = [
 	"app",
 	"rslog",
 ]
+resolver = "2"

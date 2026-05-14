@@ -2,12 +2,6 @@ use std::{io::Write, sync::Arc};
 
 use crate::{group, Attr, AttrGroup, Level, INFO};
 
-// keys for built-in attributes
-pub const TIME_KEY: &str = "time";
-pub const LEVEL_KEY: &str = "level";
-pub const MESSAGE_KEY: &str = "msg";
-pub const SOURCE_KEY: &str = "source";
-
 // pub fn ReplaceAttr(groups: &[&str],attr: Attr) -> Attr;
 
 pub(super) struct CommonHandler<W: Write> {
@@ -23,9 +17,30 @@ pub(super) struct CommonHandler<W: Write> {
 	// table. Pre-computing attrs belonging to a handler as ready-made string
 	// shards could greatly diminish the compute cost of every log statement
 	// that uses it.
-	// I want something that works. Optimizing performance comes later as this
-	// is just an implementation detail which isn't user-facing/accessible.
-	attrs: Vec<Attr>,
+	// I want something that works. Optimizing performance comes later.
+	pub attrs: Vec<Attr>,
+	// There are two approaches that *may* be worth exploring for future
+	// optimizations:
+	//
+	// OPTION 1: Whenever a handler runs for the first time (`.handle(...)`),
+	// then internal attr tree gets flattened into a slice of attr_strings (each
+	// string holds both key+value, which implies all groups are also
+	// flattened). Subsequent calls to the same handler use the pre-computed
+	// strings. Child loggers already have part of the string data computed.
+	//
+	// OPTION 2: Whenever a logger is forked (with_attrs or with_group), the
+	// parent pre-computes the data he owns (if not already done) for both his
+	// child and himself (this is why I let the trait set `&mut self` for those
+	// even if no mutation *should* occur).
+	//
+	// Both implementations would probably require TextHandler and JsonHandler to
+	// provide serialization functions for standalone attributes and
+	// groups to leave this common core implementation agnostic.
+	//
+	// I'm not sure which approach is best. Option 1 condemns the first log to be
+	// slow, and that might occur in hot-paths. Option 2 condemns function to
+	// run potentially slow pre-computations even if no log ever gets printed
+	// using that specific logger.
 }
 
 impl<W: Write> Clone for CommonHandler<W> {
@@ -54,7 +69,9 @@ impl<W: Write> CommonHandler<W> {
 	}
 
 	pub fn with_attrs(&self, attrs: Vec<Attr>) -> Self {
-		todo!()
+		let mut other = self.clone();
+		other.attrs.extend(attrs);
+		other
 	}
 
 	pub fn with_group(&self, name: Arc<str>) -> Self {

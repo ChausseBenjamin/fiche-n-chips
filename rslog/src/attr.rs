@@ -3,6 +3,26 @@ use std::{
 	sync::Arc,
 };
 
+// I thought of wrapping the entire Attr behind a single Arc so inner values
+// don't have to manage individual reference counters. It made sense in my mind
+// that child/sub-loggers that reuse previous context increment a single Attr
+// ref counter as forks occur. Here is why I decided against it:
+//
+// Even in that senario, it still makes sense to use an Arc<str> for keys
+// instead of a Box: If only the atomic key+value pair had a counter this means
+// that in the following example:
+//
+// info!(logger, "msg", "username", "foo");
+// info!(logger, "msg", "username", "bar");
+//
+// The `username` MUST be copied everytime the username is different instead
+// of incrementing a counter. And so my prior assumption of using fewer
+// reference counters doesn't hold as I still have two Arcs. On top of that,
+// both arcs used to be parallel (meaning key and value were at the same
+// indirection distance from a caller) whereas the approach I had in mind forces
+// keys to always jump through 2 memory addresses before reaching a
+// value.
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Attr {
 	Obj(AttrLeaf),
@@ -18,7 +38,7 @@ pub struct AttrGroup {
 #[derive(Clone)]
 pub struct AttrLeaf {
 	pub key: Arc<str>,
-	pub value: Box<dyn Display>,
+	pub value: Arc<dyn Display>,
 }
 
 impl std::fmt::Debug for AttrLeaf {
@@ -44,7 +64,7 @@ impl Attr {
 	pub fn group(key: Arc<str>, attrs: Arc<[Self]>) -> Self {
 		Attr::Grp(AttrGroup { key, attrs })
 	}
-	pub fn object(key: Arc<str>, value: Box<dyn Display>) -> Self {
+	pub fn object(key: Arc<str>, value: Arc<dyn Display>) -> Self {
 		Attr::Obj(AttrLeaf { key, value })
 	}
 }
@@ -99,7 +119,7 @@ macro_rules! group {
 #[macro_export]
 macro_rules! attr {
 	($key:literal, $val:expr) => {
-		$crate::attr::Attr::object($key.into(), Box::new($crate::log_val!($val)))
+		$crate::attr::Attr::object($key.into(), Arc::new($crate::log_val!($val)))
 	};
 }
 
@@ -113,7 +133,7 @@ mod tests {
 		let attr = attr!("foo", 42);
 		let expected = Attr::Obj(AttrLeaf {
 			key: Arc::from("foo"),
-			value: Box::new(log_val!(42)),
+			value: Arc::new(log_val!(42)),
 		});
 		assert_eq!(attr, expected);
 	}
@@ -129,15 +149,15 @@ mod tests {
 			vec![
 				Attr::Obj(AttrLeaf {
 					key: Arc::from("user_id"),
-					value: Box::new(log_val!(12)),
+					value: Arc::new(log_val!(12)),
 				}),
 				Attr::Obj(AttrLeaf {
 					key: Arc::from("name"),
-					value: Box::new(log_val!("John")),
+					value: Arc::new(log_val!("John")),
 				}),
 				Attr::Obj(AttrLeaf {
 					key: Arc::from("surname"),
-					value: Box::new(log_val!("Doe")),
+					value: Arc::new(log_val!("Doe")),
 				}),
 			]
 			.into_boxed_slice(),
@@ -149,22 +169,22 @@ mod tests {
 	fn heterogeneous_macro() {
 		let output = attrs!(
 				"user_id" => 12,
-				Attr::Obj(AttrLeaf{key: Arc::from("name"), value: Box::new(log_val!("John"))}),
+				Attr::Obj(AttrLeaf{key: Arc::from("name"), value: Arc::new(log_val!("John"))}),
 				"surname" => "Doe",
 		);
 		let expected = Arc::<[Attr]>::from(
 			vec![
 				Attr::Obj(AttrLeaf {
 					key: Arc::from("user_id"),
-					value: Box::new(log_val!(12)),
+					value: Arc::new(log_val!(12)),
 				}),
 				Attr::Obj(AttrLeaf {
 					key: Arc::from("name"),
-					value: Box::new(log_val!("John")),
+					value: Arc::new(log_val!("John")),
 				}),
 				Attr::Obj(AttrLeaf {
 					key: Arc::from("surname"),
-					value: Box::new(log_val!("Doe")),
+					value: Arc::new(log_val!("Doe")),
 				}),
 			]
 			.into_boxed_slice(),
@@ -185,11 +205,11 @@ mod tests {
 				vec![
 					Attr::Obj(AttrLeaf {
 						key: Arc::from("child1"),
-						value: Box::new(log_val!(10)),
+						value: Arc::new(log_val!(10)),
 					}),
 					Attr::Obj(AttrLeaf {
 						key: Arc::from("child2"),
-						value: Box::new(log_val!(20)),
+						value: Arc::new(log_val!(20)),
 					}),
 				]
 				.into_boxed_slice(),
@@ -208,11 +228,11 @@ mod tests {
 				vec![
 					Attr::Obj(AttrLeaf {
 						key: Arc::from("child1"),
-						value: Box::new(log_val!(30)),
+						value: Arc::new(log_val!(30)),
 					}),
 					Attr::Obj(AttrLeaf {
 						key: Arc::from("child2"),
-						value: Box::new(log_val!(40)),
+						value: Arc::new(log_val!(40)),
 					}),
 				]
 				.into_boxed_slice(),
@@ -238,11 +258,11 @@ mod tests {
 			vec![
 				Attr::Obj(AttrLeaf {
 					key: Arc::from("top_level"),
-					value: Box::new(log_val!("root")),
+					value: Arc::new(log_val!("root")),
 				}),
 				Attr::Obj(AttrLeaf {
 					key: Arc::from("middle"),
-					value: Box::new(log_val!(99)),
+					value: Arc::new(log_val!(99)),
 				}),
 				Attr::Grp(AttrGroup {
 					key: Arc::from("outer_group"),
@@ -250,18 +270,18 @@ mod tests {
 						vec![
 							Attr::Obj(AttrLeaf {
 								key: Arc::from("a"),
-								value: Box::new(log_val!(1)),
+								value: Arc::new(log_val!(1)),
 							}),
 							Attr::Obj(AttrLeaf {
 								key: Arc::from("b"),
-								value: Box::new(log_val!(2)),
+								value: Arc::new(log_val!(2)),
 							}),
 							Attr::Grp(AttrGroup {
 								key: Arc::from("inner_group"),
 								attrs: Arc::<[Attr]>::from(
 									vec![Attr::Obj(AttrLeaf {
 										key: Arc::from("z"),
-										value: Box::new(log_val!(3)),
+										value: Arc::new(log_val!(3)),
 									})]
 									.into_boxed_slice(),
 								),

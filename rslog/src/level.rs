@@ -7,7 +7,7 @@ use std::{
 
 /// Fuly extensible trait for logging so users can extend as they please
 pub trait Level {
-	fn disp(&self, f: &mut Formatter<'_>) -> Result;
+	fn disp(&self) -> String;
 	fn value(&self) -> i8;
 }
 
@@ -58,8 +58,8 @@ impl Display for SlogLevel {
 }
 
 impl Level for SlogLevel {
-	fn disp(&self, f: &mut Formatter<'_>) -> Result {
-		self.fmt(f)
+	fn disp(&self) -> String {
+		format!("{}", self)
 	}
 
 	fn value(&self) -> i8 {

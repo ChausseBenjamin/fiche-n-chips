@@ -3,6 +3,8 @@ use std::{error::Error, io, io::Write, rc::Rc, sync::Arc, time::SystemTime};
 use super::CommonHandler;
 use crate::{Attr, Context, Handler, Level, Record, INFO};
 
+const TIME_NOT_DONE: &str = "Unimplemented: time in logs";
+
 pub struct TextHandler<W: Write>(CommonHandler<W>);
 
 impl<W: Write> TextHandler<W> {
@@ -31,6 +33,26 @@ impl<W: Write> TextHandler<W> {
 		self.0.attach_time = enabled;
 		self
 	}
+
+	fn str_attrs(attrs: Vec<Attr>, prefix: Option<Arc<str>>) -> Vec<String> {
+		let flatlist: Vec<String> = attrs
+			.iter()
+			.flat_map(|a| match a {
+				Attr::Obj(leaf) => {
+					// TODO: escape strings and shit?
+					vec![format!("{}=\"{}\"", leaf.key, leaf.value).to_string()]
+				}
+				Attr::Grp(group) => {
+					Self::str_attrs(group.attrs.to_vec(), Some(group.key.clone()))
+				}
+			})
+			.collect();
+		if let Some(p) = prefix {
+			flatlist.iter().map(|a| format!("{}.{}", p, a).to_string()).collect()
+		} else {
+			flatlist
+		}
+	}
 }
 
 impl<L: Level, C: Context, W: Write> Handler<L, C> for TextHandler<W> {
@@ -41,7 +63,18 @@ impl<L: Level, C: Context, W: Write> Handler<L, C> for TextHandler<W> {
 	}
 
 	fn handle(&mut self, ctx: C, rec: Record<L>) -> Result<(), Self::Error> {
-		todo!()
+		// TODO: Format time in the finishe version
+		let lvl = rec.level.disp();
+		let rhs: String = Self::str_attrs(self.0.attrs.clone(), None).join(", ");
+		let lhs: String = match (self.0.app_name.clone(), self.0.attach_time) {
+			(None, false) => format!("{} {}", lvl, rec.msg),
+			(None, true) => format!("{} {}| {}", lvl, TIME_NOT_DONE, rec.msg),
+			(Some(name), false) => format!("{} {}: {}", lvl, name, rec.msg),
+			(Some(name), true) => {
+				format!("{} {}| {}: {}", lvl, TIME_NOT_DONE, name, rec.msg)
+			}
+		};
+		writeln!(self.0.writer, "{}: {}", lhs, rhs)
 	}
 
 	fn with_attrs(&mut self, attrs: Vec<Attr>) -> Self {
