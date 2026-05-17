@@ -11,8 +11,8 @@ impl MuxHandler {
 }
 
 impl Handler for MuxHandler {
-	fn enabled(&self, ctx: &dyn Any, lvl: &dyn Level) -> bool {
-		self.0.iter().any(|h| h.enabled(ctx, lvl))
+	fn enabled(&self, _ctx: &dyn Any, _lvl: &dyn Level) -> bool {
+		true
 	}
 
 	fn handle(
@@ -22,9 +22,11 @@ impl Handler for MuxHandler {
 	) -> Result<(), Box<dyn Error + Send + Sync>> {
 		let mut first_err = None;
 		for h in self.0.iter_mut() {
-			if let Err(e) = h.handle(ctx, rec.clone()) {
-				if first_err.is_none() {
-					first_err = Some(e);
+			if h.enabled(ctx, &*rec.level) {
+				if let Err(e) = h.handle(ctx, rec.clone()) {
+					if first_err.is_none() {
+						first_err = Some(e);
+					}
 				}
 			}
 		}
@@ -89,7 +91,7 @@ mod tests {
 	}
 
 	#[test]
-	fn mux_enabled_true_when_any_child_enabled() {
+	fn mux_enabled_always_true() {
 		let txt1 =
 			TextHandler::new(Vec::new()).min_level(WARN.value());
 		let txt2 =
@@ -97,8 +99,8 @@ mod tests {
 		let mux =
 			MuxHandler::new(Box::new([Box::new(txt1), Box::new(txt2)]));
 
-		assert!(!mux.enabled(&(), &DEBUG));
-		assert!(!mux.enabled(&(), &INFO));
+		assert!(mux.enabled(&(), &DEBUG));
+		assert!(mux.enabled(&(), &INFO));
 		assert!(mux.enabled(&(), &WARN));
 		assert!(mux.enabled(&(), &ERROR));
 	}
