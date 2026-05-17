@@ -1,29 +1,27 @@
-use std::{convert::Infallible, sync::Arc};
+use std::{any::Any, error::Error, sync::Arc};
 
-use crate::{Attr, Context, Handler, Level, Record};
+use crate::{Attr, Handler, Level, Record};
 
 pub struct DiscardHandler;
 
 impl Handler for DiscardHandler {
-	type Error = Infallible;
-
-	fn enabled<C: Context>(&self, _ctx: &C, _lvl: &dyn Level) -> bool {
+	fn enabled(&self, _ctx: &dyn Any, _lvl: &dyn Level) -> bool {
 		false
 	}
 
-	fn handle<C: Context>(
+	fn handle(
 		&mut self,
-		_ctx: &C,
+		_ctx: &dyn Any,
 		_rec: Record,
-	) -> Result<(), Self::Error> {
+	) -> Result<(), Box<dyn Error + Send + Sync>> {
 		Ok(())
 	}
 
-	fn with_attrs(&mut self, _attrs: Vec<Attr>) -> Self {
-		DiscardHandler
+	fn with_attrs(&mut self, _attrs: Vec<Attr>) -> Box<dyn Handler> {
+		Box::new(DiscardHandler)
 	}
 
-	fn with_group(&mut self, _name: Arc<str>) -> Self {
-		DiscardHandler
+	fn with_group(&mut self, _name: Arc<str>) -> Box<dyn Handler> {
+		Box::new(DiscardHandler)
 	}
 }

@@ -1,7 +1,7 @@
-use std::{io, io::Write, sync::Arc};
+use std::{any::Any, error::Error, io::Write, sync::Arc};
 
 use super::CommonHandler;
-use crate::{group, Attr, Context, Handler, Level, Record};
+use crate::{group, Attr, Handler, Level, Record};
 
 pub struct TextHandler<W: Write>(CommonHandler<W>);
 
@@ -50,18 +50,16 @@ impl<W: Write> TextHandler<W> {
 	}
 }
 
-impl<W: Write> Handler for TextHandler<W> {
-	type Error = io::Error;
-
-	fn enabled<C: Context>(&self, _ctx: &C, lvl: &dyn Level) -> bool {
+impl<W: Write + 'static> Handler for TextHandler<W> {
+	fn enabled(&self, _ctx: &dyn Any, lvl: &dyn Level) -> bool {
 		lvl.value() >= self.0.min_level
 	}
 
-	fn handle<C: Context>(
+	fn handle(
 		&mut self,
-		_ctx: &C,
+		_ctx: &dyn Any,
 		rec: Record,
-	) -> Result<(), Self::Error> {
+	) -> Result<(), Box<dyn Error + Send + Sync>> {
 		let mut attrs = self.0.attrs.clone();
 		if self.0.attach_source {
 			attrs.push(group!("source",
@@ -85,14 +83,15 @@ impl<W: Write> Handler for TextHandler<W> {
 			}
 		};
 		let mut writer = self.0.writer.lock().unwrap_or_else(|e| e.into_inner());
-		writeln!(writer, "{}: {}", lhs, rhs)
+		writeln!(writer, "{}: {}", lhs, rhs)?;
+		Ok(())
 	}
 
-	fn with_attrs(&mut self, attrs: Vec<Attr>) -> Self {
-		Self(self.0.with_attrs(attrs))
+	fn with_attrs(&mut self, attrs: Vec<Attr>) -> Box<dyn Handler> {
+		Box::new(Self(self.0.with_attrs(attrs)))
 	}
 
-	fn with_group(&mut self, name: Arc<str>) -> Self {
-		Self(self.0.with_group(name))
+	fn with_group(&mut self, name: Arc<str>) -> Box<dyn Handler> {
+		Box::new(Self(self.0.with_group(name)))
 	}
 }
