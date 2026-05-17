@@ -1,9 +1,16 @@
 use std::time::SystemTime;
 
 use crate::{
-	Attr, Background, Context, Handler, Level, Record, Source, DEBUG, ERROR,
-	INFO, WARN,
+	Attr, Background as Bg, Context as Ctx, Handler, Level as Lvl, Record,
+	Source as Src, DEBUG, ERROR, INFO, WARN,
 };
+
+#[macro_export]
+macro_rules! attrs {
+    ($($rest:tt)*) => {
+        $crate::source!(), $crate::__log_kvpairs!($($rest)*).to_vec()
+    };
+}
 
 pub struct Logger<H>(H);
 
@@ -18,12 +25,12 @@ impl<H> Logger<H> {
 		Self(handler)
 	}
 
-	pub fn log_context<C: Context>(
+	pub fn log_context<C: Ctx>(
 		&mut self,
 		ctx: &C,
-		level: impl Level + 'static,
+		level: impl Lvl + 'static,
 		msg: String,
-		src: Source,
+		src: Src,
 		args: Vec<Attr>,
 	) -> Result<(), <H as Handler>::Error>
 	where
@@ -46,72 +53,65 @@ impl<H> Logger<H> {
 	}
 
   #[rustfmt::skip]
-	pub fn debug_context<C: Context>(&mut self, ctx: &C, msg: String, src: Source, args: Vec<Attr>)
+	pub fn debug_context<C: Ctx>(&mut self, ctx: &C, msg: String, src: Src, args: Vec<Attr>)
       -> Result<(), <H as Handler>::Error>
 	where H: Handler {
 		self.log_context(ctx, DEBUG, msg, src, args)
 	}
 
   #[rustfmt::skip]
-	pub fn info_context<C: Context>(&mut self, ctx: &C, msg: String, src: Source, args: Vec<Attr>)
+	pub fn info_context<C: Ctx>(&mut self, ctx: &C, msg: String, src: Src, args: Vec<Attr>)
       -> Result<(), <H as Handler>::Error>
 	where H: Handler {
 		self.log_context(ctx, INFO, msg, src, args)
 	}
 
   #[rustfmt::skip]
-	pub fn warn_context<C: Context>(&mut self, ctx: &C, msg: String, src: Source, args: Vec<Attr>)
+	pub fn warn_context<C: Ctx>(&mut self, ctx: &C, msg: String, src: Src, args: Vec<Attr>)
       -> Result<(), <H as Handler>::Error>
 	where H: Handler {
 		self.log_context(ctx, WARN, msg, src, args)
 	}
 
   #[rustfmt::skip]
-	pub fn error_context<C: Context>(&mut self, ctx: &C, msg: String, src: Source, args: Vec<Attr>)
+	pub fn error_context<C: Ctx>(&mut self, ctx: &C, msg: String, src: Src, args: Vec<Attr>)
       -> Result<(), <H as Handler>::Error>
 	where H: Handler {
 		self.log_context(ctx, ERROR, msg, src, args)
 	}
 
   #[rustfmt::skip]
-	pub fn log(&mut self, level: impl Level + 'static, msg: String, src: Source, args: Vec<Attr>)
+	pub fn log(&mut self, level: impl Lvl + 'static, msg: String, src: Src, args: Vec<Attr>)
       -> Result<(), <H as Handler>::Error>
 	where H: Handler, {
-		self.log_context(&Background {}, level, msg, src, args)
+		self.log_context(&Bg {}, level, msg, src, args)
 	}
 
   #[rustfmt::skip]
-	pub fn debug(&mut self, msg: String, src: Source, args: Vec<Attr>)
+	pub fn debug(&mut self, msg: String, src: Src, args: Vec<Attr>)
       -> Result<(), <H as Handler>::Error>
 	where H: Handler {
-		self.log_context(&Background {}, DEBUG, msg, src, args)
+		self.log_context(&Bg {}, DEBUG, msg, src, args)
 	}
 
   #[rustfmt::skip]
-	pub fn info(&mut self, msg: String, src: Source, args: Vec<Attr>)
+	pub fn info(&mut self, msg: String, src: Src, args: Vec<Attr>)
       -> Result<(), <H as Handler>::Error>
 	where H: Handler {
-		self.log_context(&Background {}, INFO, msg, src, args)
+		self.log_context(&Bg {}, INFO, msg, src, args)
 	}
 
   #[rustfmt::skip]
-	pub fn warn(&mut self, msg: String, src: Source, args: Vec<Attr>)
+	pub fn warn(&mut self, msg: String, src: Src, args: Vec<Attr>)
       -> Result<(), <H as Handler>::Error>
 	where H: Handler {
-		self.log_context(&Background {}, WARN, msg, src, args)
+		self.log_context(&Bg {}, WARN, msg, src, args)
 	}
 
   #[rustfmt::skip]
-	pub fn error(&mut self, msg: String, src: Source, args: Vec<Attr>)
+	pub fn error(&mut self, msg: String, src: Src, args: Vec<Attr>)
       -> Result<(), <H as Handler>::Error>
 	where H: Handler {
-		self.log_context(&Background {}, ERROR, msg, src, args)
+		self.log_context(&Bg {}, ERROR, msg, src, args)
 	}
-}
-
-#[macro_export]
-macro_rules! attrs {
-    ($($rest:tt)*) => {
-        $crate::source!(), $crate::__log_kvpairs!($($rest)*).to_vec()
-    };
 }
