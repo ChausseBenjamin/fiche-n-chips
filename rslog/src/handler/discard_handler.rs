@@ -7,11 +7,15 @@ pub struct DiscardHandler;
 impl Handler for DiscardHandler {
 	type Error = Infallible;
 
-	fn enabled<C: Context, L: Level>(&self, _ctx: &C, _lvl: &L) -> bool {
+	fn enabled<C: Context>(&self, _ctx: &C, _lvl: &dyn Level) -> bool {
 		false
 	}
 
-	fn handle<C: Context, L: Level>(&mut self, _ctx: &C, _rec: Record<L>) -> Result<(), Self::Error> {
+	fn handle<C: Context>(
+		&mut self,
+		_ctx: &C,
+		_rec: Record,
+	) -> Result<(), Self::Error> {
 		Ok(())
 	}
 

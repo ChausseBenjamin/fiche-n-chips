@@ -25,8 +25,8 @@ mod opt {
 /// until the very first time a log is issued (and then keep values cached)
 pub trait Handler {
 	type Error;
-	fn enabled<C: Context, L: Level>(&self, ctx: &C, lvl: &L) -> bool;
-	fn handle<C: Context, L>(
+	fn enabled<C: Context>(&self, ctx: &C, lvl: &dyn Level) -> bool;
+	fn handle<C: Context>(
 		&mut self,
 		ctx: &C,
 		rec: Record,

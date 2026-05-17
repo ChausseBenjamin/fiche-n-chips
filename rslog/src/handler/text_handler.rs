@@ -55,11 +55,15 @@ impl<W: Write> TextHandler<W> {
 impl<W: Write> Handler for TextHandler<W> {
 	type Error = io::Error;
 
-	fn enabled<C: Context, L: Level>(&self, _ctx: &C, lvl: &L) -> bool {
+	fn enabled<C: Context>(&self, _ctx: &C, lvl: &dyn Level) -> bool {
 		lvl.value() >= self.0.min_level
 	}
 
-	fn handle<C: Context, L: Level>(&mut self, _ctx: &C, rec: Record<L>) -> Result<(), Self::Error> {
+	fn handle<C: Context>(
+		&mut self,
+		_ctx: &C,
+		rec: Record,
+	) -> Result<(), Self::Error> {
 		let rhs: String = Self::str_attrs(self.0.attrs.clone(), None).join(", ");
 		let lhs: String = match (self.0.app_name.clone(), self.0.attach_time) {
 			(None, false) => format!("{} {}", rec.level, rec.msg),
