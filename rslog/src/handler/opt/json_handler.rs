@@ -111,7 +111,7 @@ mod tests {
 	use super::*;
 	use std::sync::Arc;
 	use std::time::SystemTime;
-	use crate::{Record, Source, DEBUG, INFO, WARN, ERROR, group, Attr, Level};
+	use crate::{Record, Source, DEBUG, INFO, WARN, ERROR, attr, group};
 	use serde_json::Value;
 
 	fn basic_record(msg: &str) -> Record {
@@ -211,8 +211,8 @@ mod tests {
 			.attach_time(false)
 			.min_level(DEBUG.value());
 		handler.0.attrs = vec![
-			Attr::object("method".into(), Arc::new("GET")),
-			Attr::object("status".into(), Arc::new(200)),
+			attr!("method", "GET"),
+			attr!("status", 200),
 		];
 		let rec = basic_record("request");
 		handler.handle(&(), rec).unwrap();
@@ -292,7 +292,7 @@ mod tests {
 			.attach_time(false)
 			.min_level(DEBUG.value());
 		let mut forked =
-			handler.with_attrs(vec![Attr::object("env".into(), Arc::new("prod"))]);
+			handler.with_attrs(vec![attr!("env", "prod")]);
 
 		let rec1 = basic_record("orig");
 		handler.handle(&(), rec1).unwrap();
@@ -320,7 +320,7 @@ mod tests {
 		let mut handler = JsonHandler::new(buf)
 			.attach_time(false)
 			.min_level(DEBUG.value());
-		handler.0.attrs = vec![Attr::object("key".into(), Arc::new("val"))];
+		handler.0.attrs = vec![attr!("key", "val")];
 		let mut grouped = handler.with_group("ns".into());
 
 		let rec = basic_record("test");
@@ -333,10 +333,7 @@ mod tests {
 
 	#[test]
 	fn attrs_to_map_flat() {
-		let attrs = vec![
-			Attr::object("a".into(), Arc::new(1)),
-			Attr::object("b".into(), Arc::new("two")),
-		];
+		let attrs = vec![attr!("a", 1), attr!("b", "two")];
 		let map = JsonHandler::<Vec<u8>>::attrs_to_map(&attrs);
 		assert_eq!(map["a"], "1");
 		assert_eq!(map["b"], "two");

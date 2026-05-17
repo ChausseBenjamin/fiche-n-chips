@@ -101,7 +101,7 @@ mod tests {
 	use super::*;
 	use std::sync::Arc;
 	use std::time::SystemTime;
-	use crate::{Record, Source, DEBUG, INFO, WARN, ERROR, group, Attr};
+	use crate::{Record, Source, DEBUG, INFO, WARN, ERROR, attr, group};
 
 	fn basic_record(msg: &str) -> Record {
 		Record {
@@ -218,8 +218,8 @@ mod tests {
 			.attach_time(false)
 			.min_level(DEBUG.value());
 		handler.0.attrs = vec![
-			Attr::object("method".into(), Arc::new("GET")),
-			Attr::object("status".into(), Arc::new(200)),
+			attr!("method", "GET"),
+			attr!("status", 200),
 		];
 		let rec = basic_record("request");
 		handler.handle(&(), rec).unwrap();
@@ -309,7 +309,7 @@ mod tests {
 			.attach_time(false)
 			.min_level(DEBUG.value());
 		let mut forked =
-			handler.with_attrs(vec![Attr::object("fork".into(), Arc::new(true))]);
+			handler.with_attrs(vec![attr!("fork", true)]);
 
 		let rec1 = basic_record("orig");
 		handler.handle(&(), rec1).unwrap();
@@ -331,7 +331,7 @@ mod tests {
 		let mut handler = TextHandler::new(buf)
 			.attach_time(false)
 			.min_level(DEBUG.value());
-		handler.0.attrs = vec![Attr::object("key".into(), Arc::new("val"))];
+		handler.0.attrs = vec![attr!("key", "val")];
 		let mut grouped = handler.with_group("ns".into());
 
 		let rec = basic_record("test");
@@ -346,17 +346,14 @@ mod tests {
 
 	#[test]
 	fn str_attrs_flat() {
-		let attrs = vec![
-			Attr::object("a".into(), Arc::new(1)),
-			Attr::object("b".into(), Arc::new("two")),
-		];
+		let attrs = vec![attr!("a", 1), attr!("b", "two")];
 		let result = TextHandler::<Vec<u8>>::str_attrs(attrs, None);
 		assert_eq!(result, vec!["a=\"1\"", "b=\"two\""]);
 	}
 
 	#[test]
 	fn str_attrs_with_prefix() {
-		let attrs = vec![Attr::object("x".into(), Arc::new(10))];
+		let attrs = vec![attr!("x", 10)];
 		let result =
 			TextHandler::<Vec<u8>>::str_attrs(attrs, Some("root".into()));
 		assert_eq!(result, vec!["root.x=\"10\""]);
