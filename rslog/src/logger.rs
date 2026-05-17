@@ -45,124 +45,66 @@ impl<H> Logger<H> {
 		}
 	}
 
-	pub fn debug_context<C: Context>(
-		&mut self,
-		ctx: &C,
-		level: impl Level + 'static,
-		msg: String,
-		src: Source,
-		args: Vec<Attr>,
-	) -> Result<(), <H as Handler>::Error>
-	where
-		H: Handler,
-	{
-		self.log_context(&Background {}, DEBUG, msg, src, args)
+  #[rustfmt::skip]
+	pub fn debug_context<C: Context>(&mut self, ctx: &C, msg: String, src: Source, args: Vec<Attr>)
+      -> Result<(), <H as Handler>::Error>
+	where H: Handler {
+		self.log_context(ctx, DEBUG, msg, src, args)
 	}
 
-	pub fn info_context<C: Context>(
-		&mut self,
-		ctx: &C,
-		level: impl Level + 'static,
-		msg: String,
-		src: Source,
-		args: Vec<Attr>,
-	) -> Result<(), <H as Handler>::Error>
-	where
-		H: Handler,
-	{
-		self.log_context(&Background {}, INFO, msg, src, args)
+  #[rustfmt::skip]
+	pub fn info_context<C: Context>(&mut self, ctx: &C, msg: String, src: Source, args: Vec<Attr>)
+      -> Result<(), <H as Handler>::Error>
+	where H: Handler {
+		self.log_context(ctx, INFO, msg, src, args)
 	}
 
-	pub fn warn_context<C: Context>(
-		&mut self,
-		ctx: &C,
-		level: impl Level + 'static,
-		msg: String,
-		src: Source,
-		args: Vec<Attr>,
-	) -> Result<(), <H as Handler>::Error>
-	where
-		H: Handler,
-	{
-		self.log_context(&Background {}, WARN, msg, src, args)
+  #[rustfmt::skip]
+	pub fn warn_context<C: Context>(&mut self, ctx: &C, msg: String, src: Source, args: Vec<Attr>)
+      -> Result<(), <H as Handler>::Error>
+	where H: Handler {
+		self.log_context(ctx, WARN, msg, src, args)
 	}
 
-	pub fn error_context<C: Context>(
-		&mut self,
-		ctx: &C,
-		level: impl Level + 'static,
-		msg: String,
-		src: Source,
-		args: Vec<Attr>,
-	) -> Result<(), <H as Handler>::Error>
-	where
-		H: Handler,
-	{
-		self.log_context(&Background {}, ERROR, msg, src, args)
+  #[rustfmt::skip]
+	pub fn error_context<C: Context>(&mut self, ctx: &C, msg: String, src: Source, args: Vec<Attr>)
+      -> Result<(), <H as Handler>::Error>
+	where H: Handler {
+		self.log_context(ctx, ERROR, msg, src, args)
 	}
 
-	pub fn log(
-		&mut self,
-		level: impl Level + 'static,
-		msg: String,
-		src: Source,
-		args: Vec<Attr>,
-	) -> Result<(), <H as Handler>::Error>
-	where
-		H: Handler,
-	{
+  #[rustfmt::skip]
+	pub fn log(&mut self, level: impl Level + 'static, msg: String, src: Source, args: Vec<Attr>)
+      -> Result<(), <H as Handler>::Error>
+	where H: Handler, {
 		self.log_context(&Background {}, level, msg, src, args)
 	}
 
-	pub fn debug(
-		&mut self,
-		level: impl Level + 'static,
-		msg: String,
-		src: Source,
-		args: Vec<Attr>,
-	) -> Result<(), <H as Handler>::Error>
-	where
-		H: Handler,
-	{
+  #[rustfmt::skip]
+	pub fn debug(&mut self, msg: String, src: Source, args: Vec<Attr>)
+      -> Result<(), <H as Handler>::Error>
+	where H: Handler {
 		self.log_context(&Background {}, DEBUG, msg, src, args)
 	}
 
-	pub fn info(
-		&mut self,
-		level: impl Level + 'static,
-		msg: String,
-		src: Source,
-		args: Vec<Attr>,
-	) -> Result<(), <H as Handler>::Error>
-	where
-		H: Handler,
-	{
+  #[rustfmt::skip]
+	pub fn info(&mut self, msg: String, src: Source, args: Vec<Attr>)
+      -> Result<(), <H as Handler>::Error>
+	where H: Handler {
 		self.log_context(&Background {}, INFO, msg, src, args)
 	}
 
-	pub fn warn(
-		&mut self,
-		level: impl Level + 'static,
-		msg: String,
-		src: Source,
-		args: Vec<Attr>,
-	) -> Result<(), <H as Handler>::Error>
-	where
-		H: Handler,
-	{
+  #[rustfmt::skip]
+	pub fn warn(&mut self, msg: String, src: Source, args: Vec<Attr>)
+      -> Result<(), <H as Handler>::Error>
+	where H: Handler {
 		self.log_context(&Background {}, WARN, msg, src, args)
 	}
 
-	pub fn error(
-		&mut self,
-		level: impl Level + 'static,
-		msg: String,
-		src: Source,
-		args: Vec<Attr>,
-	) -> Result<(), <H as Handler>::Error>
-	where
-		H: Handler,
-	{
+  #[rustfmt::skip]
+	pub fn error(&mut self, msg: String, src: Source, args: Vec<Attr>)
+      -> Result<(), <H as Handler>::Error>
+	where H: Handler {
 		self.log_context(&Background {}, ERROR, msg, src, args)
 	}
 }

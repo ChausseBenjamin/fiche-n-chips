@@ -1,6 +1,6 @@
 use core::fmt::Result;
 use std::{
-	cmp::{Ord, Ordering},
+	cmp::Ord,
 	fmt::{Display, Formatter},
 	ops::Sub,
 };
@@ -21,16 +21,6 @@ pub const DEBUG: SlogLevel = SlogLevel(-4);
 pub const INFO: SlogLevel = SlogLevel(0);
 pub const WARN: SlogLevel = SlogLevel(4);
 pub const ERROR: SlogLevel = SlogLevel(8);
-
-impl SlogLevel {
-	fn write_lvl(&self, f: &mut Formatter<'_>, base: &str) -> Result {
-		match self.cmp(&SlogLevel(0)) {
-			Ordering::Equal => f.write_str(base),
-			Ordering::Greater => write!(f, "{}+{}", base, self.0),
-			Ordering::Less => write!(f, "{}{}", base, self.0),
-		}
-	}
-}
 
 impl Sub for SlogLevel {
 	type Output = Self;
