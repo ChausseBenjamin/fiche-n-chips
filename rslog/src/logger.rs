@@ -1,4 +1,4 @@
-use std::time::SystemTime;
+use std::{sync::Arc, time::SystemTime};
 
 use crate::{
 	Attr, Background as Bg, Context as Ctx, Handler, Level as Lvl, Record,
@@ -29,14 +29,14 @@ impl<H> Logger<H> {
 		&mut self,
 		ctx: &C,
 		level: impl Lvl + 'static,
-		msg: String,
+		msg: Arc<str>,
 		src: Src,
 		args: Vec<Attr>,
 	) -> Result<(), <H as Handler>::Error>
 	where
 		H: Handler,
 	{
-		let lvl = Box::from(level);
+		let lvl: Arc<dyn Lvl> = Arc::new(level);
 		if !self.0.enabled(ctx, &*lvl) {
 			Ok(())
 		} else {
@@ -53,63 +53,63 @@ impl<H> Logger<H> {
 	}
 
   #[rustfmt::skip]
-	pub fn debug_context<C: Ctx>(&mut self, ctx: &C, msg: String, src: Src, args: Vec<Attr>)
+	pub fn debug_context<C: Ctx>(&mut self, ctx: &C, msg: Arc<str>, src: Src, args: Vec<Attr>)
       -> Result<(), <H as Handler>::Error>
 	where H: Handler {
 		self.log_context(ctx, DEBUG, msg, src, args)
 	}
 
   #[rustfmt::skip]
-	pub fn info_context<C: Ctx>(&mut self, ctx: &C, msg: String, src: Src, args: Vec<Attr>)
+	pub fn info_context<C: Ctx>(&mut self, ctx: &C, msg: Arc<str>, src: Src, args: Vec<Attr>)
       -> Result<(), <H as Handler>::Error>
 	where H: Handler {
 		self.log_context(ctx, INFO, msg, src, args)
 	}
 
   #[rustfmt::skip]
-	pub fn warn_context<C: Ctx>(&mut self, ctx: &C, msg: String, src: Src, args: Vec<Attr>)
+	pub fn warn_context<C: Ctx>(&mut self, ctx: &C, msg: Arc<str>, src: Src, args: Vec<Attr>)
       -> Result<(), <H as Handler>::Error>
 	where H: Handler {
 		self.log_context(ctx, WARN, msg, src, args)
 	}
 
   #[rustfmt::skip]
-	pub fn error_context<C: Ctx>(&mut self, ctx: &C, msg: String, src: Src, args: Vec<Attr>)
+	pub fn error_context<C: Ctx>(&mut self, ctx: &C, msg: Arc<str>, src: Src, args: Vec<Attr>)
       -> Result<(), <H as Handler>::Error>
 	where H: Handler {
 		self.log_context(ctx, ERROR, msg, src, args)
 	}
 
   #[rustfmt::skip]
-	pub fn log(&mut self, level: impl Lvl + 'static, msg: String, src: Src, args: Vec<Attr>)
+	pub fn log(&mut self, level: impl Lvl + 'static, msg: Arc<str>, src: Src, args: Vec<Attr>)
       -> Result<(), <H as Handler>::Error>
 	where H: Handler, {
 		self.log_context(&Bg {}, level, msg, src, args)
 	}
 
   #[rustfmt::skip]
-	pub fn debug(&mut self, msg: String, src: Src, args: Vec<Attr>)
+	pub fn debug(&mut self, msg: Arc<str>, src: Src, args: Vec<Attr>)
       -> Result<(), <H as Handler>::Error>
 	where H: Handler {
 		self.log_context(&Bg {}, DEBUG, msg, src, args)
 	}
 
   #[rustfmt::skip]
-	pub fn info(&mut self, msg: String, src: Src, args: Vec<Attr>)
+	pub fn info(&mut self, msg: Arc<str>, src: Src, args: Vec<Attr>)
       -> Result<(), <H as Handler>::Error>
 	where H: Handler {
 		self.log_context(&Bg {}, INFO, msg, src, args)
 	}
 
   #[rustfmt::skip]
-	pub fn warn(&mut self, msg: String, src: Src, args: Vec<Attr>)
+	pub fn warn(&mut self, msg: Arc<str>, src: Src, args: Vec<Attr>)
       -> Result<(), <H as Handler>::Error>
 	where H: Handler {
 		self.log_context(&Bg {}, WARN, msg, src, args)
 	}
 
   #[rustfmt::skip]
-	pub fn error(&mut self, msg: String, src: Src, args: Vec<Attr>)
+	pub fn error(&mut self, msg: Arc<str>, src: Src, args: Vec<Attr>)
       -> Result<(), <H as Handler>::Error>
 	where H: Handler {
 		self.log_context(&Bg {}, ERROR, msg, src, args)

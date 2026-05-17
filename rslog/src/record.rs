@@ -1,11 +1,13 @@
-use std::time::SystemTime;
+use std::{sync::Arc, time::SystemTime};
 
 use crate::{attr::Attr, level::Level, source::Source};
 
+#[derive(Clone)]
 pub struct Record {
 	pub time: SystemTime,
-	pub msg: String,
-	pub level: Box<dyn Level>,
+	// Box<str> would be sufficient but would prohibit handler multiplexing
+	pub msg: Arc<str>,
+	pub level: Arc<dyn Level>,
 	pub src: Source,
 	pub attrs: Vec<Attr>,
 }

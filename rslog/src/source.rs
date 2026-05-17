@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct Source {
 	pub module: &'static str,
 	pub file: &'static str,

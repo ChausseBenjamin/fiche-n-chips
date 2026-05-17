@@ -5,9 +5,7 @@ mod discard_handler;
 mod text_handler;
 
 use self::common_handler::*;
-#[cfg(feature = "json")]
-pub use self::opt::*;
-pub use self::{discard_handler::*, text_handler::*};
+pub use self::{discard_handler::*, opt::*, text_handler::*};
 use crate::{attr::Attr, context::Context, level::Level, record::Record};
 
 mod opt {
