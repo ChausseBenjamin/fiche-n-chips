@@ -4,8 +4,9 @@ use std::{fmt::format, io::Result};
 
 use actix_web::{get, web, App, HttpServer, Responder};
 use clap::Parser;
+use rslog::Logger;
 
-use crate::internal::{config, logging};
+use crate::internal::config;
 
 #[get("/")]
 async fn home() -> impl Responder {
@@ -20,6 +21,7 @@ async fn greet(user_id: web::Path<String>) -> impl Responder {
 #[actix_web::main]
 async fn main() -> Result<()> {
 	let cfg = config::Config::parse();
+
 	println!("Starting server on port {}", cfg.http.server_port);
 
 	HttpServer::new(|| App::new().service(home).service(greet))
