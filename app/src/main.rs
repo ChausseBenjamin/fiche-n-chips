@@ -4,7 +4,7 @@ use std::{fmt::format, io::Result};
 
 use actix_web::{get, web, App, HttpServer, Responder};
 use clap::Parser;
-use rslog::Logger;
+use rslog::{JsonHandler, Logger, SlogLevel};
 
 use crate::internal::config;
 
@@ -21,6 +21,9 @@ async fn greet(user_id: web::Path<String>) -> impl Responder {
 #[actix_web::main]
 async fn main() -> Result<()> {
 	let cfg = config::Config::parse();
+	let logger: Logger = JsonHandler::new(std::io::stdout())
+		.min_level(cfg.logging.level.into())
+		.into();
 
 	println!("Starting server on port {}", cfg.http.server_port);
 

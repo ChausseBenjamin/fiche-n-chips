@@ -46,6 +46,12 @@ impl Display for SlogLevel {
 	}
 }
 
+impl From<SlogLevel> for i8 {
+	fn from(value: SlogLevel) -> Self {
+		value.0
+	}
+}
+
 impl Level for SlogLevel {
 	fn value(&self) -> i8 {
 		self.0
