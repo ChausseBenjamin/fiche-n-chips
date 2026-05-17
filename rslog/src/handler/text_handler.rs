@@ -1,9 +1,7 @@
 use std::{io, io::Write, sync::Arc};
 
 use super::CommonHandler;
-use crate::{Attr, Context, Handler, Level, Record};
-
-const TIME_NOT_DONE: &str = "Unimplemented: time in logs";
+use crate::{group, Attr, Context, Handler, Level, Record};
 
 pub struct TextHandler<W: Write>(CommonHandler<W>);
 
@@ -64,13 +62,26 @@ impl<W: Write> Handler for TextHandler<W> {
 		_ctx: &C,
 		rec: Record,
 	) -> Result<(), Self::Error> {
-		let rhs: String = Self::str_attrs(self.0.attrs.clone(), None).join(", ");
+		let mut attrs = self.0.attrs.clone();
+		if self.0.attach_source {
+			attrs.push(group!("source",
+				"module" => rec.src.module,
+				"file" => rec.src.file,
+				"line" => rec.src.line,
+			));
+		}
+		let rhs: String = Self::str_attrs(attrs, None).join(", ");
+		let time = rec
+			.time
+			.duration_since(std::time::UNIX_EPOCH)
+			.map(|d| d.as_secs().to_string())
+			.unwrap_or_else(|_| "Invalid time".into());
 		let lhs: String = match (self.0.app_name.clone(), self.0.attach_time) {
 			(None, false) => format!("{} {}", rec.level, rec.msg),
-			(None, true) => format!("{} {}| {}", rec.level, TIME_NOT_DONE, rec.msg),
+			(None, true) => format!("{} {}| {}", rec.level, time, rec.msg),
 			(Some(name), false) => format!("{} {}: {}", rec.level, name, rec.msg),
 			(Some(name), true) => {
-				format!("{} {}| {}: {}", rec.level, TIME_NOT_DONE, name, rec.msg)
+				format!("{} {}| {}: {}", rec.level, time, name, rec.msg)
 			}
 		};
 		let mut writer = self.0.writer.lock().unwrap_or_else(|e| e.into_inner());

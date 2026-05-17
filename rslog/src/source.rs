@@ -1,7 +1,7 @@
 pub struct Source {
-	module: &'static str,
-	file: &'static str,
-	line: u32,
+	pub module: &'static str,
+	pub file: &'static str,
+	pub line: u32,
 }
 
 impl Source {
