@@ -70,7 +70,7 @@ impl Attr {
 }
 
 #[macro_export]
-macro_rules! attrs {
+macro_rules! __log_kvpairs {
     ($($args:tt)*) => {{
         let mut __v: Vec<$crate::attr::Attr> = Vec::new();
         $crate::__attrs_inner!(__v; $($args)*);
@@ -112,7 +112,7 @@ macro_rules! __attrs_inner {
 #[macro_export]
 macro_rules! group {
     ($key:literal, $($rest:tt)*) => {
-        $crate::attr::Attr::group($key.into(), $crate::attrs!($($rest)*))
+        $crate::attr::Attr::group($key.into(), $crate::__log_kvpairs!($($rest)*))
     };
 }
 
@@ -140,7 +140,7 @@ mod tests {
 
 	#[test]
 	fn homogeneous_macro() {
-		let output = attrs!(
+		let output = __log_kvpairs!(
 				"user_id" => 12,
 				"name" => "John",
 				"surname" => "Doe",
@@ -167,7 +167,7 @@ mod tests {
 
 	#[test]
 	fn heterogeneous_macro() {
-		let output = attrs!(
+		let output = __log_kvpairs!(
 				"user_id" => 12,
 				Attr::Obj(AttrLeaf{key: Arc::from("name"), value: Arc::new(log_val!("John"))}),
 				"surname" => "Doe",
@@ -243,7 +243,7 @@ mod tests {
 
 	#[test]
 	fn combined_macro_usage() {
-		let output = attrs!(
+		let output = __log_kvpairs!(
 			"top_level" => "root",
 			attr!("middle", 99),
 			group!("outer_group",

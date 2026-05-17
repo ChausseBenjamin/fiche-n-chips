@@ -18,7 +18,7 @@ impl<H> Logger<H> {
 		Self(handler)
 	}
 
-	pub fn log<C: Context>(
+	pub fn log_context<C: Context>(
 		&mut self,
 		ctx: &C,
 		level: impl Level + 'static,
@@ -44,17 +44,132 @@ impl<H> Logger<H> {
 			self.0.handle(ctx, rec)
 		}
 	}
+
+	pub fn debug_context<C: Context>(
+		&mut self,
+		ctx: &C,
+		level: impl Level + 'static,
+		msg: String,
+		src: Source,
+		args: Vec<Attr>,
+	) -> Result<(), <H as Handler>::Error>
+	where
+		H: Handler,
+	{
+		self.log_context(&Background {}, DEBUG, msg, src, args)
+	}
+
+	pub fn info_context<C: Context>(
+		&mut self,
+		ctx: &C,
+		level: impl Level + 'static,
+		msg: String,
+		src: Source,
+		args: Vec<Attr>,
+	) -> Result<(), <H as Handler>::Error>
+	where
+		H: Handler,
+	{
+		self.log_context(&Background {}, INFO, msg, src, args)
+	}
+
+	pub fn warn_context<C: Context>(
+		&mut self,
+		ctx: &C,
+		level: impl Level + 'static,
+		msg: String,
+		src: Source,
+		args: Vec<Attr>,
+	) -> Result<(), <H as Handler>::Error>
+	where
+		H: Handler,
+	{
+		self.log_context(&Background {}, WARN, msg, src, args)
+	}
+
+	pub fn error_context<C: Context>(
+		&mut self,
+		ctx: &C,
+		level: impl Level + 'static,
+		msg: String,
+		src: Source,
+		args: Vec<Attr>,
+	) -> Result<(), <H as Handler>::Error>
+	where
+		H: Handler,
+	{
+		self.log_context(&Background {}, ERROR, msg, src, args)
+	}
+
+	pub fn log(
+		&mut self,
+		level: impl Level + 'static,
+		msg: String,
+		src: Source,
+		args: Vec<Attr>,
+	) -> Result<(), <H as Handler>::Error>
+	where
+		H: Handler,
+	{
+		self.log_context(&Background {}, level, msg, src, args)
+	}
+
+	pub fn debug(
+		&mut self,
+		level: impl Level + 'static,
+		msg: String,
+		src: Source,
+		args: Vec<Attr>,
+	) -> Result<(), <H as Handler>::Error>
+	where
+		H: Handler,
+	{
+		self.log_context(&Background {}, DEBUG, msg, src, args)
+	}
+
+	pub fn info(
+		&mut self,
+		level: impl Level + 'static,
+		msg: String,
+		src: Source,
+		args: Vec<Attr>,
+	) -> Result<(), <H as Handler>::Error>
+	where
+		H: Handler,
+	{
+		self.log_context(&Background {}, INFO, msg, src, args)
+	}
+
+	pub fn warn(
+		&mut self,
+		level: impl Level + 'static,
+		msg: String,
+		src: Source,
+		args: Vec<Attr>,
+	) -> Result<(), <H as Handler>::Error>
+	where
+		H: Handler,
+	{
+		self.log_context(&Background {}, WARN, msg, src, args)
+	}
+
+	pub fn error(
+		&mut self,
+		level: impl Level + 'static,
+		msg: String,
+		src: Source,
+		args: Vec<Attr>,
+	) -> Result<(), <H as Handler>::Error>
+	where
+		H: Handler,
+	{
+		self.log_context(&Background {}, ERROR, msg, src, args)
+	}
 }
 
 #[macro_export]
-macro_rules! log_context {
-    ($logger:expr, $ctx:expr, $level:expr, $msg:expr $(, $($attrs:tt)*)?) => {
-        $logger.log(
-            $ctx,
-            $level,
-            $msg.into(),
-            $crate::source!(),
-            vec![$crate::attrs!($($($attrs)*)?)]
-        )
+macro_rules! attrs {
+    ($($rest:tt)*) => {
+        $crate::source!(), $crate::__log_kvpairs!($($rest)*).to_vec()
     };
 }
