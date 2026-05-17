@@ -25,7 +25,7 @@ pub use self::opt::*;
 /// caching) before forking a copy of the logger.
 /// The same logic applies for `handle` who may want to defer string computation
 /// until the very first time a log is issued (and then keep values cached)
-pub trait Handler {
+pub trait Handler: Send {
 	fn enabled(&self, ctx: &dyn Any, lvl: &dyn Level) -> bool;
 	fn handle(
 		&mut self,

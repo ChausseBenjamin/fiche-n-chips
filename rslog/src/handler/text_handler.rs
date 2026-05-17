@@ -50,7 +50,7 @@ impl<W: Write> TextHandler<W> {
 	}
 }
 
-impl<W: Write + 'static> Handler for TextHandler<W> {
+impl<W: Write + Send + 'static> Handler for TextHandler<W> {
 	fn enabled(&self, _ctx: &dyn Any, lvl: &dyn Level) -> bool {
 		lvl.value() >= self.0.min_level
 	}

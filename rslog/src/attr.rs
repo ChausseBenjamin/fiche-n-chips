@@ -38,7 +38,7 @@ pub struct AttrGroup {
 #[derive(Clone)]
 pub struct AttrLeaf {
 	pub key: Arc<str>,
-	pub value: Arc<dyn Display>,
+	pub value: Arc<dyn Display + Send + Sync>,
 }
 
 impl std::fmt::Debug for AttrLeaf {
@@ -64,7 +64,7 @@ impl Attr {
 	pub fn group(key: Arc<str>, attrs: Arc<[Self]>) -> Self {
 		Attr::Grp(AttrGroup { key, attrs })
 	}
-	pub fn object(key: Arc<str>, value: Arc<dyn Display>) -> Self {
+	pub fn object(key: Arc<str>, value: Arc<dyn Display + Send + Sync>) -> Self {
 		Attr::Obj(AttrLeaf { key, value })
 	}
 }

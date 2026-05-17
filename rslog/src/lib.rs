@@ -1,5 +1,6 @@
 mod attr;
 mod context;
+mod global;
 mod handler;
 mod level;
 mod logger;
@@ -9,6 +10,7 @@ mod source;
 
 pub use attr::*;
 pub use context::*;
+pub use global::*;
 pub use handler::*;
 pub use level::*;
 pub use logger::*;
