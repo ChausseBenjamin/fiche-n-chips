@@ -61,6 +61,7 @@ impl<W: Write + Send + 'static> Handler for TextHandler<W> {
 		rec: Record,
 	) -> Result<(), Box<dyn Error + Send + Sync>> {
 		let mut attrs = self.0.attrs.clone();
+		attrs.extend(rec.attrs);
 		if self.0.attach_source {
 			attrs.push(group!("source",
 				"module" => rec.src.module,

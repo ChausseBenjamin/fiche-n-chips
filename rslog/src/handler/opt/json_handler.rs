@@ -92,6 +92,11 @@ impl<W: Write + Send + 'static> Handler for JsonHandler<W> {
 			obj.insert(k, v);
 		}
 
+		let rec_attr_map = Self::attrs_to_map(&rec.attrs);
+		for (k, v) in rec_attr_map {
+			obj.insert(k, v);
+		}
+
 		let mut writer = self.0.writer.lock().unwrap_or_else(|e| e.into_inner());
 		writeln!(writer, "{}", Value::Object(obj))?;
 		Ok(())

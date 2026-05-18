@@ -1,8 +1,9 @@
 mod config;
-mod db;
+mod pastebin;
+mod storage;
 mod util;
 
-use std::{fmt::format, io::Result};
+use std::{fmt::format, io::Result, net::SocketAddr};
 
 use actix_web::{get, web, App, HttpServer, Responder};
 use clap::Parser;
@@ -22,15 +23,15 @@ async fn main() -> Result<()> {
 	let listener = TcpListener::bind("127.0.0.1:8080").await?;
 
 	loop {
-		let (socket, _) = listener.accept().await?;
+		let (sock, addr) = listener.accept().await?;
 
 		tokio::spawn(async move {
 			let mut buf: Box<[u8]> = vec![0; 2048].into();
-			let (mut r, mut w) = socket.into_split();
+			let (mut r, mut w) = sock.into_split();
 			let n = r.read(&mut buf).await.unwrap();
 			info(
 				"received tcp data".into(),
-				attrs!("size" => n, "raw_buffer" => format!("{:?}",buf.clone())),
+				attrs!("size" => n, "raw_buffer" => format!("{:?}",unsafe {str::from_utf8_unchecked(&buf)})),
 			);
 			w.write(&mut buf[0..n]).await.unwrap();
 		});

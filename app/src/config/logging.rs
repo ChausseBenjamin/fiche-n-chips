@@ -11,6 +11,8 @@ use crate::util::valid_filepath;
 
 const DEFAULT_LOGFILE: &str = "/var/log/fiche-n-chips.log";
 
+pub const ERR_KEY: &str = "error_message";
+
 #[derive(Args)]
 #[clap(next_help_heading = "Logging")]
 pub struct LoggingCfg {
