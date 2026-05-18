@@ -1,32 +1,40 @@
-mod internal;
+mod config;
+mod db;
+mod util;
 
 use std::{fmt::format, io::Result};
 
 use actix_web::{get, web, App, HttpServer, Responder};
 use clap::Parser;
-use rslog::{attrs, JsonHandler, Logger, SlogLevel};
+use rslog::{attrs, debug, info, Logger};
+use tokio::{
+	io::{AsyncReadExt, AsyncWriteExt},
+	net::TcpListener,
+};
 
-use crate::internal::{config, server};
-
-#[get("/greet/{id}")]
-async fn greet(user_id: web::Path<String>) -> impl Responder {
-	format!("<h1>Hey, what's up {user_id}?!!</h1>")
-}
-
-#[actix_web::main]
+#[tokio::main]
 async fn main() -> Result<()> {
 	let cfg = config::Config::parse();
 	let logger: Logger = cfg.logging.try_into()?;
 	rslog::set_default(logger);
+	debug("logger configured".into(), attrs!());
 
-	rslog::default().info(
-		"starting server",
-		attrs!("web-port" => cfg.http.server_port),
-	);
+	let listener = TcpListener::bind("127.0.0.1:8080").await?;
 
-	HttpServer::new(|| App::new().configure(server::config))
-		.bind(("127.0.0.1", cfg.http.server_port))?
-		.workers(2)
-		.run()
-		.await
+	loop {
+		let (socket, _) = listener.accept().await?;
+
+		tokio::spawn(async move {
+			let mut buf: Box<[u8]> = vec![0; 2048].into();
+			let (mut r, mut w) = socket.into_split();
+			let n = r.read(&mut buf).await.unwrap();
+			info(
+				"received tcp data".into(),
+				attrs!("size" => n, "raw_buffer" => format!("{:?}",buf.clone())),
+			);
+			w.write(&mut buf[0..n]).await.unwrap();
+		});
+	}
+
+	Ok(())
 }

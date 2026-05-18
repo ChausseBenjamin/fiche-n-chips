@@ -1,11 +1,5 @@
 use core::fmt;
-use std::{
-	fmt::Display,
-	fs::File,
-	io::{self, Write},
-	path::PathBuf,
-	str::FromStr,
-};
+use std::{fmt::Display, fs::File, io, path::PathBuf, str::FromStr};
 
 use clap::{Args, ValueEnum};
 use rslog::{
@@ -13,7 +7,7 @@ use rslog::{
 	ERROR, INFO, WARN,
 };
 
-use crate::internal::util;
+use crate::util::valid_filepath;
 
 const DEFAULT_LOGFILE: &str = "/var/log/fiche-n-chips.log";
 
@@ -35,35 +29,36 @@ pub struct LoggingCfg {
 }
 
 macro_rules! logger_from {
-	($h:ident, $w:expr, $lvl:expr, $trace:expr) => {
-		$h::new($w).min_level($lvl).attach_source($trace).into()
+	($fmt:expr, $w:expr, $lvl:expr, $trace:expr) => {
+		match $fmt {
+			LogFmt::Plain => {
+				TextHandler::new($w).min_level($lvl).attach_source($trace).into()
+			}
+			LogFmt::Json => {
+				JsonHandler::new($w).min_level($lvl).attach_source($trace).into()
+			}
+			LogFmt::None => unreachable!(),
+		}
 	};
 }
 
 impl TryFrom<LoggingCfg> for Logger {
 	type Error = io::Error;
 	fn try_from(value: LoggingCfg) -> Result<Self, Self::Error> {
+		if matches!(value.format, LogFmt::None) {
+			return Ok(DiscardHandler {}.into());
+		}
 		let lvl: i8 = value.level.into();
-		Ok(match (value.format, value.output) {
-			(LogFmt::Plain, LogOutput::Stdout) => {
-				logger_from!(TextHandler, io::stdout(), lvl, value.trace)
+		Ok(match value.output {
+			LogOutput::Stdout => {
+				logger_from!(value.format, io::stdout(), lvl, value.trace)
 			}
-			(LogFmt::Plain, LogOutput::Stderr) => {
-				logger_from!(TextHandler, io::stderr(), lvl, value.trace)
+			LogOutput::Stderr => {
+				logger_from!(value.format, io::stderr(), lvl, value.trace)
 			}
-			(LogFmt::Plain, LogOutput::File(f)) => {
-				logger_from!(TextHandler, File::create(f)?, lvl, value.trace)
+			LogOutput::File(f) => {
+				logger_from!(value.format, File::create(f)?, lvl, value.trace)
 			}
-			(LogFmt::Json, LogOutput::Stdout) => {
-				logger_from!(JsonHandler, io::stdout(), lvl, value.trace)
-			}
-			(LogFmt::Json, LogOutput::Stderr) => {
-				logger_from!(JsonHandler, io::stderr(), lvl, value.trace)
-			}
-			(LogFmt::Json, LogOutput::File(f)) => {
-				logger_from!(JsonHandler, File::create(f)?, lvl, value.trace)
-			}
-			(LogFmt::None, _) => DiscardHandler {}.into(),
 		})
 	}
 }
@@ -111,7 +106,7 @@ impl FromStr for LogOutput {
 		let output: Result<Self, io::Error> = match s.trim() {
 			"stdout" | "-" => Ok(Self::Stdout),
 			"stderr" | "err" => Ok(Self::Stderr),
-			f => Ok(Self::File(util::valid_filepath(f, DEFAULT_LOGFILE)?)),
+			f => Ok(Self::File(valid_filepath(f, DEFAULT_LOGFILE)?)),
 		};
 		output
 	}

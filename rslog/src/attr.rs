@@ -72,10 +72,20 @@ impl Attr {
 #[macro_export]
 macro_rules! __log_kvpairs {
     ($($args:tt)*) => {{
-        let mut __v: Vec<$crate::attr::Attr> = Vec::new();
+        let mut __v = Vec::<$crate::Attr>::new();
         $crate::__attrs_inner!(__v; $($args)*);
-        std::sync::Arc::from(__v.into_boxed_slice())
+        std::sync::Arc::<[$crate::Attr]>::from(__v.into_boxed_slice())
     }};
+}
+
+#[macro_export]
+macro_rules! attrs {
+	($($key:expr => $value:expr),* $(,)?) => {
+		(
+			$crate::Source::new(module_path!(), file!(), line!()),
+			$crate::__log_kvpairs!($($key => $value),*).to_vec(),
+		)
+	};
 }
 
 #[doc(hidden)]
@@ -112,14 +122,14 @@ macro_rules! __attrs_inner {
 #[macro_export]
 macro_rules! group {
     ($key:literal, $($rest:tt)*) => {
-        $crate::attr::Attr::group($key.into(), $crate::__log_kvpairs!($($rest)*))
+        $crate::Attr::group($key.into(), $crate::__log_kvpairs!($($rest)*))
     };
 }
 
 #[macro_export]
 macro_rules! attr {
 	($key:literal, $val:expr) => {
-		$crate::attr::Attr::object($key.into(), Arc::new($crate::log_val!($val)))
+		$crate::Attr::object($key.into(), ::std::sync::Arc::new($crate::log_val!($val)))
 	};
 }
 

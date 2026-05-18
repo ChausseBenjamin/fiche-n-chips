@@ -14,6 +14,6 @@ impl Source {
 #[macro_export]
 macro_rules! source {
 	() => {
-		Source::new(module_path!(), file!(), line!())
+		$crate::Source::new(module_path!(), file!(), line!())
 	};
 }

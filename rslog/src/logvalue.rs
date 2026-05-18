@@ -58,8 +58,8 @@ macro_rules! log_val {
 	($val:expr) => {{
 		// Bring the fallback trait into scope without polluting the caller's
 		// namespace. Inherent methods shadow this automatically when T: LogValuer.
-		use $crate::logvalue::__prefer_log_fmt::ResolveFallback as _;
-		$crate::logvalue::__prefer_log_fmt::Wrap($val).resolve()
+		use $crate::__prefer_log_fmt::ResolveFallback as _;
+		$crate::__prefer_log_fmt::Wrap($val).resolve()
 	}};
 }
 

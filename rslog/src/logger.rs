@@ -7,13 +7,6 @@ use crate::{
 	Handler, Level as Lvl, Record, DEBUG, ERROR, INFO, WARN,
 };
 
-#[macro_export]
-macro_rules! attrs {
-    ($($rest:tt)*) => {
-        $crate::source!(), $crate::__log_kvpairs!($($rest)*).to_vec()
-    };
-}
-
 pub struct Logger(Box<dyn Handler>);
 
 impl<H: Handler + 'static> From<H> for Logger {
@@ -32,8 +25,7 @@ impl Logger {
 		ctx: &C,
 		level: impl Lvl + 'static,
 		msg: Arc<str>,
-		src: Src,
-		args: Vec<Attr>,
+		src_args: (Src, Vec<Attr>),
 	) -> Result<(), Box<dyn Error + Send + Sync>> {
 		let lvl: Arc<dyn Lvl> = Arc::new(level);
 		let ctx: &dyn Any = ctx;
@@ -44,64 +36,64 @@ impl Logger {
 			time: SystemTime::now(),
 			msg,
 			level: lvl,
-			src,
-			attrs: args,
+			src: src_args.0,
+			attrs: src_args.1,
 		};
 
 		self.0.handle(ctx, rec)
 	}
 
   #[rustfmt::skip]
-	pub fn debug_context<C: Ctx + 'static>(&mut self, ctx: &C, msg: Arc<str>, src: Src, args: Vec<Attr>)
+	pub fn debug_context<C: Ctx + 'static>(&mut self, ctx: &C, msg: Arc<str>, src_args: (Src, Vec<Attr>))
 		  -> Result<(), Box<dyn Error + Send + Sync>> {
-		self.log_context(ctx, DEBUG, msg, src, args)
+		self.log_context(ctx, DEBUG, msg, src_args)
 	}
 
   #[rustfmt::skip]
-	pub fn info_context<C: Ctx + 'static>(&mut self, ctx: &C, msg: Arc<str>, src: Src, args: Vec<Attr>)
+	pub fn info_context<C: Ctx + 'static>(&mut self, ctx: &C, msg: Arc<str>, src_args: (Src, Vec<Attr>))
 		  -> Result<(), Box<dyn Error + Send + Sync>> {
-		self.log_context(ctx, INFO, msg, src, args)
+		self.log_context(ctx, INFO, msg, src_args)
 	}
 
   #[rustfmt::skip]
-	pub fn warn_context<C: Ctx + 'static>(&mut self, ctx: &C, msg: Arc<str>, src: Src, args: Vec<Attr>)
+	pub fn warn_context<C: Ctx + 'static>(&mut self, ctx: &C, msg: Arc<str>, src_args: (Src, Vec<Attr>))
 		  -> Result<(), Box<dyn Error + Send + Sync>> {
-		self.log_context(ctx, WARN, msg, src, args)
+		self.log_context(ctx, WARN, msg, src_args)
 	}
 
   #[rustfmt::skip]
-	pub fn error_context<C: Ctx + 'static>(&mut self, ctx: &C, msg: Arc<str>, src: Src, args: Vec<Attr>)
+	pub fn error_context<C: Ctx + 'static>(&mut self, ctx: &C, msg: Arc<str>, src_args: (Src, Vec<Attr>))
 		  -> Result<(), Box<dyn Error + Send + Sync>> {
-		self.log_context(ctx, ERROR, msg, src, args)
+		self.log_context(ctx, ERROR, msg, src_args)
 	}
 
   #[rustfmt::skip]
-	pub fn log(&mut self, level: impl Lvl + 'static, msg: Arc<str>, src: Src, args: Vec<Attr>)
+	pub fn log(&mut self, level: impl Lvl + 'static, msg: Arc<str>, src_args: (Src, Vec<Attr>))
 		  -> Result<(), Box<dyn Error + Send + Sync>> {
-		self.log_context(&Background, level, msg, src, args)
+		self.log_context(&Background, level, msg, src_args)
 	}
 
   #[rustfmt::skip]
-	pub fn debug(&mut self, msg: Arc<str>, src: Src, args: Vec<Attr>)
+	pub fn debug(&mut self, msg: Arc<str>, src_args: (Src, Vec<Attr>))
 		  -> Result<(), Box<dyn Error + Send + Sync>> {
-		self.log_context(&Background, DEBUG, msg, src, args)
+		self.log_context(&Background, DEBUG, msg, src_args)
 	}
 
   #[rustfmt::skip]
-	pub fn info(&mut self, msg: Arc<str>, src: Src, args: Vec<Attr>)
+	pub fn info(&mut self, msg: Arc<str>, src_args: (Src, Vec<Attr>))
 		  -> Result<(), Box<dyn Error + Send + Sync>> {
-		self.log_context(&Background, INFO, msg, src, args)
+		self.log_context(&Background, INFO, msg, src_args)
 	}
 
   #[rustfmt::skip]
-	pub fn warn(&mut self, msg: Arc<str>, src: Src, args: Vec<Attr>)
+	pub fn warn(&mut self, msg: Arc<str>, src_args: (Src, Vec<Attr>))
 		  -> Result<(), Box<dyn Error + Send + Sync>> {
-		self.log_context(&Background, WARN, msg, src, args)
+		self.log_context(&Background, WARN, msg, src_args)
 	}
 
   #[rustfmt::skip]
-	pub fn error(&mut self, msg: Arc<str>, src: Src, args: Vec<Attr>)
+	pub fn error(&mut self, msg: Arc<str>, src_args: (Src, Vec<Attr>))
 		  -> Result<(), Box<dyn Error + Send + Sync>> {
-		self.log_context(&Background, ERROR, msg, src, args)
+		self.log_context(&Background, ERROR, msg, src_args)
 	}
 }
