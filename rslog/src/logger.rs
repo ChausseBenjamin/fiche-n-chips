@@ -1,8 +1,10 @@
 use std::{any::Any, error::Error, sync::Arc, time::SystemTime};
 
 use crate::{
-	attr::Attr, context::{Background, Context as Ctx}, Handler, Level as Lvl,
-	Record, source::Source as Src, DEBUG, ERROR, INFO, WARN,
+	attr::Attr,
+	context::{Background, Context as Ctx},
+	source::Source as Src,
+	Handler, Level as Lvl, Record, DEBUG, ERROR, INFO, WARN,
 };
 
 #[macro_export]

@@ -1,6 +1,7 @@
 use core::fmt;
 use std::{
 	fmt::Display,
+	fs::File,
 	io::{self, Write},
 	path::PathBuf,
 	str::FromStr,
@@ -33,23 +34,36 @@ pub struct LoggingCfg {
 	pub trace: bool,
 }
 
-impl<W: Write> TryFrom<LoggingCfg> for Logger {
+macro_rules! logger_from {
+	($h:ident, $w:expr, $lvl:expr, $trace:expr) => {
+		$h::new($w).min_level($lvl).attach_source($trace).into()
+	};
+}
+
+impl TryFrom<LoggingCfg> for Logger {
 	type Error = io::Error;
 	fn try_from(value: LoggingCfg) -> Result<Self, Self::Error> {
 		let lvl: i8 = value.level.into();
-		let w: Write = match value.output {
-			LogOutput::Stdout => std::io::Stdout,
-			LogOutput::Stderr => std::io::Stderr,
-			LogOutput::File(f) => todo!(),
-		};
-		Ok(match value.format {
-			LogFmt::Plain => {
-				TextHandler::new(w).min_level(lvl).attach_source(value.trace).into()
+		Ok(match (value.format, value.output) {
+			(LogFmt::Plain, LogOutput::Stdout) => {
+				logger_from!(TextHandler, io::stdout(), lvl, value.trace)
 			}
-			LogFmt::Json => {
-				JsonHandler::new(w).min_level(lvl).attach_source(value.trace).into()
+			(LogFmt::Plain, LogOutput::Stderr) => {
+				logger_from!(TextHandler, io::stderr(), lvl, value.trace)
 			}
-			LogFmt::None => DiscardHandler {}.into(),
+			(LogFmt::Plain, LogOutput::File(f)) => {
+				logger_from!(TextHandler, File::create(f)?, lvl, value.trace)
+			}
+			(LogFmt::Json, LogOutput::Stdout) => {
+				logger_from!(JsonHandler, io::stdout(), lvl, value.trace)
+			}
+			(LogFmt::Json, LogOutput::Stderr) => {
+				logger_from!(JsonHandler, io::stderr(), lvl, value.trace)
+			}
+			(LogFmt::Json, LogOutput::File(f)) => {
+				logger_from!(JsonHandler, File::create(f)?, lvl, value.trace)
+			}
+			(LogFmt::None, _) => DiscardHandler {}.into(),
 		})
 	}
 }

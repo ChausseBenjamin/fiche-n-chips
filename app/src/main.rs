@@ -4,14 +4,9 @@ use std::{fmt::format, io::Result};
 
 use actix_web::{get, web, App, HttpServer, Responder};
 use clap::Parser;
-use rslog::{JsonHandler, Logger, SlogLevel};
+use rslog::{attrs, JsonHandler, Logger, SlogLevel};
 
-use crate::internal::config;
-
-#[get("/")]
-async fn home() -> impl Responder {
-	format!("<h1>hello world</h1>")
-}
+use crate::internal::{config, server};
 
 #[get("/greet/{id}")]
 async fn greet(user_id: web::Path<String>) -> impl Responder {
@@ -21,13 +16,15 @@ async fn greet(user_id: web::Path<String>) -> impl Responder {
 #[actix_web::main]
 async fn main() -> Result<()> {
 	let cfg = config::Config::parse();
-	let logger: Logger = JsonHandler::new(std::io::stdout())
-		.min_level(cfg.logging.level.into())
-		.into();
+	let logger: Logger = cfg.logging.try_into()?;
+	rslog::set_default(logger);
 
-	println!("Starting server on port {}", cfg.http.server_port);
+	rslog::default().info(
+		"starting server",
+		attrs!("web-port" => cfg.http.server_port),
+	);
 
-	HttpServer::new(|| App::new().service(home).service(greet))
+	HttpServer::new(|| App::new().configure(server::config))
 		.bind(("127.0.0.1", cfg.http.server_port))?
 		.workers(2)
 		.run()
