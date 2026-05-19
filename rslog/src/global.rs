@@ -1,8 +1,7 @@
 use std::{
-	any::Any,
 	error::Error,
 	ops::{Deref, DerefMut},
-	sync::{Arc, Mutex, MutexGuard, OnceLock},
+	sync::{Mutex, MutexGuard, OnceLock},
 };
 
 use crate::{
@@ -42,62 +41,53 @@ fn global() -> &'static Mutex<Logger> {
 pub fn log_context<C: Ctx + 'static>(
 	ctx: &C,
 	level: impl Lvl + 'static,
-	msg: Arc<str>,
+	msg: &str,
 	src_args: (Src, Vec<Attr>),
-) -> Result<(), Box<dyn Error + Send + Sync>> {
-	default().log_context(ctx, level, msg, src_args)
+) {
+	let _ = default().log_context(ctx, level, msg, src_args);
 }
 
 #[rustfmt::skip]
-pub fn debug_context<C: Ctx + 'static>(ctx: &C, msg: Arc<str>, src_args: (Src, Vec<Attr>))
-	-> Result<(), Box<dyn Error + Send + Sync>> {
-	default().debug_context(ctx, msg, src_args)
+pub fn debug_context<C: Ctx + 'static>(ctx: &C, msg: &str, src_args: (Src, Vec<Attr>)) {
+	let _ = default().debug_context(ctx, msg, src_args);
 }
 
 #[rustfmt::skip]
-pub fn info_context<C: Ctx + 'static>(ctx: &C, msg: Arc<str>, src_args: (Src, Vec<Attr>))
-	-> Result<(), Box<dyn Error + Send + Sync>> {
-	default().info_context(ctx, msg, src_args)
+pub fn info_context<C: Ctx + 'static>(ctx: &C, msg: &str, src_args: (Src, Vec<Attr>)) {
+	let _ = default().info_context(ctx, msg, src_args);
 }
 
 #[rustfmt::skip]
-pub fn warn_context<C: Ctx + 'static>(ctx: &C, msg: Arc<str>, src_args: (Src, Vec<Attr>))
-	-> Result<(), Box<dyn Error + Send + Sync>> {
-	default().warn_context(ctx, msg, src_args)
+pub fn warn_context<C: Ctx + 'static>(ctx: &C, msg: &str, src_args: (Src, Vec<Attr>)) {
+	let _ = default().warn_context(ctx, msg, src_args);
 }
 
 #[rustfmt::skip]
-pub fn error_context<C: Ctx + 'static>(ctx: &C, msg: Arc<str>, src_args: (Src, Vec<Attr>))
-	-> Result<(), Box<dyn Error + Send + Sync>> {
-	default().error_context(ctx, msg, src_args)
+pub fn error_context<C: Ctx + 'static>(ctx: &C, msg: &str, src_args: (Src, Vec<Attr>)) {
+	let _ = default().error_context(ctx, msg, src_args);
 }
 
 #[rustfmt::skip]
-pub fn log(level: impl Lvl + 'static, msg: Arc<str>, src_args: (Src, Vec<Attr>))
-	-> Result<(), Box<dyn Error + Send + Sync>> {
-	default().log(level, msg, src_args)
+pub fn log(level: impl Lvl + 'static, msg: &str, src_args: (Src, Vec<Attr>)) {
+	let _ = default().log(level, msg, src_args);
 }
 
 #[rustfmt::skip]
-pub fn debug(msg: Arc<str>, src_args: (Src, Vec<Attr>))
-	-> Result<(), Box<dyn Error + Send + Sync>> {
-	default().debug(msg, src_args)
+pub fn debug(msg: &str, src_args: (Src, Vec<Attr>)) {
+	let _ = default().debug(msg, src_args);
 }
 
 #[rustfmt::skip]
-pub fn info(msg: Arc<str>, src_args: (Src, Vec<Attr>))
-	-> Result<(), Box<dyn Error + Send + Sync>> {
-	default().info(msg, src_args)
+pub fn info(msg: &str, src_args: (Src, Vec<Attr>)) {
+	let _ = default().info(msg, src_args);
 }
 
 #[rustfmt::skip]
-pub fn warn(msg: Arc<str>, src_args: (Src, Vec<Attr>))
-	-> Result<(), Box<dyn Error + Send + Sync>> {
-	default().warn(msg, src_args)
+pub fn warn(msg: &str, src_args: (Src, Vec<Attr>)) {
+	let _ = default().warn(msg, src_args);
 }
 
 #[rustfmt::skip]
-pub fn error(msg: Arc<str>, src_args: (Src, Vec<Attr>))
-	-> Result<(), Box<dyn Error + Send + Sync>> {
-	default().error(msg, src_args)
+pub fn error(msg: &str, src_args: (Src, Vec<Attr>)) {
+	let _ = default().error(msg, src_args);
 }

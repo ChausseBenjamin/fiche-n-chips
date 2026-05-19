@@ -79,6 +79,16 @@ macro_rules! __log_kvpairs {
 }
 
 #[macro_export]
+macro_rules! src {
+	() => {
+		(
+			$crate::Source::new(module_path!(), file!(), line!()),
+			Vec::new(),
+		)
+	};
+}
+
+#[macro_export]
 macro_rules! attrs {
 	($($key:expr => $value:expr),* $(,)?) => {
 		(
@@ -97,7 +107,7 @@ macro_rules! __attrs_inner {
     ($acc:ident;) => {};
 
     // Key-value pair at end
-    ($acc:ident; $key:literal => $val:expr) => {
+    ($acc:ident; $key:expr => $val:expr) => {
         $acc.push($crate::attr!($key, $val));
     };
 
@@ -107,7 +117,7 @@ macro_rules! __attrs_inner {
     };
 
     // Key-value pair
-    ($acc:ident; $key:literal => $val:expr, $($rest:tt)*) => {
+    ($acc:ident; $key:expr => $val:expr, $($rest:tt)*) => {
         $acc.push($crate::attr!($key, $val));
         $crate::__attrs_inner!($acc; $($rest)*)
     };
@@ -121,15 +131,18 @@ macro_rules! __attrs_inner {
 
 #[macro_export]
 macro_rules! group {
-    ($key:literal, $($rest:tt)*) => {
+    ($key:expr, $($rest:tt)*) => {
         $crate::Attr::group($key.into(), $crate::__log_kvpairs!($($rest)*))
     };
 }
 
 #[macro_export]
 macro_rules! attr {
-	($key:literal, $val:expr) => {
-		$crate::Attr::object($key.into(), ::std::sync::Arc::new($crate::log_val!($val)))
+	($key:expr, $val:expr) => {
+		$crate::Attr::object(
+			$key.into(),
+			::std::sync::Arc::new($crate::log_val!($val)),
+		)
 	};
 }
 

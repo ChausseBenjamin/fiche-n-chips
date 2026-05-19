@@ -1,6 +1,6 @@
-use std::net::TcpStream;
+use std::{net::TcpStream, sync::Arc};
 
-use rslog::{attrs, debug, error, warn};
+use rslog::{attrs, debug, error, info, src, warn};
 use tokio::{
 	io,
 	io::AsyncReadExt,
@@ -12,15 +12,15 @@ use crate::{
 	storage::Storage,
 };
 
-pub struct Pastebin<'a> {
-	cfg: &'a Config,
+pub struct Pastebin {
+	cfg: Arc<Config>,
 	// db: &'b Storage,
 }
 
 pub const BUFFER_CAPACITY: usize = 2048;
 
-impl<'a> Pastebin<'a> {
-	pub fn new(cfg: &'a Config) -> Self {
+impl Pastebin {
+	pub fn new(cfg: Arc<Config>) -> Self {
 		Self { cfg }
 	}
 
@@ -30,23 +30,33 @@ impl<'a> Pastebin<'a> {
 			self.cfg.server.listen_addr, self.cfg.server.paste_port,
 		);
 		let listener = TcpListener::bind(addr.clone()).await?;
-		debug("tcp listener started".into(), attrs!( "address" => addr,));
+		info("tcp listener started", attrs!( "address" => addr,));
 
+		let max_buffer = self.cfg.pastebin.max_buffer as usize;
 		loop {
 			// XXX: hash _addr for rate_limiting, blacklisting, maybe?
 			let (sock, _addr) = listener.accept().await?;
 			let (mut r, mut w) = sock.into_split();
 
-			let upload =
-				tokio::spawn(async move { self.receive_paste(r).await }).await?;
+			tokio::spawn(async move {
+				let content = Self::recv_paste(max_buffer, r).await?;
+				// TODO: Hash
+				// TODO: Detect potential collision
+				// TODO: Compress data
+				// TODO: Insert in DB
+				// TODO: Return the url for hosted paste
+				Ok::<(), ()>(())
+			});
 		}
 
 		Ok(())
 	}
 
-	pub async fn receive_paste(&self, r: OwnedReadHalf) -> String {
-		let buf_max = usize::from(self.cfg.pastebin.max_buffer);
-		let mut output: String = Vec::with_capacity(BUFFER_CAPACITY).into();
+	pub async fn recv_paste(
+		buf_max: usize,
+		mut r: OwnedReadHalf,
+	) -> Result<String, ()> {
+		let mut output: String = String::with_capacity(BUFFER_CAPACITY);
 		let mut buf: Box<[u8]> = vec![0; BUFFER_CAPACITY].into();
 
 		loop {
@@ -54,7 +64,7 @@ impl<'a> Pastebin<'a> {
 				Ok(0) => {
 					// We can't discern between EOF and an error
 					// Breaking silently is the safer/more graceful approach
-					debug("incoming TCP upload potentially cut short".into(), attrs!());
+					debug("incoming TCP upload potentially cut short", src!());
 					break;
 				}
 				Ok(n) => {
@@ -64,16 +74,16 @@ impl<'a> Pastebin<'a> {
 						output.push_str(txt[0..remainder].into());
 						break;
 					} else {
-						output.push_str(txt.into());
+						output.push_str(&txt);
 					}
 				}
 				Err(e) => {
-					warn("failed to fully receive paste".into(), attrs!(ERR_KEY => e));
-					break;
+					warn("failed to fully receive paste", attrs!(ERR_KEY => e));
+					return Err(());
 				}
 			};
 		}
 
-		output
+		Ok(output)
 	}
 }

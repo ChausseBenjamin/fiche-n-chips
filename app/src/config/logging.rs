@@ -44,14 +44,14 @@ macro_rules! logger_from {
 	};
 }
 
-impl TryFrom<LoggingCfg> for Logger {
+impl TryFrom<&LoggingCfg> for Logger {
 	type Error = io::Error;
-	fn try_from(value: LoggingCfg) -> Result<Self, Self::Error> {
+	fn try_from(value: &LoggingCfg) -> Result<Self, Self::Error> {
 		if matches!(value.format, LogFmt::None) {
 			return Ok(DiscardHandler {}.into());
 		}
-		let lvl: i8 = value.level.into();
-		Ok(match value.output {
+		let lvl: i8 = value.level.clone().into();
+		Ok(match &value.output {
 			LogOutput::Stdout => {
 				logger_from!(value.format, io::stdout(), lvl, value.trace)
 			}
@@ -70,6 +70,16 @@ pub enum LogFmt {
 	Plain,
 	Json,
 	None,
+}
+
+impl Display for LogFmt {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.write_str(match self {
+			LogFmt::Plain => "plain",
+			LogFmt::Json => "json",
+			LogFmt::None => "none",
+		})
+	}
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -92,6 +102,17 @@ impl From<LogLevel> for i8 {
 			LogLevel::Warn => WARN.value(),
 			LogLevel::Error => ERROR.value(),
 		}
+	}
+}
+
+impl Display for LogLevel {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.write_str(match self {
+			LogLevel::Debug => "debug",
+			LogLevel::Info => "info",
+			LogLevel::Warn => "warn",
+			LogLevel::Error => "error",
+		})
 	}
 }
 
