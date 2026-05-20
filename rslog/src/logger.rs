@@ -20,6 +20,20 @@ impl Logger {
 		Self(handler)
 	}
 
+	pub fn handler(&mut self) -> Box<dyn Handler> {
+		// HACK: can't `Copy` a Box<dyn Handler> but calling with_attrs with an
+		// empty vector essentially forces the underlying handler to clone itself.
+		self.0.with_attrs(vec![])
+	}
+
+	pub fn enabled(&self, ctx: &dyn Any, level: &dyn Lvl) -> bool {
+		self.0.enabled(ctx, level)
+	}
+
+	pub fn with(&mut self, attrs: Vec<Attr>) -> Self {
+		Self(self.0.with_attrs(attrs))
+	}
+
 	pub fn log_context<C: Ctx + 'static>(
 		&mut self,
 		ctx: &C,

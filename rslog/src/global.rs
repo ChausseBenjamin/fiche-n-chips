@@ -1,11 +1,13 @@
 use std::{
+	any::Any,
 	error::Error,
 	ops::{Deref, DerefMut},
 	sync::{Mutex, MutexGuard, OnceLock},
 };
 
 use crate::{
-	Attr, Context as Ctx, Level as Lvl, Logger, Source as Src, TextHandler,
+	Attr, Context as Ctx, Handler, Level as Lvl, Logger, Source as Src,
+	TextHandler,
 };
 
 pub struct DefaultLogger<L>(pub(crate) L);
@@ -36,6 +38,18 @@ fn global() -> &'static Mutex<Logger> {
 	LOGGER.get_or_init(|| {
 		Mutex::new(Logger::new(Box::new(TextHandler::new(std::io::stdout()))))
 	})
+}
+
+pub fn handler() -> Box<dyn Handler> {
+	default().handler()
+}
+
+pub fn enabled(ctx: &dyn Any, level: &dyn Lvl) -> bool {
+	default().enabled(ctx, level)
+}
+
+pub fn with(attrs: Vec<Attr>) -> Logger {
+	Logger::from(default().with(attrs))
 }
 
 pub fn log_context<C: Ctx + 'static>(

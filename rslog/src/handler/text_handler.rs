@@ -99,10 +99,10 @@ impl<W: Write + Send + 'static> Handler for TextHandler<W> {
 
 #[cfg(test)]
 mod tests {
+	use std::{sync::Arc, time::SystemTime};
+
 	use super::*;
-	use std::sync::Arc;
-	use std::time::SystemTime;
-	use crate::{Record, Source, DEBUG, INFO, WARN, ERROR, attr, group};
+	use crate::{attr, group, Record, Source, DEBUG, ERROR, INFO, WARN};
 
 	fn basic_record(msg: &str) -> Record {
 		Record {
@@ -144,10 +144,7 @@ mod tests {
 		let rec = basic_record("hello");
 		handler.handle(&(), rec).unwrap();
 		let writer = handler.0.writer.lock().unwrap();
-		assert_eq!(
-			String::from_utf8(writer.clone()).unwrap(),
-			"INFO hello: \n"
-		);
+		assert_eq!(String::from_utf8(writer.clone()).unwrap(), "INFO hello: \n");
 	}
 
 	#[test]
@@ -169,9 +166,8 @@ mod tests {
 	#[test]
 	fn handle_with_app_name_and_time() {
 		let buf = Vec::new();
-		let mut handler = TextHandler::new(buf)
-			.app_name("myapp")
-			.min_level(DEBUG.value());
+		let mut handler =
+			TextHandler::new(buf).app_name("myapp").min_level(DEBUG.value());
 		let rec = basic_record("hello");
 		handler.handle(&(), rec).unwrap();
 		let writer = handler.0.writer.lock().unwrap();
@@ -200,9 +196,8 @@ mod tests {
 	#[test]
 	fn handle_with_source_and_time() {
 		let buf = Vec::new();
-		let mut handler = TextHandler::new(buf)
-			.attach_source(true)
-			.min_level(DEBUG.value());
+		let mut handler =
+			TextHandler::new(buf).attach_source(true).min_level(DEBUG.value());
 		let rec = basic_record("hello");
 		handler.handle(&(), rec).unwrap();
 		let writer = handler.0.writer.lock().unwrap();
@@ -215,13 +210,9 @@ mod tests {
 	#[test]
 	fn handle_with_handler_attrs() {
 		let buf = Vec::new();
-		let mut handler = TextHandler::new(buf)
-			.attach_time(false)
-			.min_level(DEBUG.value());
-		handler.0.attrs = vec![
-			attr!("method", "GET"),
-			attr!("status", 200),
-		];
+		let mut handler =
+			TextHandler::new(buf).attach_time(false).min_level(DEBUG.value());
+		handler.0.attrs = vec![attr!("method", "GET"), attr!("status", 200)];
 		let rec = basic_record("request");
 		handler.handle(&(), rec).unwrap();
 		let writer = handler.0.writer.lock().unwrap();
@@ -234,9 +225,8 @@ mod tests {
 	#[test]
 	fn handle_with_grouped_handler_attrs() {
 		let buf = Vec::new();
-		let mut handler = TextHandler::new(buf)
-			.attach_time(false)
-			.min_level(DEBUG.value());
+		let mut handler =
+			TextHandler::new(buf).attach_time(false).min_level(DEBUG.value());
 		handler.0.attrs = vec![group!("http",
 			"method" => "GET",
 			"status" => 200,
@@ -255,9 +245,8 @@ mod tests {
 		// `handle` does not filter; filtering is the caller's
 		// responsibility via `enabled`. This test documents that contract.
 		let buf = Vec::new();
-		let mut handler = TextHandler::new(buf)
-			.attach_time(false)
-			.min_level(ERROR.value());
+		let mut handler =
+			TextHandler::new(buf).attach_time(false).min_level(ERROR.value());
 		let rec = Record {
 			time: SystemTime::UNIX_EPOCH,
 			msg: Arc::from("below_min_level"),
@@ -306,11 +295,9 @@ mod tests {
 	#[test]
 	fn with_attrs_adds_to_handler_attrs() {
 		let buf = Vec::new();
-		let mut handler = TextHandler::new(buf)
-			.attach_time(false)
-			.min_level(DEBUG.value());
-		let mut forked =
-			handler.with_attrs(vec![attr!("fork", true)]);
+		let mut handler =
+			TextHandler::new(buf).attach_time(false).min_level(DEBUG.value());
+		let mut forked = handler.with_attrs(vec![attr!("fork", true)]);
 
 		let rec1 = basic_record("orig");
 		handler.handle(&(), rec1).unwrap();
@@ -329,9 +316,8 @@ mod tests {
 	#[test]
 	fn with_group_nests_attrs() {
 		let buf = Vec::new();
-		let mut handler = TextHandler::new(buf)
-			.attach_time(false)
-			.min_level(DEBUG.value());
+		let mut handler =
+			TextHandler::new(buf).attach_time(false).min_level(DEBUG.value());
 		handler.0.attrs = vec![attr!("key", "val")];
 		let mut grouped = handler.with_group("ns".into());
 
@@ -355,8 +341,7 @@ mod tests {
 	#[test]
 	fn str_attrs_with_prefix() {
 		let attrs = vec![attr!("x", 10)];
-		let result =
-			TextHandler::<Vec<u8>>::str_attrs(attrs, Some("root".into()));
+		let result = TextHandler::<Vec<u8>>::str_attrs(attrs, Some("root".into()));
 		assert_eq!(result, vec!["root.x=\"10\""]);
 	}
 
@@ -382,9 +367,6 @@ mod tests {
 			),
 		)];
 		let result = TextHandler::<Vec<u8>>::str_attrs(attrs, None);
-		assert_eq!(
-			result,
-			vec!["a.b=\"1\"", "a.d.e=\"2\""]
-		);
+		assert_eq!(result, vec!["a.b=\"1\"", "a.d.e=\"2\""]);
 	}
 }

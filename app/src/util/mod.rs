@@ -1,7 +1,7 @@
 use std::{
 	fs::{metadata, OpenOptions},
 	io::{Error, ErrorKind},
-	path::PathBuf,
+	path::{Path, PathBuf},
 };
 
 /// Validates and normalizes a file path for file-based configuration outputs.
@@ -22,13 +22,16 @@ use std::{
 /// # Returns
 /// A fully resolved `PathBuf` pointing to a file, or an `io::Error` if
 /// validation fails.
-pub fn valid_filepath(path: &str, filename: &str) -> Result<PathBuf, Error> {
-	let path = PathBuf::from(path);
+pub fn valid_filepath<P: AsRef<Path>>(
+	path: P,
+	filename: &str,
+) -> Result<PathBuf, Error> {
+	let path = path.as_ref();
 
 	match metadata(&path) {
 		Ok(meta) if meta.is_file() => {
 			OpenOptions::new().append(true).open(&path)?;
-			Ok(path)
+			Ok(path.to_path_buf())
 		}
 
 		Ok(meta) if meta.is_dir() => Ok(path.join(filename)),

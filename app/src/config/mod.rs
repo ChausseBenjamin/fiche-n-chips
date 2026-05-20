@@ -5,7 +5,7 @@ use clap::{Args, Parser};
 use logging::LoggingCfg;
 
 #[derive(Parser)]
-#[clap(version, about, long_about = None)]
+#[command(version, about="A fiche-like pastebin with extra snacks", long_about = None)]
 pub struct Config {
 	#[clap(flatten)]
 	pub server: ServerCfg,
@@ -29,7 +29,7 @@ pub struct ServerCfg {
 	#[arg(long, env = "PASTE_PORT", default_value_t = 9002)]
 	pub paste_port: u16,
 	/// Local address to bind to
-	#[arg(long, env = "LISTEN_ADDR", default_value_t = Box::from("0.0.0.0"))]
+	#[arg(long, env = "LISTEN_ADDR", default_value_t = Box::from("127.0.0.1"))]
 	pub listen_addr: Box<str>,
 	/// Address advertised to users in API and TCP responses
 	#[arg(long, env = "PUBLIC_ADDR")]
@@ -42,6 +42,9 @@ pub struct ManagementCfg {
 	/// Directory containing store.db
 	#[arg(long, env = "DB_PATH", default_value = ".internal/store.db")]
 	pub db_path: PathBuf,
+	/// How much of the database to cache in memory (MB)
+	#[arg(long, env = "DB_CACHE", default_value_t = 32)]
+	pub db_cache: u16,
 	/// How long pastes and redirects are retained
 	#[arg(long, env = "RETENTION", default_value = "365days", value_parser = parse_duration)]
 	pub retention: Duration,

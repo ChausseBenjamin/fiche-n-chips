@@ -21,8 +21,8 @@ mod opt {
 pub use self::opt::*;
 
 /// Methods aimed at returning a copy of the handler are mutable to
-/// allow implementors who desire it, to run optimizations (pre-computing,
-/// caching) before forking a copy of the logger.
+/// allow implementors to run optimizations (pre-computing/caching)
+/// before forking a copy of the logger.
 /// The same logic applies for `handle` who may want to defer string computation
 /// until the very first time a log is issued (and then keep values cached)
 pub trait Handler: Send {
