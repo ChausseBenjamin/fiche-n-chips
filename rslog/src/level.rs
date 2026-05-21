@@ -12,24 +12,24 @@ pub trait Level: Display {
 
 /// Good default for the lib
 /// - no user implentation needed
-/// - somewhat extensible beyond 4 levels with SlogLevel(n) without requiring a
+/// - somewhat extensible beyond 4 levels with RSlogLevel(n) without requiring a
 ///   custom implementation
 #[derive(Eq, Ord, PartialEq, PartialOrd, Clone, Copy)]
-pub struct SlogLevel(i8);
+pub struct RSlogLevel(i8);
 
-pub const DEBUG: SlogLevel = SlogLevel(-4);
-pub const INFO: SlogLevel = SlogLevel(0);
-pub const WARN: SlogLevel = SlogLevel(4);
-pub const ERROR: SlogLevel = SlogLevel(8);
+pub const DEBUG: RSlogLevel = RSlogLevel(-4);
+pub const INFO: RSlogLevel = RSlogLevel(0);
+pub const WARN: RSlogLevel = RSlogLevel(4);
+pub const ERROR: RSlogLevel = RSlogLevel(8);
 
-impl Sub for SlogLevel {
+impl Sub for RSlogLevel {
 	type Output = Self;
 	fn sub(self, rhs: Self) -> Self::Output {
-		SlogLevel(self.0 - rhs.0)
+		RSlogLevel(self.0 - rhs.0)
 	}
 }
 
-impl Display for SlogLevel {
+impl Display for RSlogLevel {
 	fn fmt(&self, f: &mut Formatter<'_>) -> Result {
 		match self {
 			&DEBUG => write!(f, "DEBUG"),
@@ -46,13 +46,13 @@ impl Display for SlogLevel {
 	}
 }
 
-impl From<SlogLevel> for i8 {
-	fn from(value: SlogLevel) -> Self {
+impl From<RSlogLevel> for i8 {
+	fn from(value: RSlogLevel) -> Self {
 		value.0
 	}
 }
 
-impl Level for SlogLevel {
+impl Level for RSlogLevel {
 	fn value(&self) -> i8 {
 		self.0
 	}
@@ -64,7 +64,7 @@ mod tests {
 
 	#[test]
 	fn sloglevel_display() {
-		let inputs: Vec<SlogLevel> = (-5..9).map(|lvl| SlogLevel(lvl)).collect();
+		let inputs: Vec<RSlogLevel> = (-5..9).map(|lvl| RSlogLevel(lvl)).collect();
 		let expected = vec![
 			"DEBUG-1", // -5
 			"DEBUG",   // -4
@@ -90,7 +90,7 @@ mod tests {
 
 	#[test]
 	fn sloglevel_values() {
-		let inputs: Vec<SlogLevel> = (-5..9).map(|lvl| SlogLevel(lvl)).collect();
+		let inputs: Vec<RSlogLevel> = (-5..9).map(|lvl| RSlogLevel(lvl)).collect();
 
 		const IS_LT_DEBUG: usize = 0;
 		const IS_LT_INFO: usize = 1;

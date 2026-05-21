@@ -3,7 +3,7 @@ use std::{fmt::Display, fs::File, io, path::PathBuf, str::FromStr};
 
 use clap::{Args, ValueEnum};
 use rslog::{
-	DiscardHandler, JsonHandler, Level, Logger, SlogLevel, TextHandler, DEBUG,
+	DiscardHandler, JsonHandler, Level, Logger, RSlogLevel, TextHandler, DEBUG,
 	ERROR, INFO, WARN,
 };
 

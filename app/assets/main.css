@@ -1,0 +1,102 @@
+:root {
+  --bg: #0d0d0d;
+  --bg-alt: #1a1a1a;
+  --fg: #e0e0e0;
+  --fg-muted: #808080;
+  --red: #d62828;
+  --red-bright: #ef233c;
+  --border: #333;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  font-family: 'JetBrains Mono', monospace;
+  background-color: var(--bg);
+  color: var(--fg);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+::selection {
+  background-color: var(--red);
+  color: var(--fg);
+}
+
+a {
+  color: var(--red-bright);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--fg);
+  text-decoration: underline;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+header {
+  border-bottom: 1px dashed var(--border);
+  padding-bottom: 2rem;
+  margin-bottom: 2rem;
+}
+
+.logo {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--fg);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logo span {
+  color: var(--red-bright);
+}
+
+.tagline {
+  color: var(--fg-muted);
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.tagline::before {
+  content: "$ ";
+  color: var(--red);
+}
+
+footer {
+  border-top: 1px dashed var(--border);
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  text-align: center;
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+}
+
+footer .maple {
+  color: var(--red-bright);
+}
+
+@media (max-width: 600px) {
+  html {
+    font-size: 14px;
+  }
+
+  .container {
+    padding: 1.5rem 1rem;
+  }
+}

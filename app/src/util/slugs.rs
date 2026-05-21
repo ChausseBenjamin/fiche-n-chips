@@ -1,7 +1,7 @@
 use core::f64::math::ceil;
-use std::{random::random, sync::OnceLock};
+use std::{char, random::random};
 
-use rslog::{attrs, warn};
+use rslog::{attrs, debug};
 
 /// list of characters accepted in slug paths
 const SLUG_SPACE: &[u8] =
@@ -39,7 +39,7 @@ impl SlugGenerator {
 			.into_iter()
 			.map(|_| {
 				// Simple fallback if for some reason, entropy runs out
-				let current = entropy.last().unwrap_or_else(|| {
+				let current = entropy.last().copied().unwrap_or_else(|| {
 					// Debug because it only slows down execution, more of a developer
 					// info than something a user should worry about.
 					debug(
@@ -49,18 +49,21 @@ impl SlugGenerator {
 										"randint_count" => self.randint_count,
 						),
 					);
-					&random::<u64>(..)
+					random::<u64>(..)
 				});
 				// Store the entropy as a character in the space
-				let char = SLUG_SPACE[(*current as usize) % SLUG_BASE];
+				let c = SLUG_SPACE[(current as usize) % SLUG_BASE] as char;
 				// Remove the data that was just used for the lastest char
-				entropy.last_mut().is_some_and(|v| v /= SLUG_BASE);
+				if let Some(v) = entropy.last_mut() {
+					*v /= SLUG_BASE as u64;
+				}
 				// If the last integer ran out of entropy, pop it to access the next one
-				// on the following iteration.
-				if entropy.last().unwrap_or_default() == 0 {
+				// on the following iteration. Useless to pop if None, I skip the
+				// function call by defaulting to 1
+				if entropy.last().copied().unwrap_or(1) == 0 {
 					entropy.pop();
 				};
-				char
+				c
 			})
 			.collect();
 		out

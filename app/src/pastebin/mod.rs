@@ -1,5 +1,8 @@
-use std::{net::TcpStream, sync::Arc};
+use std::sync::Arc;
 
+mod error;
+
+pub use error::Error;
 use rslog::{attrs, debug, error, info, src, warn};
 use tokio::{
 	io::{self, AsyncReadExt},
@@ -8,11 +11,10 @@ use tokio::{
 		TcpListener,
 	},
 };
-use xxhash_rust::xxh3;
 
 use crate::{
 	config::{logging::ERR_KEY, Config, PastebinCfg},
-	storage::Storage,
+	storage::{model::HashedPaste, Storage},
 	util::SlugGenerator,
 };
 
@@ -46,14 +48,20 @@ impl Pastebin {
 			let mut db = self.db.clone();
 
 			tokio::spawn(async move {
-				let content = Self::recv_paste(max_buffer, r).await?;
-				let hash = xxh3::xxh3_64(content.as_bytes());
-				let exists = db.get_slug_by_hash(hash).await.unwrap();
+				let paste: HashedPaste = match Self::recv_paste(max_buffer, r).await {
+					Ok(v) => v.into(),
+					Err(e) => todo!(),
+				};
+
+				if let Some(slug) = Self::find_match(db, paste).await? {
+					Self::return_url(w, slug).await?;
+				}
 				// TODO: Detect potential collision
-				if !exists.is_empty() {
-					Self::reply_url(w, exists).await.unwrap();
+				if let Some(slug) = exists {
+					Self::return_url(w, slug).await.unwrap();
 					// TODO: Return pre-existing paste url from corresponding hash
 				}
+
 				// TODO: Compress data
 				// TODO: Insert in DB
 				// TODO: Return the url for hosted paste
@@ -64,7 +72,37 @@ impl Pastebin {
 		Ok(())
 	}
 
-	async fn reply_url(mut w: OwnedWriteHalf, slug: String) -> Result<(), ()> {
+	async fn find_match(
+		db: Arc<Storage>,
+		paste: HashedPaste,
+	) -> Result<Option<String>, Error> {
+		let hash_matches = db.queries.get_slugs_by_hash(paste.hash()).await?;
+		for p in hash_matches {
+			// TODO: decompress p.content and compare against the incoming paste
+			let decompressed = "";
+			if paste.content() == decompressed {
+				return Ok(Some(p.slug));
+			}
+		}
+		Ok(None)
+	}
+
+	async fn unique_slug(slugs: SlugGenerator, db: Storage) -> String {
+		let mut output = slugs.generate();
+		while db.queries.slug_exists(output).await? {
+			debug(
+				"collision while generating a slug name",
+				attrs!( "slug" => output),
+			);
+			output = slugs.generate();
+		}
+		output
+	}
+
+	async fn return_url(
+		mut w: OwnedWriteHalf,
+		slug: String,
+	) -> Result<(), Error> {
 		todo!()
 	}
 

@@ -22,18 +22,21 @@ pub struct Config {
 #[derive(Args)]
 #[clap(next_help_heading = "Server")]
 pub struct ServerCfg {
+	/// Address advertised to users in API and TCP responses
+	#[arg(long, env = "PUBLIC_ADDR")]
+	pub public_addr: Option<Box<str>>,
+	/// Address to bind to (use 0.0.0.0 to be accessible from other devices)
+	#[arg(long, env = "LISTEN_ADDR", default_value_t = Box::from("127.0.0.1"))]
+	pub listen_addr: Box<str>,
 	/// Port the HTTP server listens on
 	#[arg(long, env = "HTTP_PORT", default_value_t = 9001)] // over 9000...
 	pub http_port: u16,
 	/// Port the raw TCP pastebin listener binds to
 	#[arg(long, env = "PASTE_PORT", default_value_t = 9002)]
 	pub paste_port: u16,
-	/// Local address to bind to
-	#[arg(long, env = "LISTEN_ADDR", default_value_t = Box::from("127.0.0.1"))]
-	pub listen_addr: Box<str>,
-	/// Address advertised to users in API and TCP responses
-	#[arg(long, env = "PUBLIC_ADDR")]
-	pub public_addr: Option<Box<str>>,
+	/// Directory containing hard-coded html files the server should host
+	#[arg(long, env = "HTML_DIR", default_value_t = None)]
+	pub html_dir: Option<PathBuf>,
 }
 
 #[derive(Args)]

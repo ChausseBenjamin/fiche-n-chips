@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 mod error;
-mod model;
+pub mod model;
 mod pragma;
 mod statements;
 
@@ -24,7 +24,7 @@ static DB_SCHEMA: &str = include_str!("schema.sql");
 #[derive(Clone)]
 pub struct Storage {
 	connection: Connection,
-	queries: Statements,
+	pub queries: Statements,
 }
 
 impl Storage {
@@ -56,7 +56,7 @@ impl Storage {
 			if let Some(row) = rows.next().await? {
 				let msg: String = row.get(0)?;
 				if msg != "ok" {
-					return Err(Error::SetupError(format!(
+					return Err(Error::SetupErr(format!(
 						"integrity check failed: {msg}"
 					)));
 				}
@@ -100,7 +100,7 @@ impl Storage {
 	async fn validate_schema(conn: &Connection) -> Result<(), Error> {
 		let actual = Self::fetch_schema(conn).await?;
 		if Self::normalize_sql(DB_SCHEMA) != Self::normalize_sql(&actual) {
-			return Err(Error::SetupError(
+			return Err(Error::SetupErr(
 				"database schema does not match embedded schema".to_string(),
 			));
 		}
@@ -138,9 +138,5 @@ impl Storage {
 			}
 		}
 		out.trim().to_string()
-	}
-
-	pub async fn get_slug_by_hash(&mut self, hash: u64) -> Result<String, Error> {
-		self.queries.get_slug_by_hash.query_row([hash as i64]).await?;
 	}
 }

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 - 1yr.ca</title>
+  <link rel="preload" href="misc/jetbrainsmono-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="main.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="main.css"></noscript>
+  <style>
+    @font-face {
+      font-family: 'JetBrains Mono';
+      font-style: normal;
+      font-weight: 400 700;
+      src: url('misc/jetbrainsmono-latin.woff2') format('woff2');
+      font-display: swap;
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+
+    .icon-svg {
+      width: 1rem;
+      height: 1rem;
+      min-width: 1rem;
+      min-height: 1rem;
+      fill: currentColor;
+      flex-shrink: 0;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .error-section {
+      text-align: center;
+      padding: 2rem 0;
+    }
+
+    .error-code {
+      font-size: 6rem;
+      font-weight: 700;
+      color: var(--red-bright);
+      line-height: 1;
+      margin-bottom: 1rem;
+    }
+
+    .error-message {
+      color: var(--fg-muted);
+      margin-bottom: 2rem;
+    }
+
+    .error-message::before {
+      content: "$ ";
+      color: var(--red);
+    }
+
+    .terminal-output {
+      background-color: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--red);
+      border-radius: 4px;
+      padding: 1rem;
+      text-align: left;
+      max-width: 400px;
+      margin: 0 auto 2rem;
+      font-size: 0.85rem;
+    }
+
+    .terminal-output .line {
+      margin-bottom: 0.5rem;
+    }
+
+    .terminal-output .line:last-child {
+      margin-bottom: 0;
+    }
+
+    .terminal-output .prompt {
+      color: var(--red);
+    }
+
+    .terminal-output .command {
+      color: var(--fg);
+    }
+
+    .terminal-output .output {
+      color: var(--fg-muted);
+    }
+
+    .home-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background-color: var(--bg-alt);
+      border: 1px solid var(--border);
+      padding: 0.75rem 1.5rem;
+      border-radius: 4px;
+      transition: border-color 0.2s ease;
+    }
+
+    .home-link:hover {
+      border-color: var(--red);
+      text-decoration: none;
+    }
+
+    .home-link .icon-svg {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    @media (max-width: 600px) {
+      .error-code {
+        font-size: 4rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <a href="/" class="logo"><span>1yr</span>.ca</a>
+      <p class="tagline">terminal pastebin &amp; url shortener &mdash; hosted in canada</p>
+    </header>
+
+    <main>
+      <div class="error-section">
+        <div class="error-code">404</div>
+        <p class="error-message">file not found</p>
+
+        <div class="terminal-output">
+          <div class="line"><span class="prompt">$ </span><span class="command">cat <span id="slug-cat">????</span></span></div>
+          <div class="line"><span class="output">cat: <span id="slug-error">????</span>: No such file or directory</span></div>
+          <div class="line"><span class="prompt">$ </span><span class="command">curl https://1yr.ca/<span id="slug-curl">????</span></span></div>
+          <div class="line"><span class="output">{"error": "not found"}</span></div>
+        </div>
+
+        <a href="/" class="home-link">
+          <svg class="icon-svg"><use href="misc/icons.svg#home"/></svg>
+          <span>back to home</span>
+        </a>
+      </div>
+    </main>
+
+    <footer>
+      <p>made with <span class="maple">&#127809;</span> in Canada</p>
+      <p style="margin-top: 0.5rem; font-size: 0.8rem;">&copy; <span id="year"></span> 1yr.ca</p>
+    </footer>
+  </div>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    var path = window.location.pathname;
+    var slug = path.replace(/^\/+|\/+$/g, '');
+    if (slug) {
+      document.getElementById('slug-cat').textContent = slug;
+      document.getElementById('slug-error').textContent = slug;
+      document.getElementById('slug-curl').textContent = slug;
+    }
+  </script>
+</body>
+</html>

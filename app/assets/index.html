@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>1yr.ca - terminal pastebin & url shortener</title>
+  <meta name="description" content="1yr.ca - Terminal-based pastebin and URL shortener hosted in Canada. Storage up to 1 year.">
+  <link rel="preload" href="misc/jetbrainsmono-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="main.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="main.css"></noscript>
+  <style>
+    @font-face {
+      font-family: 'JetBrains Mono';
+      font-style: normal;
+      font-weight: 400 700;
+      src: url('misc/jetbrainsmono-latin.woff2') format('woff2');
+      font-display: swap;
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    /* Tab System */
+    .tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 2rem;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .tab-radio {
+      display: none;
+    }
+
+    .tab-label {
+      padding: 0.75rem 1.5rem;
+      cursor: pointer;
+      color: var(--fg-muted);
+      border: 1px dashed var(--border);
+      border-bottom: none;
+      background-color: var(--bg-alt);
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+      font-size: 0.9rem;
+      position: relative;
+      top: 1px;
+    }
+
+    .tab-label:first-of-type {
+      border-radius: 4px 0 0 0;
+    }
+
+    .tab-label:last-of-type {
+      border-radius: 0 4px 0 0;
+    }
+
+    .tab-label:hover {
+      color: var(--fg);
+    }
+
+    .tab-label::before {
+      content: "$ ";
+      color: var(--red);
+    }
+
+    #tab-pastebin:checked ~ .tabs .tab-label[for="tab-pastebin"],
+    #tab-shortener:checked ~ .tabs .tab-label[for="tab-shortener"] {
+      color: var(--red-bright);
+      background-color: var(--bg);
+      border-bottom: 1px solid var(--bg);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    #tab-pastebin:checked ~ main .tab-content.pastebin-content,
+    #tab-shortener:checked ~ main .tab-content.shortener-content {
+      display: block;
+    }
+
+    .prompt {
+      color: var(--red);
+    }
+
+    h2 {
+      color: var(--red-bright);
+      font-size: 1.1rem;
+      margin-top: 2.5rem;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    h2:first-child {
+      margin-top: 0;
+    }
+
+    h2::before {
+      content: "##";
+      color: var(--fg-muted);
+    }
+
+    h3 {
+      color: var(--fg);
+      font-size: 0.95rem;
+      margin-top: 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    h3::before {
+      content: "### ";
+      color: var(--fg-muted);
+    }
+
+    p {
+      margin-bottom: 1rem;
+      color: var(--fg-muted);
+    }
+
+    code {
+      background-color: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.8rem 1rem;
+      display: block;
+      margin: 0.75rem 0;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      color: var(--fg);
+    }
+
+    code::before {
+      content: "$ ";
+      color: var(--red);
+    }
+
+    code.output::before {
+      content: "";
+    }
+
+    code.output {
+      color: var(--fg-muted);
+      border-left: 3px solid var(--red);
+    }
+
+    code.json::before {
+      content: "";
+    }
+
+    code.json {
+      white-space: pre;
+    }
+
+    .inline-code {
+      display: inline;
+      padding: 0.2rem 0.4rem;
+      margin: 0;
+    }
+
+    .inline-code::before {
+      content: "";
+    }
+
+    section {
+      margin-bottom: 2rem;
+    }
+
+    .feature-grid {
+      display: grid;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .feature {
+      background-color: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--red);
+      padding: 1rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .icon-svg {
+      width: 1rem;
+      height: 1rem;
+      min-width: 1rem;
+      min-height: 1rem;
+      fill: currentColor;
+      flex-shrink: 0;
+    }
+
+    .feature .icon-svg {
+      color: var(--red-bright);
+      width: 1.2rem;
+      height: 1.2rem;
+      min-width: 1.2rem;
+      min-height: 1.2rem;
+    }
+
+    .feature-text strong {
+      color: var(--fg);
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .feature-text span {
+      color: var(--fg-muted);
+      font-size: 0.85rem;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px dashed var(--border);
+      margin: 1.5rem 0;
+    }
+
+    .os-section {
+      margin: 1rem 0;
+    }
+
+    .os-label {
+      color: var(--fg-muted);
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .os-label::before {
+      content: "# ";
+      color: var(--red);
+    }
+
+    .contact-line {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .contact-line .icon-svg {
+      color: var(--red);
+      width: 1rem;
+      height: 1rem;
+    }
+
+    .contact-line a {
+      color: var(--fg-muted);
+      text-decoration: none;
+    }
+
+    .contact-line a:hover {
+      color: var(--fg);
+      text-decoration: underline;
+    }
+
+    ul {
+      list-style: none;
+      margin: 1rem 0;
+    }
+
+    ul li {
+      color: var(--fg-muted);
+      margin-bottom: 0.5rem;
+      padding-left: 1.5rem;
+      position: relative;
+    }
+
+    ul li::before {
+      content: ">";
+      color: var(--red);
+      position: absolute;
+      left: 0;
+    }
+
+    .footnote {
+      font-size: 0.8rem;
+      color: var(--fg-muted);
+      margin-top: 1.5rem;
+      font-style: italic;
+    }
+
+    /* Form Styles */
+    .shortener-form {
+      background-color: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--red);
+      padding: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      color: var(--fg-muted);
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .form-group label::before {
+      content: "# ";
+      color: var(--red);
+    }
+
+    .form-group input {
+      width: 100%;
+      background-color: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.75rem 1rem;
+      color: var(--fg);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--red);
+    }
+
+    .form-group input::placeholder {
+      color: var(--fg-muted);
+    }
+
+    .form-row {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-end;
+    }
+
+    .form-row .form-group {
+      flex: 1;
+      margin-bottom: 0;
+    }
+
+    .form-row .form-group.slug-group {
+      flex: 0 0 140px;
+    }
+
+    .btn {
+      background-color: var(--red);
+      color: var(--fg);
+      border: none;
+      border-radius: 4px;
+      padding: 0.75rem 1.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn:hover {
+      background-color: var(--red-bright);
+    }
+
+    .btn .icon-svg {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    .form-result {
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      background-color: var(--bg);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--red);
+      border-radius: 4px;
+      font-size: 0.85rem;
+      display: none;
+    }
+
+    .form-result.visible {
+      display: block;
+    }
+
+    .form-result.success {
+      border-left-color: #2ecc71;
+    }
+
+    .form-result.error {
+      border-left-color: var(--red-bright);
+    }
+
+    /* Nested Form Tabs */
+    .form-tabs {
+      display: flex;
+      gap: 0;
+      margin-top: 1rem;
+    }
+
+    .form-tab-radio {
+      display: none;
+    }
+
+    .form-tab-label {
+      padding: 0.6rem 1.25rem;
+      cursor: pointer;
+      color: var(--fg-muted);
+      font-size: 0.85rem;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      background-color: var(--bg);
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .form-tab-label:first-of-type {
+      border-radius: 4px 0 0 0;
+    }
+
+    .form-tab-label:last-of-type {
+      border-radius: 0 4px 0 0;
+      border-left: none;
+    }
+
+    .form-tab-label:hover {
+      color: var(--fg);
+      background-color: var(--bg-alt);
+    }
+
+    #form-tab-create:checked ~ .form-tabs .form-tab-label[for="form-tab-create"],
+    #form-tab-delete:checked ~ .form-tabs .form-tab-label[for="form-tab-delete"] {
+      color: var(--red-bright);
+      background-color: var(--bg-alt);
+      border-color: var(--border);
+      border-bottom: 1px solid var(--bg-alt);
+      position: relative;
+      z-index: 1;
+    }
+
+    .form-panel {
+      display: none;
+    }
+
+    #form-tab-create:checked ~ .shortener-form .form-panel.create-panel,
+    #form-tab-delete:checked ~ .shortener-form .form-panel.delete-panel {
+      display: block;
+    }
+
+    .shortener-form.tabbed {
+      border-top: none;
+      border-radius: 0 4px 4px 4px;
+      margin-top: 0;
+    }
+
+    .url-preview {
+      margin-top: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      background-color: var(--bg);
+      border: 1px dashed var(--border);
+      border-radius: 4px;
+      font-size: 0.8rem;
+      color: var(--fg-muted);
+    }
+
+    .url-preview strong {
+      color: var(--red-bright);
+    }
+
+    @media (max-width: 600px) {
+      code {
+        font-size: 0.8rem;
+        padding: 0.6rem 0.8rem;
+      }
+
+      .tab-label {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+      }
+
+      .form-row {
+        flex-direction: column;
+      }
+
+      .form-row .form-group.slug-group {
+        flex: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo"><span>1yr</span>.ca</div>
+      <p class="tagline">terminal pastebin &amp; url shortener &mdash; hosted in canada</p>
+    </header>
+
+    <input type="radio" name="tabs" id="tab-pastebin" class="tab-radio" checked>
+    <input type="radio" name="tabs" id="tab-shortener" class="tab-radio">
+
+    <div class="tabs">
+      <label for="tab-pastebin" class="tab-label">pastebin</label>
+      <label for="tab-shortener" class="tab-label">shortener</label>
+    </div>
+
+    <main>
+      <!-- PASTEBIN TAB -->
+      <div class="tab-content pastebin-content">
+        <section>
+          <h2 id="paste-usage">usage</h2>
+
+          <h3 id="paste-examples">examples</h3>
+
+          <p>Send some text and read it back:</p>
+          <code>echo I Love Timbits | nc 1yr.ca 443</code>
+          <code class="output">https://1yr.ca/x7kq</code>
+          <code>curl https://1yr.ca/x7kq</code>
+          <code class="output">I Love Timbits</code>
+
+          <p>Send file contents:</p>
+          <code>cat ~/.ssh/id_ed25519.pub | nc 1yr.ca 443</code>
+
+          <p>Send recent logs from an app or container:</p>
+          <code>docker logs --until 30s 4af7 | nc 1yr.ca 443</code>
+
+          <h3 id="paste-requirements">requirements</h3>
+
+          <p>There is only one requirement to use this service: <strong>netcat</strong>. To check if you already have it installed, type in terminal <code class="inline-code">nc</code> or <code class="inline-code">ncat</code> or <code class="inline-code">netcat</code>.</p>
+
+          <p>Netcat is available on most platforms, including Windows, macOS and Linux.</p>
+
+          <h3 id="paste-alias">alias</h3>
+
+          <p>To simplify usage, you can add an alias to your shell configuration.</p>
+
+          <hr>
+
+          <div class="os-section">
+            <div class="os-label">linux (.bashrc)</div>
+            <code>echo 'alias pb="nc 1yr.ca 443"' >> ~/.bashrc</code>
+          </div>
+
+          <hr>
+
+          <div class="os-section">
+            <div class="os-label">mac (.zshrc)</div>
+            <code>echo 'alias pb="nc 1yr.ca 443"' >> ~/.zshrc</code>
+          </div>
+
+          <h3 id="paste-delete">request delete</h3>
+
+          <p>For the first 10 minutes after creating a paste, you can delete it from the same IP address by sending a DELETE request:</p>
+
+          <code>curl -X DELETE "https://1yr.ca/x7kq"</code>
+
+          <p>
+						If you need a paste removed after that time, please send a request
+						to the email address listed below.
+						<a href="#contact">
+							<svg class="icon-svg"><use href="misc/icons.svg#link"/></svg>
+						</a>
+					</p>
+
+        </section>
+
+        <section>
+          <h2 id="paste-about">about</h2>
+
+          <div class="feature-grid">
+            <div class="feature">
+              <svg class="icon-svg"><use href="misc/icons.svg#schedule"/></svg>
+              <div class="feature-text">
+                <strong>1 Year Retention</strong>
+                <span>Your pastes are stored for up to 365 days*. No more disappearing links.</span>
+              </div>
+            </div>
+            <div class="feature">
+              <svg class="icon-svg"><use href="misc/icons.svg#location_on"/></svg>
+              <div class="feature-text">
+                <strong>Hosted in Canada</strong>
+                <span>Data sovereignty matters. All data stored on Canadian servers.</span>
+              </div>
+            </div>
+            <div class="feature">
+              <svg class="icon-svg"><use href="misc/icons.svg#terminal"/></svg>
+              <div class="feature-text">
+                <strong>Terminal Native</strong>
+                <span>No browser required. Pipe, paste, share &mdash; all from your shell.</span>
+              </div>
+            </div>
+
+            <div class="feature">
+              <svg class="icon-svg"><use href="misc/icons.svg#text_snippet"/></svg>
+              <div class="feature-text">
+                <strong>Text Only</strong>
+                <span>Plain text content only. No images, binaries, or zip files.</span>
+              </div>
+            </div>
+						<div class="feature">
+              <svg class="icon-svg"><use href="misc/icons.svg#delete"/></svg>
+              <div class="feature-text">
+                <strong>User Deletion</strong>
+                <span>Made a mistake? Delete your links within 10 minutes of creation.</span>
+              </div>
+						</div>
+					</div>
+
+          <p class="footnote">*Older links may be purged if the service reaches its allocated cache size.</p>
+
+        </section>
+      </div>
+
+      <!-- URL SHORTENER TAB -->
+      <div class="tab-content shortener-content">
+        <section>
+          <h2 id="short-usage">usage</h2>
+
+          <p>Create or delete a shortened URL directly from your browser:</p>
+
+          <input type="radio" name="form-tabs" id="form-tab-create" class="form-tab-radio" checked>
+          <input type="radio" name="form-tabs" id="form-tab-delete" class="form-tab-radio">
+
+          <div class="form-tabs">
+            <label for="form-tab-create" class="form-tab-label">create</label>
+            <label for="form-tab-delete" class="form-tab-label">delete</label>
+          </div>
+
+          <div class="shortener-form tabbed">
+            <div id="short-form-create" class="form-panel create-panel">
+              <div class="form-row">
+                <div class="form-group slug-group">
+                  <label for="slug">slug (optional)</label>
+                  <input type="text" id="slug" name="slug" placeholder="abc123" maxlength="32">
+                </div>
+                <div class="form-group">
+                  <label for="url">redirect url</label>
+                  <input type="url" id="url" name="url" placeholder="https://example.com/very/long/url" required>
+                </div>
+              </div>
+              <div class="url-preview" id="url-preview">
+                preview: <strong>https://1yr.ca/<span id="slug-preview">????</span>/</strong>
+              </div>
+              <div style="margin-top: 1rem;">
+                <button type="button" class="btn" id="shorten-btn">
+                  <svg class="icon-svg"><use href="misc/icons.svg#link"/></svg>
+                  shorten
+                </button>
+              </div>
+              <div class="form-result" id="form-result"></div>
+            </div>
+
+            <div id="short-form-delete" class="form-panel delete-panel">
+              <div class="form-group">
+                <label for="delete-slug">slug to delete</label>
+                <input type="text" id="delete-slug" name="delete-slug" placeholder="m3np" maxlength="32" required>
+              </div>
+              <div style="margin-top: 1rem;">
+                <button type="button" class="btn" id="delete-btn">
+              <svg class="icon-svg"><use href="misc/icons.svg#delete"/></svg>
+                  delete
+                </button>
+              </div>
+              <div class="form-result" id="delete-result"></div>
+            </div>
+          </div>
+
+          <h3 id="short-api">api</h3>
+
+          <p>Create a shortened URL with a POST request:</p>
+          <code>curl -X POST "https://1yr.ca/api/shorten" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com/long/url"}'</code>
+          <code class="output json">{
+  "short": "https://1yr.ca/m3np/",
+  "slug": "m3np",
+  "expires": "2026-05-04T12:00:00Z"
+}</code>
+
+          <p>Optionally specify a custom slug:</p>
+          <code>curl -X POST "https://1yr.ca/api/shorten" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "slug": "mylink"}'</code>
+          <code class="output json">{
+  "short": "https://1yr.ca/mylink/",
+  "slug": "mylink",
+  "expires": "2026-05-04T12:00:00Z"
+}</code>
+
+          <h3 id="short-delete">delete</h3>
+
+          <p>For the first 10 minutes after creating a link, you can delete it from the same IP address:</p>
+
+          <code>curl -X DELETE "https://1yr.ca/m3np"</code>
+          <code class="output json">{
+  "success": true,
+  "message": "Link deleted"
+}</code>
+        </section>
+
+        <section>
+          <h2 id="short-about">about</h2>
+
+          <div class="feature-grid">
+            <div class="feature">
+              <svg class="icon-svg"><use href="misc/icons.svg#schedule"/></svg>
+              <div class="feature-text">
+                <strong>1 Year Retention</strong>
+                <span>Your links are stored for up to 365 days*. No more disappearing redirects.</span>
+              </div>
+            </div>
+            <div class="feature">
+              <svg class="icon-svg"><use href="misc/icons.svg#location_on"/></svg>
+              <div class="feature-text">
+                <strong>Hosted in Canada</strong>
+                <span>Data sovereignty matters. All data stored on Canadian servers.</span>
+              </div>
+            </div>
+            <div class="feature">
+              <svg class="icon-svg"><use href="misc/icons.svg#polyline"/></svg>
+              <div class="feature-text">
+                <strong>Simple API</strong>
+                <span>Create and delete links with a single HTTP request.</span>
+              </div>
+            </div>
+            <div class="feature">
+              <svg class="icon-svg"><use href="misc/icons.svg#delete"/></svg>
+              <div class="feature-text">
+                <strong>User Deletion</strong>
+                <span>Made a mistake? Delete your links within 10 minutes of creation.</span>
+              </div>
+            </div>
+          </div>
+
+          <p class="footnote">*Older links may be purged if the service reaches its allocated cache size.</p>
+
+        </section>
+      </div>
+    </main>
+
+    <section>
+      <h3 id="contact">contact</h3>
+
+      <div class="contact-line">
+        <svg class="icon-svg"><use href="misc/icons.svg#mail"/></svg>
+        <span><a href="mailto:benjamin@chausse.xyz">benjamin [at] chausse.xyz</a></span>
+      </div>
+      <div class="contact-line">
+        <svg class="icon-svg"><use href="misc/icons.svg#language"/></svg>
+        <span><a href="https://chausse.dev">chausse.xyz</a></span>
+      </div>
+
+      <h3 id="policy">acceptable use policy</h3>
+
+      <ul>
+        <li>Do not post illegal content, personal information, or credentials</li>
+        <li>Respect intellectual property rights</li>
+        <li>IP addresses may be logged for security purposes</li>
+        <li>Abuse may result in rate limiting</li>
+        <li>Violations may result in a permanent ban</li>
+        <li>Service owner is not liable for user-posted content</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>made with <span class="maple">&#127809;</span> in Canada</p>
+      <p style="margin-top: 0.5rem; font-size: 0.8rem;">&copy; <span id="year"></span> 1yr.ca</p>
+    </footer>
+  </div>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Live slug preview
+    var slugInput = document.getElementById('slug');
+    var slugPreview = document.getElementById('slug-preview');
+    slugInput.addEventListener('input', function() {
+      slugPreview.textContent = this.value || '????';
+    });
+
+    // Create form
+    document.getElementById('shorten-btn').addEventListener('click', async function() {
+      var url = document.getElementById('url').value;
+      var slug = document.getElementById('slug').value;
+      var result = document.getElementById('form-result');
+      if (!url) {
+        result.textContent = 'Please enter a URL';
+        result.className = 'form-result visible error';
+        return;
+      }
+      result.textContent = 'Creating...';
+      result.className = 'form-result visible';
+      try {
+        var body = slug ? {url: url, slug: slug} : {url: url};
+        var res = await fetch('https://1yr.ca/api/shorten', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(body)
+        });
+        var data = await res.json();
+        if (res.ok) {
+          result.innerHTML = 'Shortened: <a href="' + data.short + '" target="_blank">' + data.short + '</a>';
+          result.className = 'form-result visible success';
+        } else {
+          result.textContent = data.error || 'Failed to create link';
+          result.className = 'form-result visible error';
+        }
+      } catch (e) {
+        result.textContent = 'Request failed';
+        result.className = 'form-result visible error';
+      }
+    });
+
+    // Delete form
+    document.getElementById('delete-btn').addEventListener('click', async function() {
+      var slug = document.getElementById('delete-slug').value;
+      var result = document.getElementById('delete-result');
+      if (!slug) {
+        result.textContent = 'Please enter a slug';
+        result.className = 'form-result visible error';
+        return;
+      }
+      result.textContent = 'Deleting...';
+      result.className = 'form-result visible';
+      try {
+        var res = await fetch('https://1yr.ca/' + slug, {
+          method: 'DELETE'
+        });
+        var data = await res.json();
+        if (res.ok) {
+          result.textContent = 'Link deleted successfully';
+          result.className = 'form-result visible success';
+        } else {
+          result.textContent = data.error || 'Failed to delete link';
+          result.className = 'form-result visible error';
+        }
+      } catch (e) {
+        result.textContent = 'Request failed';
+        result.className = 'form-result visible error';
+      }
+    });
+  </script>
+</body>
+</html>
