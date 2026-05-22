@@ -635,7 +635,7 @@
                 </div>
               </div>
               <div class="url-preview" id="url-preview">
-                preview: <strong>https://1yr.ca/<span id="slug-preview">????</span>/</strong>
+                preview: <strong>https://1yr.ca/<span id="slug-preview">????</span></strong>
               </div>
               <div style="margin-top: 1rem;">
                 <button type="button" class="btn" id="shorten-btn">
@@ -770,7 +770,7 @@
     var slugInput = document.getElementById('slug');
     var slugPreview = document.getElementById('slug-preview');
     slugInput.addEventListener('input', function() {
-      slugPreview.textContent = this.value || '????';
+      slugPreview.textContent = encodeURIComponent(this.value) || '????';
     });
 
     // Create form

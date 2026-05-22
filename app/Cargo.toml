@@ -33,3 +33,4 @@ tokio = { version = "1", features = ["rt", "macros"] }
 lightningcss = { version = "1.0.0-alpha.71", default-features = false }
 minify-html = "0.18.1"
 brotli = "8.0.2"
+
