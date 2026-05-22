@@ -4,8 +4,7 @@ mod paste;
 mod redirect;
 mod reserved;
 
-use paste::CompPaste;
-pub use paste::{HashedPaste, MatchingPaste};
+pub use paste::{CompPaste, HashedPaste, MatchingPaste};
 use redirect::*;
 use reserved::*;
 
@@ -52,6 +51,12 @@ pub enum Route {
 	Reserved(Reserved),
 	Redirect(CompRedirect),
 	Paste(CompPaste),
+}
+
+impl Into<u8> for Route {
+	fn into(self) -> u8 {
+		*self as u8
+	}
 }
 
 impl From<Route> for AgnosticRoute {

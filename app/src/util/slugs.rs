@@ -1,7 +1,9 @@
 use core::f64::math::ceil;
-use std::{char, random::random};
+use std::{char, random::random, sync::Arc};
 
 use rslog::{attrs, debug};
+
+use crate::storage::{self, Storage};
 
 /// list of characters accepted in slug paths
 const SLUG_SPACE: &[u8] =
@@ -31,7 +33,7 @@ impl SlugGenerator {
 		}
 	}
 
-	pub fn generate(&self) -> String {
+	fn random(&self) -> String {
 		// Maximum ammount of bits needed
 		let mut entropy: Vec<_> =
 			(0..self.randint_count).into_iter().map(|_| random::<u64>(..)).collect();
@@ -67,5 +69,20 @@ impl SlugGenerator {
 			})
 			.collect();
 		out
+	}
+
+	pub async fn gen_unique(
+		&self,
+		db: Arc<Storage>,
+	) -> Result<String, storage::Error> {
+		let mut output = self.generate();
+		while db.queries.slug_exists(output).await? {
+			debug(
+				"collision while generating a slug name",
+				attrs!( "slug" => output),
+			);
+			output = self.generate();
+		}
+		output
 	}
 }

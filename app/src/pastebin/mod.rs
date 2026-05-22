@@ -15,7 +15,7 @@ use tokio::{
 use crate::{
 	config::{logging::ERR_KEY, Config, PastebinCfg},
 	storage::{model::HashedPaste, Storage},
-	util::SlugGenerator,
+	util::{decompress, SlugGenerator},
 };
 
 pub struct Pastebin {
@@ -46,6 +46,7 @@ impl Pastebin {
 			let (sock, _addr) = listener.accept().await?;
 			let (mut r, mut w) = sock.into_split();
 			let mut db = self.db.clone();
+			let mut slugs = self.slugs.clone();
 
 			tokio::spawn(async move {
 				let paste: HashedPaste = match Self::recv_paste(max_buffer, r).await {
@@ -53,16 +54,14 @@ impl Pastebin {
 					Err(e) => todo!(),
 				};
 
+				// Detect potential collision -> point to existing path if one exists
 				if let Some(slug) = Self::find_match(db, paste).await? {
 					Self::return_url(w, slug).await?;
 				}
-				// TODO: Detect potential collision
-				if let Some(slug) = exists {
-					Self::return_url(w, slug).await.unwrap();
-					// TODO: Return pre-existing paste url from corresponding hash
-				}
 
-				// TODO: Compress data
+				let slug = slugs.gen_unique(db).await?;
+				let compressed = paste.try_into_comp_paste(slug)?;
+
 				// TODO: Insert in DB
 				// TODO: Return the url for hosted paste
 				Ok::<(), ()>(())
@@ -75,11 +74,11 @@ impl Pastebin {
 	async fn find_match(
 		db: Arc<Storage>,
 		paste: HashedPaste,
-	) -> Result<Option<String>, Error> {
+	) -> Result<Option<String>> {
 		let hash_matches = db.queries.get_slugs_by_hash(paste.hash()).await?;
 		for p in hash_matches {
 			// TODO: decompress p.content and compare against the incoming paste
-			let decompressed = "";
+			let decompressed = decompress(p.content)?;
 			if paste.content() == decompressed {
 				return Ok(Some(p.slug));
 			}
@@ -87,29 +86,11 @@ impl Pastebin {
 		Ok(None)
 	}
 
-	async fn unique_slug(slugs: SlugGenerator, db: Storage) -> String {
-		let mut output = slugs.generate();
-		while db.queries.slug_exists(output).await? {
-			debug(
-				"collision while generating a slug name",
-				attrs!( "slug" => output),
-			);
-			output = slugs.generate();
-		}
-		output
-	}
-
-	async fn return_url(
-		mut w: OwnedWriteHalf,
-		slug: String,
-	) -> Result<(), Error> {
+	async fn return_url(mut w: OwnedWriteHalf, slug: String) -> Result<()> {
 		todo!()
 	}
 
-	async fn recv_paste(
-		buf_max: usize,
-		mut r: OwnedReadHalf,
-	) -> Result<String, ()> {
+	async fn recv_paste(buf_max: usize, mut r: OwnedReadHalf) -> Result<String> {
 		let mut output: String = String::with_capacity(BUFFER_CAPACITY);
 		let mut buf: Box<[u8]> = vec![0; BUFFER_CAPACITY].into();
 
@@ -132,8 +113,7 @@ impl Pastebin {
 					}
 				}
 				Err(e) => {
-					warn("failed to fully receive paste", attrs!(ERR_KEY => e));
-					return Err(());
+					return Err(Error::TcpErr(e));
 				}
 			};
 		}

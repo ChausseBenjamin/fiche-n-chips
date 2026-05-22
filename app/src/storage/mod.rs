@@ -5,7 +5,7 @@ pub mod model;
 mod pragma;
 mod statements;
 
-pub use error::Error;
+pub use error::{Error, Result};
 use rslog::{attrs, debug, error, src};
 use statements::Statements;
 use turso::{Builder, Connection};

@@ -1,5 +1,7 @@
 use std::{env, fs, io::Write, path::Path};
 
+use brotli::CompressorWriter;
+
 fn main() {
 	println!("cargo:rerun-if-changed=assets/");
 
@@ -17,10 +19,7 @@ fn process_dir(dir: &str, out_dir: &Path) -> std::io::Result<()> {
 		let name = entry.file_name();
 
 		if path.is_dir() {
-			process_dir(
-				path.to_str().unwrap(),
-				&out_dir.join(&name),
-			)?;
+			process_dir(path.to_str().unwrap(), &out_dir.join(&name))?;
 		} else {
 			let Some(name) = name.to_str() else { continue };
 			let src = fs::read(&path)?;
@@ -64,7 +63,8 @@ fn min_html<'a>(src: &str, out: &'a mut Vec<u8>) -> &'a [u8] {
 
 fn min_css<'a>(src: &str, out: &'a mut Vec<u8>) -> &'a [u8] {
 	let mut sheet =
-		lightningcss::stylesheet::StyleSheet::parse(src, Default::default()).unwrap();
+		lightningcss::stylesheet::StyleSheet::parse(src, Default::default())
+			.unwrap();
 	sheet.minify(Default::default()).unwrap();
 	out.clear();
 	out.extend(
@@ -90,7 +90,8 @@ fn min_svg<'a>(src: &str, out: &'a mut Vec<u8>) -> &'a [u8] {
 fn compress(src: &[u8]) -> Vec<u8> {
 	let mut out = Vec::new();
 	{
-		let mut w = brotli::CompressorWriter::new(&mut out, 4096, 9, 22);
+		let quality = 11;
+		let mut w = CompressorWriter::new(&mut out, 4096, quality, 22);
 		w.write_all(src).unwrap();
 	}
 	out

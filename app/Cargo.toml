@@ -3,9 +3,6 @@ name = "fiche-n-chips"
 version = "0.1.0"
 edition = "2021"
 
-[package.metadata.inwelling]
-structx = true
-
 [dependencies]
 
 # Cli development
@@ -24,7 +21,6 @@ brotli = "8.0.2"                                          # text compression
 # General purpose tools
 rslog = { path = "../rslog", features = ["actix", "json"] }
 thiserror = "2.0.18"
-structx = "0.1.11" # anonymous structs
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }

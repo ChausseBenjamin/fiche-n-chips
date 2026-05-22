@@ -5,7 +5,7 @@ use turso::{Connection, Statement};
 use super::{error::Error, model::Route};
 use crate::{
 	storage::model::{
-		AgnosticRoute, DeletedRoute, HashedPaste, MatchingPaste, RouteKind,
+		AgnosticRoute, CompPaste, DeletedRoute, MatchingPaste, RouteKind,
 	},
 	util::from_unix_timestamp,
 };
@@ -15,13 +15,12 @@ pub struct Statements(InnerStatements);
 
 #[rustfmt::skip]
 struct InnerStatements {
-	get_from_path:    Statement,
+	get_from_path:     Statement,
 	get_slugs_by_hash: Statement,
-	slug_exists:      Statement,
-	del_expired:      Statement,
-	del_from_path:    Statement,
-	insert_paste:     Statement,
-	insert_redir:     Statement,
+	slug_exists:       Statement,
+	del_expired:       Statement,
+	del_from_path:     Statement,
+	insert_route:      Statement,
 }
 
 impl Statements {
@@ -43,13 +42,9 @@ impl Statements {
 			del_from_path: conn
 				.prepare_cached("DELETE FROM routes WHERE id = ? RETURNING id, created_on")
 				.await?,
-			insert_paste: conn
+			insert_route: conn
 				.prepare_cached(
-					"INSERT INTO routes (id, kind, hash, content) VALUES (?, 2, ?, ?)")
-				.await?,
-			insert_redir: conn
-				.prepare_cached(
-					"INSERT INTO routes (id, kind, hash, content) VALUES (?, 1, NULL, ?)")
+					"INSERT INTO routes (id, kind, hash, content) VALUES (?, ?, ?, ?)")
 				.await?,
       }))
 	}
@@ -115,11 +110,18 @@ impl Statements {
 		})
 	}
 
-	pub async fn insert_paste(
-		&mut self,
-		entry: HashedPaste,
-	) -> Result<(), Error> {
-		todo!()
+	async fn insert_route(&mut self, route: AgnosticRoute) -> Result<(), Error> {
+		let id = turso::Value::from(route.id);
+		let kind = turso::Value::from(u8::from(route.kind));
+		let hash = turso::Value::from(route.hash);
+		let content = turso::Value::from(route.content);
+		self.0.insert_route.execute([id, kind, hash, content]).await?;
+		Ok(())
+	}
+
+	pub async fn insert_paste(&mut self, paste: CompPaste) -> Result<(), Error> {
+		let route: AgnosticRoute = Route::from(paste).into();
+		self.insert_route(route).await
 	}
 
 	pub async fn insert_redir(
