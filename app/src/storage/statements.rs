@@ -5,7 +5,8 @@ use turso::{Connection, Statement};
 use super::{error::Error, model::Route};
 use crate::{
 	storage::model::{
-		AgnosticRoute, CompPaste, DeletedRoute, MatchingPaste, RouteKind,
+		AgnosticRoute, CompPaste, CompRedirect, DeletedRoute, MatchingPaste,
+		RouteKind,
 	},
 	util::from_unix_timestamp,
 };
@@ -49,8 +50,9 @@ impl Statements {
       }))
 	}
 
-	pub async fn get_from_path(&mut self, path: String) -> Result<Route, Error> {
-		let row = self.0.get_from_path.query_row([path]).await?;
+	pub async fn get_from_path(&self, path: String) -> Result<Route, Error> {
+		let mut cmd = self.0.get_from_path.clone();
+		let row = cmd.query_row([path]).await?;
 		Ok(
 			AgnosticRoute {
 				id: row.get(0)?,
@@ -64,31 +66,34 @@ impl Statements {
 	}
 
 	pub async fn get_slugs_by_hash(
-		&mut self,
+		&self,
 		hash: u64,
 	) -> Result<Vec<MatchingPaste>, Error> {
-		let mut rows = self.0.get_slug_by_hash.query([hash as i64]).await?;
+		let mut cmd = self.0.get_slugs_by_hash.clone();
+		let mut rows = cmd.query([hash as i64]).await?;
 		let mut results: Vec<MatchingPaste> = Vec::new();
 		while let Some(row) = rows.next().await? {
 			results.push(MatchingPaste {
 				slug: row.get(0)?,
-				content: (row.get::<Option<String>>(1)?).unwrap_or_default(),
+				content: (row.get::<Option<Vec<u8>>>(1)?).unwrap_or_default(),
 			});
 		}
 		Ok(results)
 	}
 
-	pub async fn slug_exists(&mut self, path: String) -> Result<bool, Error> {
-		let row = self.0.slug_exists.query_row([path]).await?;
+	pub async fn slug_exists(&self, path: &str) -> Result<bool, Error> {
+		let mut cmd = self.0.slug_exists.clone();
+		let row = cmd.query_row([path]).await?;
 		let exists: u64 = row.get::<i64>(0)? as u64;
-		exists == 1
+		Ok(exists == 1)
 	}
 
 	pub async fn del_expired(
-		&mut self,
+		&self,
 		range: Duration,
 	) -> Result<Vec<DeletedRoute>, Error> {
-		let mut rows = self.0.del_expired.query(()).await?;
+		let mut cmd = self.0.del_expired.clone();
+		let mut rows = cmd.query(()).await?;
 		let mut results: Vec<DeletedRoute> = Vec::new();
 		while let Some(row) = rows.next().await? {
 			results.push(DeletedRoute {
@@ -100,35 +105,38 @@ impl Statements {
 	}
 
 	pub async fn del_from_path(
-		&mut self,
+		&self,
 		path: String,
 	) -> Result<DeletedRoute, Error> {
-		let row = self.0.del_from_path.query_row([path]).await?;
+		let mut cmd = self.0.del_from_path.clone();
+		let row = cmd.query_row([path]).await?;
 		Ok(DeletedRoute {
 			id: row.get(0)?,
 			created: from_unix_timestamp(row.get::<i64>(1)?),
 		})
 	}
 
-	async fn insert_route(&mut self, route: AgnosticRoute) -> Result<(), Error> {
+	async fn insert_route(&self, route: AgnosticRoute) -> Result<(), Error> {
 		let id = turso::Value::from(route.id);
-		let kind = turso::Value::from(u8::from(route.kind));
+		let kind = turso::Value::from(route.kind as u8);
 		let hash = turso::Value::from(route.hash);
 		let content = turso::Value::from(route.content);
-		self.0.insert_route.execute([id, kind, hash, content]).await?;
+
+		let mut cmd = self.0.insert_route.clone();
+		cmd.execute([id, kind, hash, content]).await?;
 		Ok(())
 	}
 
-	pub async fn insert_paste(&mut self, paste: CompPaste) -> Result<(), Error> {
+	pub async fn insert_paste(&self, paste: CompPaste) -> Result<(), Error> {
 		let route: AgnosticRoute = Route::from(paste).into();
 		self.insert_route(route).await
 	}
 
-	pub async fn insert_redir(
-		&mut self,
-		path: String,
-		content: Vec<u8>,
+	pub async fn insert_redirect(
+		&self,
+		redirect: CompRedirect,
 	) -> Result<(), Error> {
-		todo!()
+		let route: AgnosticRoute = Route::from(redirect).into();
+		self.insert_route(route).await
 	}
 }

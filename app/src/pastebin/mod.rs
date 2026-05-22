@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 mod error;
 
-pub use error::Error;
+pub use error::{Error, Result};
 use rslog::{attrs, debug, error, info, src, warn};
 use tokio::{
 	io::{self, AsyncReadExt},
@@ -49,22 +49,27 @@ impl Pastebin {
 			let mut slugs = self.slugs.clone();
 
 			tokio::spawn(async move {
-				let paste: HashedPaste = match Self::recv_paste(max_buffer, r).await {
-					Ok(v) => v.into(),
-					Err(e) => todo!(),
-				};
+				let result: Result<()> = async {
+					let paste: HashedPaste =
+						Self::recv_paste(max_buffer, r).await?.into();
 
-				// Detect potential collision -> point to existing path if one exists
-				if let Some(slug) = Self::find_match(db, paste).await? {
-					Self::return_url(w, slug).await?;
+					if let Some(slug) = Self::find_match(&db, &paste).await? {
+						Self::return_url(w, slug).await?;
+						return Ok(());
+					}
+
+					let slug = slugs.gen_unique(&db).await?;
+					let compressed = paste.try_into_comp_paste(slug)?;
+
+					// TODO: Insert in DB
+					// TODO: Return the url for hosted paste
+					Ok(())
 				}
+				.await;
 
-				let slug = slugs.gen_unique(db).await?;
-				let compressed = paste.try_into_comp_paste(slug)?;
-
-				// TODO: Insert in DB
-				// TODO: Return the url for hosted paste
-				Ok::<(), ()>(())
+				if let Err(e) = result {
+					error("failed to handle paste", attrs!(ERR_KEY => e));
+				}
 			});
 		}
 
@@ -72,12 +77,11 @@ impl Pastebin {
 	}
 
 	async fn find_match(
-		db: Arc<Storage>,
-		paste: HashedPaste,
+		db: &Storage,
+		paste: &HashedPaste,
 	) -> Result<Option<String>> {
 		let hash_matches = db.queries.get_slugs_by_hash(paste.hash()).await?;
 		for p in hash_matches {
-			// TODO: decompress p.content and compare against the incoming paste
 			let decompressed = decompress(p.content)?;
 			if paste.content() == decompressed {
 				return Ok(Some(p.slug));
@@ -113,7 +117,7 @@ impl Pastebin {
 					}
 				}
 				Err(e) => {
-					return Err(Error::TcpErr(e));
+					return Err(Error::IoErr(e));
 				}
 			};
 		}

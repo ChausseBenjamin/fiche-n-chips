@@ -5,6 +5,7 @@ mod redirect;
 mod reserved;
 
 pub use paste::{CompPaste, HashedPaste, MatchingPaste};
+pub use redirect::CompRedirect;
 use redirect::*;
 use reserved::*;
 
@@ -53,12 +54,6 @@ pub enum Route {
 	Paste(CompPaste),
 }
 
-impl Into<u8> for Route {
-	fn into(self) -> u8 {
-		*self as u8
-	}
-}
-
 impl From<Route> for AgnosticRoute {
 	fn from(value: Route) -> Self {
 		match value {
@@ -67,7 +62,7 @@ impl From<Route> for AgnosticRoute {
 				hash: None,
 				kind: RouteKind::Reserved,
 				content: None,
-				created: SystemTime::MIN, // Date doesn't matter here...
+				created: SystemTime::UNIX_EPOCH, // Date doesn't matter here...
 			},
 			Route::Redirect(r) => AgnosticRoute {
 				id: r.short,

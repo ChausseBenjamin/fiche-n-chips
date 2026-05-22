@@ -28,7 +28,7 @@ pub struct Storage {
 }
 
 impl Storage {
-	pub async fn setup(cfg: Arc<Config>) -> Result<Self, Error> {
+	pub async fn setup(cfg: Arc<Config>) -> Result<Self> {
 		// INITIAL SETUP:
 		debug("setting up the database connection", src!());
 		let db_path = valid_filepath(&cfg.management.db_path, DEFAULT_DB_NAME)?;
@@ -83,7 +83,7 @@ impl Storage {
 		})
 	}
 
-	async fn fetch_schema(conn: &Connection) -> Result<String, Error> {
+	async fn fetch_schema(conn: &Connection) -> Result<String> {
 		let mut rows = conn
 			.query("SELECT sql FROM sqlite_master WHERE type='table'", ())
 			.await?;
@@ -97,7 +97,7 @@ impl Storage {
 		Ok(out)
 	}
 
-	async fn validate_schema(conn: &Connection) -> Result<(), Error> {
+	async fn validate_schema(conn: &Connection) -> Result<()> {
 		let actual = Self::fetch_schema(conn).await?;
 		if Self::normalize_sql(DB_SCHEMA) != Self::normalize_sql(&actual) {
 			return Err(Error::SetupErr(

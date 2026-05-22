@@ -41,11 +41,10 @@ impl HashedPaste {
 	pub fn hash(&self) -> u64 {
 		self.0.hash
 	}
-	// TODO: maybe pass a ref to that string to avoid cloning?
-	pub fn content(&self) -> String {
-		self.0.content
+	pub fn content(&self) -> &str {
+		&self.0.content
 	}
-	pub fn try_into_comp_paste(&self, slug: String) -> Result<CompPaste> {
+	pub fn try_into_comp_paste(self, slug: String) -> Result<CompPaste> {
 		let compressed = compress(self.0.content)?;
 		Ok(CompPaste {
 			slug,

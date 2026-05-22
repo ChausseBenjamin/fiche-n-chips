@@ -73,16 +73,16 @@ impl SlugGenerator {
 
 	pub async fn gen_unique(
 		&self,
-		db: Arc<Storage>,
+		db: &Storage,
 	) -> Result<String, storage::Error> {
-		let mut output = self.generate();
-		while db.queries.slug_exists(output).await? {
+		let mut output = self.random();
+		while db.queries.slug_exists(&output).await? {
 			debug(
 				"collision while generating a slug name",
 				attrs!( "slug" => output),
 			);
-			output = self.generate();
+			output = self.random();
 		}
-		output
+		Ok(output)
 	}
 }
