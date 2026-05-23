@@ -1,39 +1,47 @@
 use std::{sync::Arc, time::SystemTime};
 
 use super::{
-	super::{Error, Result},
-	Route,
+	super::Result,
+	RouteKind, Storable,
 };
 use crate::{
 	storage::Storage,
 	util::{compress, SlugGenerator},
 };
 
-/// Representation where the content remains compressed
-pub struct CompRedirect {
+pub struct CompressedRedirect {
 	pub(super) short: String,
 	pub(super) destination: Vec<u8>,
 }
 
-impl From<CompRedirect> for Route {
-	fn from(value: CompRedirect) -> Self {
-		Route::Redirect(value)
+impl Storable for CompressedRedirect {
+	fn id(&self) -> &str {
+		&self.short
+	}
+	fn kind(&self) -> RouteKind {
+		RouteKind::Redirect
+	}
+	fn hash(&self) -> Option<i64> {
+		None
+	}
+	fn content(&self) -> Option<&[u8]> {
+		Some(&self.destination)
+	}
+	fn created(&self) -> Option<SystemTime> {
+		None
 	}
 }
 
-struct RawRedirectInner {
-	// shortened version of the url chosen by the user (aka ID)
-	// If the user wants an auto-generated url, short->None
+struct RedirectInputInner {
 	short: Option<String>,
 	destination: String,
 }
 
-/// Representation where the content hasn't been compressed
-pub struct RawRedirect(RawRedirectInner);
+pub struct RedirectInput(RedirectInputInner);
 
-impl RawRedirect {
+impl RedirectInput {
 	pub fn new(destination: String, short: Option<String>) -> Self {
-		Self(RawRedirectInner { short, destination })
+		Self(RedirectInputInner { short, destination })
 	}
 	pub fn destination(&self) -> &str {
 		&self.0.destination
@@ -44,16 +52,16 @@ impl RawRedirect {
 			None => None,
 		}
 	}
-	pub fn try_into_comp_redirect(
+	pub fn try_into_compressed_redirect(
 		self,
 		db: Arc<Storage>,
 		slugs: Arc<SlugGenerator>,
-	) -> Result<CompRedirect> {
+	) -> Result<CompressedRedirect> {
 		let destination = compress(self.0.destination)?;
 		let short = match self.0.short {
 			Some(v) => v,
 			None => slugs.gen_unique(&db)?,
 		};
-		Ok(CompRedirect { short, destination })
+		Ok(CompressedRedirect { short, destination })
 	}
 }

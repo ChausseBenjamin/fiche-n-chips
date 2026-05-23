@@ -1,15 +1,12 @@
-use std::time::{Duration, UNIX_EPOCH};
+use std::time::{Duration, SystemTime};
 
 use turso::{Connection, Statement};
 
-use super::{error::Error, model::Route};
-use crate::{
-	storage::model::{
-		AgnosticRoute, CompPaste, CompRedirect, DeletedRoute, MatchingPaste,
-		RouteKind,
-	},
-	util::from_unix_timestamp,
+use super::{
+	error::Error,
+	model::{DeletedRoute, PasteRecord, RouteRow, Storable},
 };
+use crate::util::from_unix_timestamp;
 
 #[derive(Clone)]
 pub struct Statements(InnerStatements);
@@ -33,9 +30,9 @@ impl Statements {
 			get_slugs_by_hash: conn
 				.prepare_cached("SELECT (id, content) FROM routes WHERE hash = ?")
 				.await?,
-      slug_exists: conn
-          .prepare_cached("SELECT EXISTS(SELECT 1 FROM routes WHERE id = ?)")
-          .await?,
+			slug_exists: conn
+				.prepare_cached("SELECT EXISTS(SELECT 1 FROM routes WHERE id = ?)")
+				.await?,
 			del_expired: conn
 				.prepare_cached(
 					"DELETE FROM routes WHERE kind != 0 AND created_on < datetime('now', ?) RETURNING id, created_on")
@@ -45,35 +42,32 @@ impl Statements {
 				.await?,
 			insert_route: conn
 				.prepare_cached(
-					"INSERT INTO routes (id, kind, hash, content) VALUES (?, ?, ?, ?)")
+					"INSERT INTO routes (id, kind, hash, content) VALUES (?, ?, ?, ?) RETURNING created_on")
 				.await?,
-      }))
+		}))
 	}
 
-	pub async fn get_from_path(&self, path: String) -> Result<Route, Error> {
+	pub async fn get_from_path(&self, path: String) -> Result<RouteRow, Error> {
 		let mut cmd = self.0.get_from_path.clone();
 		let row = cmd.query_row([path]).await?;
-		Ok(
-			AgnosticRoute {
-				id: row.get(0)?,
-				kind: (row.get::<i64>(1)?).try_into()?,
-				hash: row.get(2)?,
-				content: row.get(3)?,
-				created: from_unix_timestamp(row.get::<i64>(4)?),
-			}
-			.into(),
-		)
+		Ok(RouteRow {
+			id: row.get(0)?,
+			kind: (row.get::<i64>(1)?).try_into()?,
+			hash: row.get(2)?,
+			content: row.get(3)?,
+			created: Some(from_unix_timestamp(row.get::<i64>(4)?)),
+		})
 	}
 
 	pub async fn get_slugs_by_hash(
 		&self,
 		hash: u64,
-	) -> Result<Vec<MatchingPaste>, Error> {
+	) -> Result<Vec<PasteRecord>, Error> {
 		let mut cmd = self.0.get_slugs_by_hash.clone();
 		let mut rows = cmd.query([hash as i64]).await?;
-		let mut results: Vec<MatchingPaste> = Vec::new();
+		let mut results: Vec<PasteRecord> = Vec::new();
 		while let Some(row) = rows.next().await? {
-			results.push(MatchingPaste {
+			results.push(PasteRecord {
 				slug: row.get(0)?,
 				content: (row.get::<Option<Vec<u8>>>(1)?).unwrap_or_default(),
 			});
@@ -116,27 +110,18 @@ impl Statements {
 		})
 	}
 
-	async fn insert_route(&self, route: AgnosticRoute) -> Result<(), Error> {
-		let id = turso::Value::from(route.id);
-		let kind = turso::Value::from(route.kind as u8);
-		let hash = turso::Value::from(route.hash);
-		let content = turso::Value::from(route.content);
+	pub async fn insert(
+		&self,
+		route: &impl Storable,
+	) -> Result<SystemTime, Error> {
+		let id = turso::Value::from(route.id().to_string());
+		let kind = turso::Value::from(route.kind() as u8);
+		let hash = turso::Value::from(route.hash());
+		let content = turso::Value::from(route.content().map(|c| c.to_vec()));
 
 		let mut cmd = self.0.insert_route.clone();
-		cmd.execute([id, kind, hash, content]).await?;
-		Ok(())
-	}
-
-	pub async fn insert_paste(&self, paste: CompPaste) -> Result<(), Error> {
-		let route: AgnosticRoute = Route::from(paste).into();
-		self.insert_route(route).await
-	}
-
-	pub async fn insert_redirect(
-		&self,
-		redirect: CompRedirect,
-	) -> Result<(), Error> {
-		let route: AgnosticRoute = Route::from(redirect).into();
-		self.insert_route(route).await
+		let row = cmd.query_row([id, kind, hash, content]).await?;
+		let created_unix: i64 = row.get(0)?;
+		Ok(from_unix_timestamp(created_unix))
 	}
 }

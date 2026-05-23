@@ -14,7 +14,7 @@ use tokio::{
 
 use crate::{
 	config::{logging::ERR_KEY, Config, PastebinCfg},
-	storage::{model::HashedPaste, Storage},
+	storage::{model::PasteInput, Storage},
 	util::{decompress, SlugGenerator},
 };
 
@@ -50,7 +50,7 @@ impl Pastebin {
 
 			tokio::spawn(async move {
 				let result: Result<()> = async {
-					let paste: HashedPaste =
+					let paste: PasteInput =
 						Self::recv_paste(max_buffer, r).await?.into();
 
 					if let Some(slug) = Self::find_match(&db, &paste).await? {
@@ -59,9 +59,9 @@ impl Pastebin {
 					}
 
 					let slug = slugs.gen_unique(&db).await?;
-					let compressed = paste.try_into_comp_paste(slug)?;
+					let compressed = paste.try_into_compressed_paste(slug)?;
+					let _created_on = db.queries.insert(&compressed).await?;
 
-					// TODO: Insert in DB
 					// TODO: Return the url for hosted paste
 					Ok(())
 				}
@@ -78,7 +78,7 @@ impl Pastebin {
 
 	async fn find_match(
 		db: &Storage,
-		paste: &HashedPaste,
+		paste: &PasteInput,
 	) -> Result<Option<String>> {
 		let hash_matches = db.queries.get_slugs_by_hash(paste.hash()).await?;
 		for p in hash_matches {
@@ -101,8 +101,6 @@ impl Pastebin {
 		loop {
 			match r.read(&mut buf).await {
 				Ok(0) => {
-					// We can't discern between EOF and an error
-					// Breaking silently is the safer/more graceful approach
 					debug("incoming TCP upload potentially cut short", src!());
 					break;
 				}
