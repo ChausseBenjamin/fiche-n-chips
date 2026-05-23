@@ -1,4 +1,8 @@
 # TODO: build for musl when compiling for docker containers
+[build]
+rustflags = ["-Z", "threads=8"]
+rustc-wrapper = "/home/master/.cargo/bin/sccache"
+
 [target.'cfg(target_os = "linux")']
 linker = "clang"
 rustflags = ["-C", "link-arg=-fuse-ld=mold"]

@@ -21,7 +21,6 @@ pub const DEFAULT_DB_NAME: &str = "store.db";
 
 static DB_SCHEMA: &str = include_str!("schema.sql");
 
-#[derive(Clone)]
 pub struct Storage {
 	connection: Connection,
 	pub queries: Statements,

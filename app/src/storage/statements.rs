@@ -8,7 +8,6 @@ use super::{
 };
 use crate::util::from_unix_timestamp;
 
-#[derive(Clone)]
 pub struct Statements(InnerStatements);
 
 #[rustfmt::skip]
@@ -78,7 +77,7 @@ impl Statements {
 	pub async fn slug_exists(&self, path: &str) -> Result<bool, Error> {
 		let mut cmd = self.0.slug_exists.clone();
 		let row = cmd.query_row([path]).await?;
-		let exists: u64 = row.get::<i64>(0)? as u64;
+		let exists = row.get::<i64>(0)?;
 		Ok(exists == 1)
 	}
 
@@ -87,7 +86,7 @@ impl Statements {
 		range: Duration,
 	) -> Result<Vec<DeletedRoute>, Error> {
 		let mut cmd = self.0.del_expired.clone();
-		let mut rows = cmd.query(()).await?;
+		let mut rows = cmd.query([format!("-{} seconds", range.as_secs())]).await?;
 		let mut results: Vec<DeletedRoute> = Vec::new();
 		while let Some(row) = rows.next().await? {
 			results.push(DeletedRoute {

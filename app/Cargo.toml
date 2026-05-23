@@ -19,7 +19,7 @@ xxhash-rust = { version = "0.8.15", features = ["xxh3"] } # non-cryptographic ha
 brotli = "8.0.2"                                          # text compression
 
 # General purpose tools
-rslog = { path = "../rslog", features = ["actix", "json"] }
+rslog = { path = "../rslog", features = ["json"] }
 thiserror = "2.0.18"
 
 [dev-dependencies]

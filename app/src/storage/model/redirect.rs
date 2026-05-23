@@ -1,9 +1,6 @@
 use std::{sync::Arc, time::SystemTime};
 
-use super::{
-	super::Result,
-	RouteKind, Storable,
-};
+use super::{super::Result, RouteKind, Storable};
 use crate::{
 	storage::Storage,
 	util::{compress, SlugGenerator},
@@ -47,12 +44,9 @@ impl RedirectInput {
 		&self.0.destination
 	}
 	pub fn short(&self) -> Option<&str> {
-		match &self.0.short {
-			Some(v) => todo!(),
-			None => None,
-		}
+		self.0.short.as_deref()
 	}
-	pub fn try_into_compressed_redirect(
+	pub async fn try_into_compressed_redirect(
 		self,
 		db: Arc<Storage>,
 		slugs: Arc<SlugGenerator>,
@@ -60,7 +54,7 @@ impl RedirectInput {
 		let destination = compress(self.0.destination)?;
 		let short = match self.0.short {
 			Some(v) => v,
-			None => slugs.gen_unique(&db)?,
+			None => slugs.gen_unique(&db).await?,
 		};
 		Ok(CompressedRedirect { short, destination })
 	}

@@ -10,10 +10,6 @@ use std::{fmt::format, io::Result, net::SocketAddr, sync::Arc};
 use clap::Parser;
 use config::{logging::ERR_KEY, Config};
 use rslog::{attrs, debug, error, info, src, Logger};
-use tokio::{
-	io::{AsyncReadExt, AsyncWriteExt},
-	net::TcpListener,
-};
 
 use crate::{pastebin::Pastebin, storage::Storage};
 

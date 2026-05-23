@@ -35,7 +35,8 @@ pub struct ServerCfg {
 	#[arg(long, env = "PASTE_PORT", default_value_t = 9002)]
 	pub paste_port: u16,
 	/// Directory containing hard-coded html files the server should host
-	#[arg(long, env = "HTML_DIR", default_value_t = None)]
+	/// (files packaged in the binary will be used if none is provided)
+	#[arg(long, env = "HTML_DIR")]
 	pub html_dir: Option<PathBuf>,
 }
 

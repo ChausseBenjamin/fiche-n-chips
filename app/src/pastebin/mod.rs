@@ -44,14 +44,13 @@ impl Pastebin {
 		loop {
 			// XXX: hash _addr for rate_limiting, blacklisting, maybe?
 			let (sock, _addr) = listener.accept().await?;
-			let (mut r, mut w) = sock.into_split();
-			let mut db = self.db.clone();
-			let mut slugs = self.slugs.clone();
+			let (r, w) = sock.into_split();
+			let db = self.db.clone();
+			let slugs = self.slugs.clone();
 
 			tokio::spawn(async move {
 				let result: Result<()> = async {
-					let paste: PasteInput =
-						Self::recv_paste(max_buffer, r).await?.into();
+					let paste: PasteInput = Self::recv_paste(max_buffer, r).await?.into();
 
 					if let Some(slug) = Self::find_match(&db, &paste).await? {
 						Self::return_url(w, slug).await?;
@@ -72,8 +71,6 @@ impl Pastebin {
 				}
 			});
 		}
-
-		Ok(())
 	}
 
 	async fn find_match(
@@ -90,7 +87,7 @@ impl Pastebin {
 		Ok(None)
 	}
 
-	async fn return_url(mut w: OwnedWriteHalf, slug: String) -> Result<()> {
+	async fn return_url(w: OwnedWriteHalf, slug: String) -> Result<()> {
 		todo!()
 	}
 
