@@ -52,14 +52,16 @@ pub struct ManagementCfg {
 	/// How long pastes and redirects are retained
 	#[arg(long, env = "RETENTION", default_value = "365days", value_parser = parse_duration)]
 	pub retention: Duration,
+	/// Character length of generated slugs
+	/// - always the case for paste
+	/// - used for shortening when no short url is provided
+	#[arg(long, env = "SLUG_LEN", default_value_t = 4)]
+	pub slug_length: u8,
 }
 
 #[derive(Args)]
 #[clap(next_help_heading = "Pastebin")]
 pub struct PastebinCfg {
-	/// Character length of generated paste slugs
-	#[arg(long, env = "PASTE_SLUG_LEN", default_value_t = 4)]
-	pub slug_length: u8,
 	/// Maximum paste size in KB
 	#[arg(long, env = "PASTE_MAX_KB", default_value = "256", value_parser = kb_to_bytes::<u32>)]
 	pub max_buffer: u32,
@@ -72,7 +74,7 @@ pub struct RedirectCfg {
 	#[arg(long, env = "REDIRECT_MAX_KB", default_value = "2", value_parser = kb_to_bytes::<u32>)]
 	pub max_raw: u32,
 	/// Maximum character length of generated redirect slugs
-	#[arg(long, env = "REDIRECT_SLUG_LEN", default_value_t = 144)]
+	#[arg(long, env = "REDIRECT_SLUG_LIMIT", default_value_t = 144)]
 	pub max_short: u16,
 }
 
