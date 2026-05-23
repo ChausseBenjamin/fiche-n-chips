@@ -2,10 +2,7 @@ use std::time::SystemTime;
 
 use xxhash_rust::xxh3::xxh3_64_with_seed;
 
-use super::{
-	super::Result,
-	RouteKind, Storable,
-};
+use super::{super::Result, RouteKind, Storable};
 use crate::util::compress;
 
 pub struct CompressedPaste {
@@ -51,7 +48,10 @@ impl PasteInput {
 	pub fn content(&self) -> &str {
 		&self.0.content
 	}
-	pub fn try_into_compressed_paste(self, slug: String) -> Result<CompressedPaste> {
+	pub fn try_into_compressed_paste(
+		self,
+		slug: String,
+	) -> Result<CompressedPaste> {
 		let compressed = compress(self.0.content)?;
 		Ok(CompressedPaste {
 			slug,

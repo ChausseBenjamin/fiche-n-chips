@@ -12,37 +12,35 @@ pub struct Statements(InnerStatements);
 
 #[rustfmt::skip]
 struct InnerStatements {
-	get_from_path:     Statement,
-	get_slugs_by_hash: Statement,
-	slug_exists:       Statement,
 	del_expired:       Statement,
 	del_from_path:     Statement,
+	get_from_path:     Statement,
+	get_slugs_by_hash: Statement,
 	insert_route:      Statement,
+	slug_exists:       Statement,
 }
 
 impl Statements {
 	pub async fn setup(conn: &Connection) -> Result<Self, Error> {
 		Ok(Self( InnerStatements{
-			get_from_path: conn
-				.prepare_cached("SELECT id, kind, hash, content, created_on FROM routes WHERE id = ?")
-				.await?,
-			get_slugs_by_hash: conn
-				.prepare_cached("SELECT id, content FROM routes WHERE hash = ?")
-				.await?,
-			slug_exists: conn
-				.prepare_cached("SELECT EXISTS(SELECT 1 FROM routes WHERE id = ?)")
-				.await?,
-			del_expired: conn
-				.prepare_cached(
-					"DELETE FROM routes WHERE kind != 0 AND created_on < datetime('now', ?) RETURNING id, created_on")
-				.await?,
-			del_from_path: conn
-				.prepare_cached("DELETE FROM routes WHERE id = ? RETURNING id, created_on")
-				.await?,
-			insert_route: conn
-				.prepare_cached(
-					"INSERT INTO routes (id, kind, hash, content) VALUES (?, ?, ?, ?) RETURNING created_on")
-				.await?,
+			del_from_path: conn.prepare_cached(
+        "DELETE FROM routes WHERE id = ? RETURNING id, created_on"
+        ).await?,
+			get_from_path: conn.prepare_cached(
+        "SELECT id, kind, hash, content, created_on FROM routes WHERE id = ?"
+        ).await?,
+			get_slugs_by_hash: conn.prepare_cached(
+        "SELECT id, content FROM routes WHERE hash = ?"
+        ).await?,
+			insert_route: conn.prepare_cached(
+        "INSERT INTO routes (id, kind, hash, content) VALUES (?, ?, ?, ?) RETURNING created_on"
+        ).await?,
+			slug_exists: conn.prepare_cached(
+        "SELECT EXISTS(SELECT 1 FROM routes WHERE id = ?)"
+        ).await?,
+      del_expired: conn.prepare_cached(
+        "DELETE FROM routes WHERE kind != 0 AND created_on < datetime('now', ?) RETURNING id, created_on"
+        ).await?,
 		}))
 	}
 

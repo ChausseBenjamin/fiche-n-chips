@@ -87,10 +87,11 @@ impl Storage {
 	}
 
 	async fn table_exists(conn: &Connection, name: &str) -> Result<bool> {
-		let mut stmt = conn.prepare_cached(
-			"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
-		)
-		.await?;
+		let mut stmt = conn
+			.prepare_cached(
+				"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
+			)
+			.await?;
 		let row = stmt.query_row(turso::params![name]).await?;
 		Ok(row.get::<i64>(0)? > 0)
 	}
@@ -120,7 +121,8 @@ impl Storage {
 	}
 
 	fn normalize_sql(sql: &str) -> String {
-		sql.lines()
+		sql
+			.lines()
 			.map(|l| {
 				let l = l.find("--").map_or(l, |i| &l[..i]);
 				l.trim()

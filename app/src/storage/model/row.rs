@@ -16,7 +16,12 @@ impl TryFrom<i64> for RouteKind {
 			0 => RouteKind::Reserved,
 			1 => RouteKind::Redirect,
 			2 => RouteKind::Paste,
-			v => return Err(Self::Error::ParseErr(format!("{} isn't a valid route kind", v))),
+			v => {
+				return Err(Self::Error::ParseErr(format!(
+					"{} isn't a valid route kind",
+					v
+				)))
+			}
 		})
 	}
 }
