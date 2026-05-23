@@ -23,8 +23,8 @@ pub struct Config {
 #[clap(next_help_heading = "Server")]
 pub struct ServerCfg {
 	/// Address advertised to users in API and TCP responses
-	#[arg(long, env = "PUBLIC_ADDR")]
-	pub public_addr: Option<Box<str>>,
+	#[arg(long, env = "PUBLIC_ADDR", default_value = "http://localhost")]
+	pub public_addr: Box<str>,
 	/// Address to bind to (use 0.0.0.0 to be accessible from other devices)
 	#[arg(long, env = "LISTEN_ADDR", default_value_t = Box::from("127.0.0.1"))]
 	pub listen_addr: Box<str>,

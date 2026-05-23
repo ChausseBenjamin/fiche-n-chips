@@ -7,7 +7,7 @@ use std::io;
 pub use error::{Error, Result};
 use rslog::{attrs, error, info};
 use tokio::{
-	io::AsyncReadExt,
+	io::{AsyncReadExt, AsyncWriteExt},
 	net::{tcp::OwnedWriteHalf, TcpListener, TcpStream},
 };
 
@@ -17,7 +17,7 @@ use crate::{
 	util::{decompress, SlugGenerator},
 };
 
-//                  data    overflowed
+//                  data    over-the-limit
 pub struct RawInput(String, bool);
 
 pub struct Pastebin {
@@ -48,24 +48,37 @@ impl Pastebin {
 			let (mut sock, _addr) = listener.accept().await?;
 			let db = self.db.clone();
 			let slugs = self.slugs.clone();
+			let cfg = self.cfg.clone();
 
 			tokio::spawn(async move {
 				let result: Result<()> = async {
-					let paste: PasteInput =
-						Self::recv_paste(max_buffer, &mut sock).await?.into();
+					let RawInput(raw, busted) =
+						Self::recv_paste(max_buffer, &mut sock).await?;
+          let paste = PasteInput::from(raw);
 
 					let w = sock.into_split().1;
 
 					if let Some(slug) = Self::find_match(&db, &paste).await? {
-						Self::return_url(w, slug).await?;
+						// TODO: I'm on the fence about wether or not to include this extra.
+						// If it's not the same author uploading twice, I'm potentially
+						// giving info about someone.
+						let msg =
+							Some("It apears this has already been uploaded at some point. This the url from the original upload.\n");
+						Self::return_url(w, &cfg, slug, msg).await?;
 						return Ok(());
 					}
 
-					let slug = slugs.gen_unique(&db).await?;
-					let compressed = paste.try_into_compressed_paste(slug)?;
-					let _created_on = db.queries.insert(&compressed).await?;
+          let msg = if busted {
+            Some("It looks like what you uploaded was a bit too big and had to get cut short.\nSorry Eh...\n")
+          } else {
+              None
+          };
 
-					// TODO: Return the url for hosted paste
+					let slug = slugs.gen_unique(&db).await?;
+					let compressed = paste.try_into_compressed_paste(slug.clone())?;
+					let _created = db.queries.insert(&compressed).await?;
+					Self::return_url(w, &cfg, slug, msg).await?;
+
 					Ok(())
 				}
 				.await;
@@ -91,8 +104,17 @@ impl Pastebin {
 		Ok(None)
 	}
 
-	async fn return_url(w: OwnedWriteHalf, slug: String) -> Result<()> {
-		todo!()
+	async fn return_url(
+		mut w: OwnedWriteHalf,
+		cfg: &Config,
+		slug: String,
+		extra: Option<&str>,
+	) -> Result<()> {
+		let extra = if let Some(v) = extra { v } else { "" };
+		let mut msg: String =
+			format!("{}/{}\n{}", cfg.server.public_addr, slug, extra);
+		w.write_buf(&mut msg.as_bytes()).await?;
+		Ok(())
 	}
 
 	async fn recv_paste(
@@ -101,18 +123,19 @@ impl Pastebin {
 	) -> Result<RawInput> {
 		let mut output = String::with_capacity(BUFFER_CAPACITY);
 		let mut buf: Box<[u8]> = vec![0; BUFFER_CAPACITY].into();
+		let mut overflowed = false;
 
 		// First read: blocking, wait for initial data
 		let n = sock.read(&mut buf).await?;
 		if n == 0 {
-			return Ok(output);
+			return Ok(RawInput(output, false));
 		}
 		{
 			let remainder = buf_max - output.len();
 			let txt = String::from_utf8_lossy(&buf[..n]);
 			if n > remainder {
 				output.push_str(&txt[..remainder]);
-				return Ok(output);
+				return Ok(RawInput(output, true));
 			}
 			output.push_str(&txt);
 		}
@@ -126,6 +149,7 @@ impl Pastebin {
 					let txt = String::from_utf8_lossy(&buf[..n]);
 					if n > remainder {
 						output.push_str(&txt[..remainder]);
+						overflowed = true;
 						break;
 					} else {
 						output.push_str(&txt);
@@ -136,6 +160,6 @@ impl Pastebin {
 			}
 		}
 
-		Ok(output)
+		Ok(RawInput(output, overflowed))
 	}
 }
