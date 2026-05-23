@@ -62,7 +62,11 @@ impl Storage {
 			}
 
 			// VALIDATE SCHEMA:
-			Self::validate_schema(&connection).await?;
+			if !Self::table_exists(&connection, "routes").await? {
+				connection.execute(DB_SCHEMA, ()).await?;
+			} else {
+				Self::validate_schema(&connection).await?;
+			}
 		}
 
 		// PRAGMA RULES:
@@ -80,6 +84,15 @@ impl Storage {
 			connection,
 			queries,
 		})
+	}
+
+	async fn table_exists(conn: &Connection, name: &str) -> Result<bool> {
+		let mut stmt = conn.prepare_cached(
+			"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
+		)
+		.await?;
+		let row = stmt.query_row(turso::params![name]).await?;
+		Ok(row.get::<i64>(0)? > 0)
 	}
 
 	async fn fetch_schema(conn: &Connection) -> Result<String> {
@@ -107,35 +120,19 @@ impl Storage {
 	}
 
 	fn normalize_sql(sql: &str) -> String {
-		let mut s: String = sql
-			.lines()
+		sql.lines()
 			.map(|l| {
-				let l = if let Some(idx) = l.find("--") {
-					&l[..idx]
-				} else {
-					l
-				};
+				let l = l.find("--").map_or(l, |i| &l[..i]);
 				l.trim()
 			})
 			.filter(|l| !l.is_empty())
 			.collect::<Vec<_>>()
-			.join(" ");
-		s = s.to_lowercase();
-		s = s.replace("create table sqlite_sequence(name,seq)", "");
-		s = s.replace(';', "");
-		let mut out = String::new();
-		let mut prev_ws = false;
-		for c in s.chars() {
-			if c.is_whitespace() {
-				if !prev_ws {
-					out.push(' ');
-					prev_ws = true;
-				}
-			} else {
-				out.push(c);
-				prev_ws = false;
-			}
-		}
-		out.trim().to_string()
+			.join(" ")
+			.to_lowercase()
+			.replace("create table sqlite_sequence(name,seq)", "")
+			.replace(';', "")
+			.chars()
+			.filter(|c| !c.is_whitespace())
+			.collect()
 	}
 }

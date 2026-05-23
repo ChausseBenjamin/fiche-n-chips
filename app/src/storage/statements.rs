@@ -24,10 +24,10 @@ impl Statements {
 	pub async fn setup(conn: &Connection) -> Result<Self, Error> {
 		Ok(Self( InnerStatements{
 			get_from_path: conn
-				.prepare_cached("SELECT (id, kind, hash, content, created_on) FROM routes WHERE id = ?")
+				.prepare_cached("SELECT id, kind, hash, content, created_on FROM routes WHERE id = ?")
 				.await?,
 			get_slugs_by_hash: conn
-				.prepare_cached("SELECT (id, content) FROM routes WHERE hash = ?")
+				.prepare_cached("SELECT id, content FROM routes WHERE hash = ?")
 				.await?,
 			slug_exists: conn
 				.prepare_cached("SELECT EXISTS(SELECT 1 FROM routes WHERE id = ?)")

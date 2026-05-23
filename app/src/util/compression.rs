@@ -1,6 +1,6 @@
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 
-use brotli::CompressorWriter;
+use brotli::{CompressorWriter, Decompressor};
 
 pub fn compress(src: String) -> Result<Vec<u8>, io::Error> {
 	let mut out = Vec::new();
@@ -12,5 +12,7 @@ pub fn compress(src: String) -> Result<Vec<u8>, io::Error> {
 }
 
 pub fn decompress(src: Vec<u8>) -> Result<String, io::Error> {
-	todo!()
+	let mut out = String::new();
+	Decompressor::new(&src[..], 4096).read_to_string(&mut out)?;
+	Ok(out)
 }
