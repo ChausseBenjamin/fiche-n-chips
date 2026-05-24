@@ -5,9 +5,7 @@ pub trait Context {
 pub struct Background;
 
 impl Context for Background {
-	fn get<T: Clone + Send + Sync + 'static>(&self) -> Option<T> {
-		None
-	}
+	fn get<T: Clone + Send + Sync + 'static>(&self) -> Option<T> { None }
 }
 
 #[cfg(feature = "actix")]

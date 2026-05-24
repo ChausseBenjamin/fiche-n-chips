@@ -1,19 +1,16 @@
-use std::{
-	any::Any,
-	error::Error,
-	ops::{Deref, DerefMut},
-	sync::{Mutex, MutexGuard, OnceLock},
-};
+use std::any::Any;
+use std::ops::{Deref, DerefMut};
+use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use crate::{
-	Attr, Context as Ctx, Handler, Level as Lvl, Logger, Source as Src,
-	TextHandler,
+	Attr, Context as Ctx, Handler, Level as Lvl, Logger, Source as Src, TextHandler,
 };
 
 pub struct DefaultLogger<L>(pub(crate) L);
 
 impl<L: Deref<Target = Logger>> Deref for DefaultLogger<L> {
 	type Target = Logger;
+
 	fn deref(&self) -> &Logger {
 		self.0.deref()
 	}
@@ -49,7 +46,7 @@ pub fn enabled(ctx: &dyn Any, level: &dyn Lvl) -> bool {
 }
 
 pub fn with(attrs: Vec<Attr>) -> Logger {
-	Logger::from(default().with(attrs))
+	default().with(attrs)
 }
 
 pub fn log_context<C: Ctx + 'static>(
@@ -58,50 +55,41 @@ pub fn log_context<C: Ctx + 'static>(
 	msg: &str,
 	src_args: (Src, Vec<Attr>),
 ) {
-	let _ = default().log_context(ctx, level, msg, src_args);
+	default().log_context(ctx, level, msg, src_args);
 }
 
-#[rustfmt::skip]
 pub fn debug_context<C: Ctx + 'static>(ctx: &C, msg: &str, src_args: (Src, Vec<Attr>)) {
-	let _ = default().debug_context(ctx, msg, src_args);
+	default().debug_context(ctx, msg, src_args);
 }
 
-#[rustfmt::skip]
 pub fn info_context<C: Ctx + 'static>(ctx: &C, msg: &str, src_args: (Src, Vec<Attr>)) {
-	let _ = default().info_context(ctx, msg, src_args);
+	default().info_context(ctx, msg, src_args);
 }
 
-#[rustfmt::skip]
 pub fn warn_context<C: Ctx + 'static>(ctx: &C, msg: &str, src_args: (Src, Vec<Attr>)) {
-	let _ = default().warn_context(ctx, msg, src_args);
+	default().warn_context(ctx, msg, src_args);
 }
 
-#[rustfmt::skip]
 pub fn error_context<C: Ctx + 'static>(ctx: &C, msg: &str, src_args: (Src, Vec<Attr>)) {
-	let _ = default().error_context(ctx, msg, src_args);
+	default().error_context(ctx, msg, src_args);
 }
 
-#[rustfmt::skip]
 pub fn log(level: impl Lvl + 'static, msg: &str, src_args: (Src, Vec<Attr>)) {
-	let _ = default().log(level, msg, src_args);
+	default().log(level, msg, src_args);
 }
 
-#[rustfmt::skip]
 pub fn debug(msg: &str, src_args: (Src, Vec<Attr>)) {
-	let _ = default().debug(msg, src_args);
+	default().debug(msg, src_args);
 }
 
-#[rustfmt::skip]
 pub fn info(msg: &str, src_args: (Src, Vec<Attr>)) {
-	let _ = default().info(msg, src_args);
+	default().info(msg, src_args);
 }
 
-#[rustfmt::skip]
 pub fn warn(msg: &str, src_args: (Src, Vec<Attr>)) {
-	let _ = default().warn(msg, src_args);
+	default().warn(msg, src_args);
 }
 
-#[rustfmt::skip]
 pub fn error(msg: &str, src_args: (Src, Vec<Attr>)) {
-	let _ = default().error(msg, src_args);
+	default().error(msg, src_args);
 }

@@ -5,24 +5,32 @@ pub mod model;
 mod pragma;
 mod statements;
 
+use const_format::formatcp;
 pub use error::{Error, Result};
+use model::{Reserved, RouteKind, Storable};
 use rslog::{attrs, debug, error, src};
 use statements::Statements;
-use turso::{Builder, Connection};
+use turso::{Builder, Connection, Value};
 
-use crate::{
-	config::Config,
-	storage::pragma::{PragmaCfg, PRAGMA_CONSTRAINTS},
-	util::valid_filepath,
-};
+use crate::config::Config;
+use crate::storage::pragma::{PragmaCfg, PRAGMA_CONSTRAINTS};
+use crate::util::valid_filepath;
 
 // Used if the user provides a path/dir but no filename
 pub const DEFAULT_DB_NAME: &str = "store.db";
 
 static DB_SCHEMA: &str = include_str!("schema.sql");
 
+const DEL_MISSING_RESERVED: &str = formatcp!(
+	"DELETE FROM routes WHERE kind = {} AND ID NOT IN",
+	RouteKind::Reserved as u8
+);
+
+const INSERT_ROUTES_SAFE: &str =
+	"INSERT OR IGNORE INTO routes (id, kind, hash, content) VALUES";
+
 pub struct Storage {
-	connection: Connection,
+	connection:  Connection,
 	pub queries: Statements,
 }
 
@@ -32,26 +40,22 @@ impl Storage {
 		debug("setting up the database connection", src!());
 		let db_path = valid_filepath(&cfg.management.db_path, DEFAULT_DB_NAME)?;
 		let db_exists = db_path.exists();
-		let db = Builder::new_local(db_path.to_str().unwrap_or_else(|| {
-			// Reaching this implies the user provided a custom path.
-			// It's better to exit early than fallback to the default because
-			// doing so will create an empty DB which can confuse the user. It
-			// won't be immediately obvious to him (other than parusing logs
+		let path_str = db_path.to_str().ok_or_else(|| {
 			error(
 				"failed to parse provided path",
 				attrs!("input" => db_path.display().to_string()),
 			);
-			panic!();
-		}))
-		.build()
-		.await?;
-		let connection = db.connect()?;
+			Error::SetupErr("db path contains invalid UTF-8".to_string())
+		})?;
+		let db = Builder::new_local(path_str).build().await?;
+		let conn = db.connect()?;
 
 		if !db_exists {
-			connection.execute(DB_SCHEMA, ()).await?;
+			conn.execute(DB_SCHEMA, ()).await?;
+			conn.pragma_update("user_version", Self::schema_fingerprint()).await?;
 		} else {
 			// INTEGRITY CHECK:
-			let mut rows = connection.query("PRAGMA integrity_check", ()).await?;
+			let mut rows = conn.query("PRAGMA integrity_check", ()).await?;
 			if let Some(row) = rows.next().await? {
 				let msg: String = row.get(0)?;
 				if msg != "ok" {
@@ -61,11 +65,25 @@ impl Storage {
 				}
 			}
 
-			// VALIDATE SCHEMA:
-			if !Self::table_exists(&connection, "routes").await? {
-				connection.execute(DB_SCHEMA, ()).await?;
-			} else {
-				Self::validate_schema(&connection).await?;
+			// SCHEMA FINGERPRINT CHECK:
+			let stored: i64 = {
+				let mut rows = conn.query("PRAGMA user_version", ()).await?;
+				rows.next().await?.map(|r| r.get(0)).transpose()?.unwrap_or(0)
+			};
+
+			if stored != Self::schema_fingerprint() {
+				drop(conn);
+				drop(db);
+				let backup = db_path.with_file_name(format!(
+					"{}-{}",
+					std::time::SystemTime::now()
+						.duration_since(std::time::UNIX_EPOCH)
+						.unwrap_or_default()
+						.as_nanos(),
+					db_path.file_name().unwrap_or_default().to_string_lossy()
+				));
+				std::fs::rename(&db_path, &backup)?;
+				return Box::pin(Self::setup(cfg)).await;
 			}
 		}
 
@@ -74,67 +92,75 @@ impl Storage {
 			.iter()
 			.chain([PragmaCfg::mem_cache(cfg.management.db_cache)].iter())
 		{
-			connection.pragma_update(p.name, p.val).await?;
+			conn.pragma_update(p.name, p.val).await?;
 		}
 
 		// FINAL TOUCHES:
-		let queries = Statements::setup(&connection).await?;
+		let queries = Statements::setup(&conn).await?;
 
 		Ok(Self {
-			connection,
+			connection: conn,
 			queries,
 		})
 	}
 
-	async fn table_exists(conn: &Connection, name: &str) -> Result<bool> {
-		let mut stmt = conn
-			.prepare_cached(
-				"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
-			)
-			.await?;
-		let row = stmt.query_row(turso::params![name]).await?;
-		Ok(row.get::<i64>(0)? > 0)
-	}
-
-	async fn fetch_schema(conn: &Connection) -> Result<String> {
-		let mut rows = conn
-			.query("SELECT sql FROM sqlite_master WHERE type='table'", ())
-			.await?;
-		let mut out = String::new();
-		while let Some(row) = rows.next().await? {
-			if let turso::Value::Text(sql) = row.get_value(0)? {
-				out.push_str(&sql);
-				out.push('\n');
-			}
+	fn schema_fingerprint() -> i64 {
+		let mut hash: u32 = 2_166_136_261;
+		for b in DB_SCHEMA.bytes() {
+			hash ^= b as u32;
+			hash = hash.wrapping_mul(16_777_619);
 		}
-		Ok(out)
+		hash as i64
 	}
 
-	async fn validate_schema(conn: &Connection) -> Result<()> {
-		let actual = Self::fetch_schema(conn).await?;
-		if Self::normalize_sql(DB_SCHEMA) != Self::normalize_sql(&actual) {
-			return Err(Error::SetupErr(
-				"database schema does not match embedded schema".to_string(),
-			));
+	pub async fn sync_reserved_routes(
+		&self,
+		paths: Vec<Reserved>,
+	) -> Result<u64> {
+		if paths.is_empty() {
+			error(
+				"no http paths are reserved",
+				attrs!("desc" => "the server should accept/serve stuff but this indicates api endpoints aren't protected and no homepages are being hosted..."),
+			);
+			// Return Ok to remain resilient and serve content
+			// Best we can do is log the error...
+			return Ok(0);
 		}
-		Ok(())
-	}
 
-	fn normalize_sql(sql: &str) -> String {
-		sql
-			.lines()
-			.map(|l| {
-				let l = l.find("--").map_or(l, |i| &l[..i]);
-				l.trim()
+		let mut conn = self.connection.clone();
+		let tx = conn.transaction().await?;
+		let mut modified = 0;
+
+		let safe_insert_cmd = format!(
+			"{} {}",
+			INSERT_ROUTES_SAFE,
+			vec!["(?, ?, ?, ?)"; paths.len()].join(", ")
+		);
+		let safe_insert_args = paths
+			.iter()
+			.flat_map(|p| {
+				vec![
+					Value::from(p.id().to_string()),
+					Value::from(p.kind() as u8),
+					Value::from(p.hash()),
+					Value::from(p.content()),
+				]
 			})
-			.filter(|l| !l.is_empty())
-			.collect::<Vec<_>>()
-			.join(" ")
-			.to_lowercase()
-			.replace("create table sqlite_sequence(name,seq)", "")
-			.replace(';', "")
-			.chars()
-			.filter(|c| !c.is_whitespace())
-			.collect()
+			.collect::<Vec<Value>>();
+		modified += tx.execute(safe_insert_cmd, safe_insert_args).await?;
+
+		let del_cmd = format!(
+			"{} ({})",
+			DEL_MISSING_RESERVED,
+			vec!["?"; paths.len()].join(", ")
+		);
+		let del_args = paths
+			.iter()
+			.map(|p| Value::from(p.id().to_string()))
+			.collect::<Vec<Value>>();
+		modified += tx.execute(del_cmd, del_args).await?;
+
+		tx.commit().await?;
+		Ok(modified)
 	}
 }

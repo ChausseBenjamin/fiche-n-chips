@@ -1,10 +1,14 @@
 use core::fmt;
-use std::{fmt::Display, fs::File, io, path::PathBuf, str::FromStr};
+use std::fmt::Display;
+use std::fs::File;
+use std::io;
+use std::path::PathBuf;
+use std::str::FromStr;
 
 use clap::{Args, ValueEnum};
 use rslog::{
-	DiscardHandler, JsonHandler, Level, Logger, RSlogLevel, TextHandler, DEBUG,
-	ERROR, INFO, WARN,
+	DiscardHandler, JsonHandler, Level, Logger, TextHandler, DEBUG, ERROR, INFO,
+	WARN,
 };
 
 use crate::util::valid_filepath;
@@ -18,7 +22,7 @@ pub const ERR_KEY: &str = "error_message";
 pub struct LoggingCfg {
 	#[arg(long = "log-level", env = "LOG_LEVEL", default_value = "info")]
 	/// Log verbosity level
-	pub level: LogLevel,
+	pub level:  LogLevel,
 	#[arg(long = "log-output", env = "LOG_OUTPUT", default_value = "stdout")]
 	/// Log destination
 	pub output: LogOutput,
@@ -27,7 +31,7 @@ pub struct LoggingCfg {
 	pub format: LogFmt,
 	#[arg(long = "log-trace", env = "LOG_TRACE", default_value_t = false)]
 	/// Enable trace logging
-	pub trace: bool,
+	pub trace:  bool,
 }
 
 macro_rules! logger_from {
@@ -46,6 +50,7 @@ macro_rules! logger_from {
 
 impl TryFrom<&LoggingCfg> for Logger {
 	type Error = io::Error;
+
 	fn try_from(value: &LoggingCfg) -> Result<Self, Self::Error> {
 		if matches!(value.format, LogFmt::None) {
 			return Ok(DiscardHandler {}.into());
@@ -125,6 +130,7 @@ pub enum LogOutput {
 
 impl FromStr for LogOutput {
 	type Err = io::Error;
+
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		let output: Result<Self, io::Error> = match s.trim() {
 			"stdout" | "-" => Ok(Self::Stdout),

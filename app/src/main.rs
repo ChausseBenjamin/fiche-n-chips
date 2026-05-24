@@ -1,46 +1,71 @@
-#![feature(time_systemtime_limits, random, core_float_math)]
+#![feature(random, core_float_math)]
 mod config;
+mod http;
 mod pastebin;
 mod reserved;
 mod storage;
+mod ui;
 mod util;
 
-use std::{fmt::format, io::Result, net::SocketAddr, sync::Arc};
+use std::io::Result;
+use std::sync::Arc;
 
+use actix_web::{web, App, HttpServer};
 use clap::Parser;
-use config::{logging::ERR_KEY, Config};
+use config::logging::ERR_KEY;
+use config::Config;
 use rslog::{attrs, debug, error, info, src, Logger};
 
-use crate::{pastebin::Pastebin, storage::Storage};
+use crate::pastebin::Pastebin;
+use crate::reserved::ReservedPathProvider;
+use crate::storage::Storage;
 
 #[tokio::main]
 async fn main() -> Result<()> {
 	let cfg = Arc::from(Config::parse());
 	let logger: Logger = TryFrom::try_from(&cfg.logging)?;
 	rslog::set_default(logger);
-	debug(
-		"logger configured",
-		attrs!(
-						"level" => cfg.logging.level.clone(),
-						"format" => cfg.logging.format.clone(),
-						"output" => cfg.logging.output.clone(),
-						"trace" => cfg.logging.trace.clone(),
-		),
-	);
+	info("starting server", src!());
+	let reserved = ReservedPathProvider::new(&cfg);
+
 	let storage =
 		Arc::from(Storage::setup(cfg.clone()).await.unwrap_or_else(|e| {
 			error(
 				"failed to complete database setup",
 				attrs!(
-				ERR_KEY => e,
+					ERR_KEY => e,
 				),
 			);
 			panic!()
 		}));
+	let _changed_rows = storage
+		.sync_reserved_routes(
+			reserved.paths().into_iter().map(Into::into).collect(),
+		)
+		.await;
 
-	let pb = Pastebin::new(cfg.clone(), storage);
+	let pb = Pastebin::new(cfg.clone(), storage.clone());
+	let http = Arc::new(http::Server::new(
+		cfg.clone(),
+		storage.clone(),
+		Arc::from(reserved),
+	));
 
-	pb.listen().await;
+	let (_pb, _http) = tokio::join!(
+		pb.listen(),
+		// TODO: async scheduled task that manages cleanups
+		async {
+			HttpServer::new(move || {
+				App::new()
+					.app_data(web::Data::from(http.clone()))
+					.default_service(web::to(http::Server::handler))
+			})
+			.bind((cfg.server.listen_addr.as_ref(), cfg.server.http_port))
+			.unwrap()
+			.run()
+			.await
+		},
+	);
 
 	Ok(())
 }

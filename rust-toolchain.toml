@@ -1,0 +1,11 @@
+# This repo requires nightly:
+# - `app/src/main.rs` uses `#![feature(...)]`
+# - `.cargo/config.toml` uses `-Z threads=...`
+# Pinning makes local + CI Clippy output consistent.
+
+[toolchain]
+channel = "nightly-2026-05-17"
+
+# Keep these installed for contributors and CI.
+# `clippy` is a rustup component (Clippy book: installation/usage chapters).
+components = ["clippy", "rustfmt"]

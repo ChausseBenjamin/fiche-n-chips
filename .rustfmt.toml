@@ -5,15 +5,22 @@ tab_spaces = 2
 
 merge_derives = true
 brace_style   = "SameLineWhere"
-chain_width   = 80
 
-struct_field_align_threshold = 0
+chain_width   = 70
+single_line_if_else_max_width = 70
+
+fn_single_line = true
+
+struct_field_align_threshold = 20
+enum_discrim_align_threshold = 20
 
 group_imports       = "StdExternalCrate"
-imports_granularity = "Crate"
+imports_granularity = "Module"
 reorder_imports     = true
 
 comment_width = 80
 wrap_comments = true
-
-edition = "2021"
+use_field_init_shorthand = true
+reorder_impl_items = true
+overflow_delimited_expr = true
+newline_style = "Unix"

@@ -3,6 +3,10 @@ name = "fiche-n-chips"
 version = "0.1.0"
 edition = "2021"
 
+[lints]
+# Inherit workspace lint policy.
+workspace = true
+
 [dependencies]
 
 # Cli development
@@ -11,7 +15,7 @@ humantime = "2.3.0"
 
 # Web interactions
 tokio = {version = "1.0.1", features = ["rt-multi-thread", "macros", "net", "io-util", "time"]}
-# actix-web = { version = "4", default-features = false, features = ["macros"] }
+actix-web = { version = "4", default-features = false, features = ["macros"] }
 
 # Specialized tools (specific to this project)
 turso = { version = "0.6.0", default-features = false }   # sqlite database
@@ -21,6 +25,7 @@ brotli = "8.0.2"                                          # text compression
 # General purpose tools
 rslog = { path = "../rslog", features = ["json"] }
 thiserror = "2.0.18"
+const_format = "0.2.36"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }
@@ -29,4 +34,3 @@ tokio = { version = "1", features = ["rt", "macros"] }
 lightningcss = { version = "1.0.0-alpha.71", default-features = false }
 minify-html = "0.18.1"
 brotli = "8.0.2"
-

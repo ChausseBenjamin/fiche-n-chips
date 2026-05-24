@@ -1,4 +1,7 @@
-use std::{any::Any, error::Error, io::Write, sync::Arc};
+use std::any::Any;
+use std::error::Error;
+use std::io::Write;
+use std::sync::Arc;
 
 use super::CommonHandler;
 use crate::{group, Attr, Handler, Level, Record};
@@ -6,9 +9,7 @@ use crate::{group, Attr, Handler, Level, Record};
 pub struct TextHandler<W: Write>(CommonHandler<W>);
 
 impl<W: Write> TextHandler<W> {
-	pub fn new(writer: W) -> Self {
-		Self(CommonHandler::new(writer))
-	}
+	pub fn new(writer: W) -> Self { Self(CommonHandler::new(writer)) }
 
 	pub fn app_name(mut self, name: impl Into<Arc<str>>) -> Self {
 		self.0.app_name = Some(name.into());
@@ -70,11 +71,7 @@ impl<W: Write + Send + 'static> Handler for TextHandler<W> {
 			));
 		}
 		let rhs: String = Self::str_attrs(attrs, None).join(", ");
-		let time = rec
-			.time
-			.duration_since(std::time::UNIX_EPOCH)
-			.map(|d| d.as_secs().to_string())
-			.unwrap_or_else(|_| "Invalid time".into());
+		let time = crate::util::format_time(rec.time);
 		let lhs: String = match (self.0.app_name.clone(), self.0.attach_time) {
 			(None, false) => format!("{} {}", rec.level, rec.msg),
 			(None, true) => format!("{} {}| {}", rec.level, time, rec.msg),
@@ -99,17 +96,18 @@ impl<W: Write + Send + 'static> Handler for TextHandler<W> {
 
 #[cfg(test)]
 mod tests {
-	use std::{sync::Arc, time::SystemTime};
+	use std::sync::Arc;
+	use std::time::SystemTime;
 
 	use super::*;
 	use crate::{attr, group, Record, Source, DEBUG, ERROR, INFO, WARN};
 
 	fn basic_record(msg: &str) -> Record {
 		Record {
-			time: SystemTime::UNIX_EPOCH,
-			msg: Arc::from(msg),
+			time:  SystemTime::UNIX_EPOCH,
+			msg:   Arc::from(msg),
 			level: Arc::new(INFO),
-			src: Source::new("test_module", "test_file.rs", 42),
+			src:   Source::new("test_module", "test_file.rs", 42),
 			attrs: vec![],
 		}
 	}
@@ -130,10 +128,9 @@ mod tests {
 		let rec = basic_record("hello");
 		handler.handle(&(), rec).unwrap();
 		let writer = handler.0.writer.lock().unwrap();
-		assert_eq!(
-			String::from_utf8(writer.clone()).unwrap(),
-			"INFO 0| hello: \n"
-		);
+		let output = String::from_utf8(writer.clone()).unwrap();
+		assert!(output.starts_with("INFO "), "output: {output}");
+		assert!(output.contains("| hello: \n"), "output: {output}");
 	}
 
 	#[test]
@@ -171,10 +168,9 @@ mod tests {
 		let rec = basic_record("hello");
 		handler.handle(&(), rec).unwrap();
 		let writer = handler.0.writer.lock().unwrap();
-		assert_eq!(
-			String::from_utf8(writer.clone()).unwrap(),
-			"INFO 0| myapp: hello: \n"
-		);
+		let output = String::from_utf8(writer.clone()).unwrap();
+		assert!(output.starts_with("INFO "), "output: {output}");
+		assert!(output.contains("| myapp: hello: \n"), "output: {output}");
 	}
 
 	#[test]
@@ -201,9 +197,13 @@ mod tests {
 		let rec = basic_record("hello");
 		handler.handle(&(), rec).unwrap();
 		let writer = handler.0.writer.lock().unwrap();
-		assert_eq!(
-			String::from_utf8(writer.clone()).unwrap(),
-			"INFO 0| hello: source.module=\"test_module\", source.file=\"test_file.rs\", source.line=\"42\"\n"
+		let output = String::from_utf8(writer.clone()).unwrap();
+		assert!(output.starts_with("INFO "), "output: {output}");
+		assert!(
+			output.contains(
+				"| hello: source.module=\"test_module\", source.file=\"test_file.rs\", source.line=\"42\"\n"
+			),
+			"output: {output}"
 		);
 	}
 
@@ -248,10 +248,10 @@ mod tests {
 		let mut handler =
 			TextHandler::new(buf).attach_time(false).min_level(ERROR.value());
 		let rec = Record {
-			time: SystemTime::UNIX_EPOCH,
-			msg: Arc::from("below_min_level"),
+			time:  SystemTime::UNIX_EPOCH,
+			msg:   Arc::from("below_min_level"),
 			level: Arc::new(WARN),
-			src: Source::new("m", "f", 1),
+			src:   Source::new("m", "f", 1),
 			attrs: vec![],
 		};
 		handler.handle(&(), rec).unwrap();
@@ -269,27 +269,29 @@ mod tests {
 		let mut handler = TextHandler::new(buf).min_level(DEBUG.value());
 
 		let rec = Record {
-			time: SystemTime::UNIX_EPOCH,
-			msg: Arc::from("debug msg"),
+			time:  SystemTime::UNIX_EPOCH,
+			msg:   Arc::from("debug msg"),
 			level: Arc::new(DEBUG),
-			src: Source::new("m", "f", 1),
+			src:   Source::new("m", "f", 1),
 			attrs: vec![],
 		};
 		handler.handle(&(), rec).unwrap();
 
 		let rec = Record {
-			time: SystemTime::UNIX_EPOCH,
-			msg: Arc::from("info msg"),
+			time:  SystemTime::UNIX_EPOCH,
+			msg:   Arc::from("info msg"),
 			level: Arc::new(INFO),
-			src: Source::new("m", "f", 1),
+			src:   Source::new("m", "f", 1),
 			attrs: vec![],
 		};
 		handler.handle(&(), rec).unwrap();
 
 		let writer = handler.0.writer.lock().unwrap();
 		let output = String::from_utf8(writer.clone()).unwrap();
-		assert!(output.contains("DEBUG 0| debug msg: \n"));
-		assert!(output.contains("INFO 0| info msg: \n"));
+		assert!(output.contains("DEBUG "), "output: {output}");
+		assert!(output.contains("| debug msg: \n"), "output: {output}");
+		assert!(output.contains("INFO "), "output: {output}");
+		assert!(output.contains("| info msg: \n"), "output: {output}");
 	}
 
 	#[test]

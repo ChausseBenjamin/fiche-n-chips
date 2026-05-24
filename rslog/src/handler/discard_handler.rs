@@ -1,13 +1,13 @@
-use std::{any::Any, error::Error, sync::Arc};
+use std::any::Any;
+use std::error::Error;
+use std::sync::Arc;
 
 use crate::{Attr, Handler, Level, Record};
 
 pub struct DiscardHandler;
 
 impl Handler for DiscardHandler {
-	fn enabled(&self, _ctx: &dyn Any, _lvl: &dyn Level) -> bool {
-		false
-	}
+	fn enabled(&self, _ctx: &dyn Any, _lvl: &dyn Level) -> bool { false }
 
 	fn handle(
 		&mut self,

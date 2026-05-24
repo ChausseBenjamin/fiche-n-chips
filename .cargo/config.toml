@@ -1,7 +1,19 @@
 # TODO: build for musl when compiling for docker containers
 [build]
 rustflags = ["-Z", "threads=8"]
-rustc-wrapper = "/home/master/.cargo/bin/sccache"
+rustc-wrapper = "/usr/bin/sccache"
+
+[alias]
+# Sane default: match the typical recommended invocation in docs/examples.
+clippy-all = "clippy --workspace --all-targets --all-features"
+
+# CI mode (non-blocking): runs Clippy with the repo's configured lint levels.
+clippy-ci = "clippy --workspace --all-targets --all-features"
+
+# CI mode (strict).
+# “Strict but low-noise”: only deny the bug-finding correctness group.
+# Useful as an incremental CI step if you want something that passes sooner.
+clippy-ci-strict-correctness = "clippy --workspace --all-targets --all-features -- -D clippy::correctness"
 
 [target.'cfg(target_os = "linux")']
 linker = "clang"

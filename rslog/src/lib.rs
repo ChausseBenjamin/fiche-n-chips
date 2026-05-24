@@ -7,6 +7,7 @@ mod logger;
 mod logvalue;
 mod record;
 mod source;
+mod util;
 
 pub use attr::*;
 pub use context::*;

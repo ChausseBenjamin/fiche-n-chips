@@ -1,5 +1,6 @@
 use core::f64::math::ceil;
-use std::{char, random::random, sync::Arc};
+use std::char;
+use std::random::random;
 
 use rslog::{attrs, debug};
 
@@ -14,7 +15,7 @@ pub struct SlugGenerator {
 	/// number of u64 values needed to compute a slug of size n
 	/// cached in the struct to avoid computing a log2 every-time
 	randint_count: usize,
-	slug_len: usize,
+	slug_len:      usize,
 }
 
 impl SlugGenerator {
@@ -35,8 +36,10 @@ impl SlugGenerator {
 
 	fn random(&self) -> String {
 		// Maximum ammount of bits needed
-		let mut entropy: Vec<_> =
-			(0..self.randint_count).into_iter().map(|_| random::<u64>(..)).collect();
+		let mut entropy: Vec<_> = (0..self.randint_count)
+			.into_iter()
+			.map(|_| random::<u64>(..))
+			.collect();
 		let out: String = (0..self.slug_len)
 			.into_iter()
 			.map(|_| {

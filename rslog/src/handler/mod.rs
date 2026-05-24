@@ -1,4 +1,6 @@
-use std::{any::Any, error::Error, sync::Arc};
+use std::any::Any;
+use std::error::Error;
+use std::sync::Arc;
 
 mod common_handler;
 mod discard_handler;
@@ -6,8 +8,12 @@ mod mux_handler;
 mod text_handler;
 
 use self::common_handler::*;
-pub use self::{discard_handler::*, mux_handler::*, text_handler::*};
-use crate::{attr::Attr, level::Level, record::Record};
+pub use self::discard_handler::*;
+pub use self::mux_handler::*;
+pub use self::text_handler::*;
+use crate::attr::Attr;
+use crate::level::Level;
+use crate::record::Record;
 
 #[cfg(feature = "json")]
 #[allow(unused_imports)]

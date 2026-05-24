@@ -1,8 +1,8 @@
 #[derive(Clone)]
 pub struct Source {
 	pub module: &'static str,
-	pub file: &'static str,
-	pub line: u32,
+	pub file:   &'static str,
+	pub line:   u32,
 }
 
 impl Source {

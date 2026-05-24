@@ -3,7 +3,58 @@ members = [
 	"app",
 	"rslog",
 ]
-resolver = "2"
+resolver = "3"
+
+# Workspace-wide lint policy.
+# Rationale: Cargo supports inheritable workspace lint config ([workspace.lints.*])
+# so member crates can simply opt-in with `[lints] workspace = true`.
+# Source: https://doc.rust-lang.org/cargo/reference/workspaces.html#the-lints-table
+[workspace.lints.rust]
+# Sane default: keep compiler warnings visible during development.
+warnings = "warn"
+
+[workspace.lints.clippy]
+# Sane defaults:
+# - `clippy::all` covers Clippy's default (warn-by-default) set.
+# - `clippy::pedantic` is allow-by-default; we keep it off by default because
+#   Clippy describes it as opinionated and often requiring per-site `#[allow]`s.
+#   Source: https://doc.rust-lang.org/clippy/usage.html#clippypedantic
+# `clippy::all` is the default warn-by-default set.
+# Give it a lower priority so per-lint overrides below can take effect cleanly
+# (avoids `clippy::lint_groups_priority`).
+
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+
+# all = { level = "warn", priority = -1 }
+# pedantic = "allow"
+
+
+
+# # Fit-to-style exceptions.
+# #
+# # These lints are useful but currently too noisy for this repo’s style; we keep
+# # them as warnings in the compiler output when they come from `rustc` itself,
+# # but avoid adding extra Clippy churn until the codebase is ready to adopt them.
+# # Clippy explicitly expects projects to use `#[allow(..)]` when disagreeing with
+# # a lint or when a lint is not a good fit yet.
+# # Source: https://doc.rust-lang.org/clippy/usage.html#lint-configuration
+# #
+# # `let_unit_value` fires on the prevalent `let _ = foo();` pattern used to make
+# # intent explicit when ignoring a unit return value.
+# let_unit_value = "allow"
+
+# # `clone_on_copy` fires frequently because this codebase often uses `.clone()`
+# # uniformly (including on Copy types) rather than mixing `.clone()`/`Copy`.
+# clone_on_copy = "allow"
+
+# Fit-to-style exceptions:
+# This codebase uses intentional `panic!()` on unrecoverable setup errors
+# (example: `app/src/storage/mod.rs` path parsing), and currently relies on
+# `unwrap_or_else(... panic!())` patterns in a few places.
+# Enabling `clippy::panic`/`clippy::unwrap_used` (restriction group) would be a
+# much larger style shift than “install Clippy”, so we do not enable them.
+
 
 [profile.dev]
 opt-level = 0

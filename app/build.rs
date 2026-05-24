@@ -1,4 +1,7 @@
-use std::{env, fs, io::Write, path::Path};
+#![allow(clippy::unwrap_used)]
+use std::io::Write;
+use std::path::Path;
+use std::{env, fs};
 
 use brotli::CompressorWriter;
 
@@ -36,13 +39,8 @@ fn process_dir(dir: &str, out_dir: &Path) -> std::io::Result<()> {
 					min_css(&s, &mut buf);
 					compress(&buf)
 				}
-				Some("svg") => {
-					let s = String::from_utf8(src).unwrap();
-					let mut buf = Vec::new();
-					min_svg(&s, &mut buf);
-					compress(&buf)
-				}
-				_ => compress(&src),
+				Some("svg") => compress(&src),
+				_ => src,
 			};
 			fs::write(out_dir.join(name), bytes)?;
 		}
@@ -77,13 +75,6 @@ fn min_css<'a>(src: &str, out: &'a mut Vec<u8>) -> &'a [u8] {
 			.code
 			.as_bytes(),
 	);
-	&out[..]
-}
-
-fn min_svg<'a>(src: &str, out: &'a mut Vec<u8>) -> &'a [u8] {
-	let cfg = minify_html::Cfg::new();
-	out.clear();
-	out.extend(minify_html::minify(src.as_bytes(), &cfg));
 	&out[..]
 }
 

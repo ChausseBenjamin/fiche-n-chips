@@ -4,6 +4,9 @@ mod reserved;
 mod row;
 
 pub use paste::{CompressedPaste, PasteInput, PasteRecord};
-pub use redirect::CompressedRedirect;
-pub use reserved::ReservedPath;
-pub use row::{DeletedRoute, RouteKind, RouteRow, Storable};
+pub use redirect::Redirect;
+pub use reserved::Reserved;
+pub use row::{DeletedRoute, RouteKind, RouteRow, RowEntry, Storable};
+
+type Error = super::Error;
+type Result<T> = super::Result<T>;

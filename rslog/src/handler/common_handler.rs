@@ -1,4 +1,5 @@
-use std::{io::Write, sync::{Arc, Mutex}};
+use std::io::Write;
+use std::sync::{Arc, Mutex};
 
 use crate::{Attr, AttrGroup, Level, INFO};
 
@@ -6,12 +7,12 @@ use crate::{Attr, AttrGroup, Level, INFO};
 
 pub(super) struct CommonHandler<W: Write> {
 	// can be useful in for sorting if multiple apps log in the same stream
-	pub app_name: Option<Arc<str>>,
-	pub min_level: i8,
-	pub attach_time: bool,
+	pub app_name:      Option<Arc<str>>,
+	pub min_level:     i8,
+	pub attach_time:   bool,
 	pub attach_source: bool,
 	// XXX: might need a mutex if writers shit the bed with concurent calls
-	pub writer: Arc<Mutex<W>>,
+	pub writer:        Arc<Mutex<W>>,
 
 	// This is a low-effort implementation leaving lots of performance on the
 	// table. Pre-computing attrs belonging to a handler as ready-made string
@@ -46,12 +47,12 @@ pub(super) struct CommonHandler<W: Write> {
 impl<W: Write> Clone for CommonHandler<W> {
 	fn clone(&self) -> Self {
 		Self {
-			app_name: self.app_name.clone(),
-			min_level: self.min_level.clone(),
-			attach_time: self.attach_time.clone(),
-			attach_source: self.attach_source.clone(),
-			writer: self.writer.clone(),
-			attrs: self.attrs.clone(),
+			app_name:      self.app_name.clone(),
+			min_level:     self.min_level,
+			attach_time:   self.attach_time,
+			attach_source: self.attach_source,
+			writer:        self.writer.clone(),
+			attrs:         self.attrs.clone(),
 		}
 	}
 }
@@ -59,12 +60,12 @@ impl<W: Write> Clone for CommonHandler<W> {
 impl<W: Write> CommonHandler<W> {
 	pub fn new(writer: W) -> Self {
 		Self {
-			app_name: None,
-			min_level: INFO.value(),
-			attach_time: true,
+			app_name:      None,
+			min_level:     INFO.value(),
+			attach_time:   true,
 			attach_source: false,
-			attrs: Default::default(),
-			writer: Arc::new(Mutex::new(writer)),
+			attrs:         Default::default(),
+			writer:        Arc::new(Mutex::new(writer)),
 		}
 	}
 
@@ -76,16 +77,16 @@ impl<W: Write> CommonHandler<W> {
 
 	pub fn with_group(&self, name: Arc<str>) -> Self {
 		let group = Attr::Grp(AttrGroup {
-			key: name,
+			key:   name,
 			attrs: self.attrs.clone().into(),
 		});
 		Self {
-			app_name: self.app_name.clone(),
-			min_level: self.min_level,
-			attach_time: self.attach_time,
+			app_name:      self.app_name.clone(),
+			min_level:     self.min_level,
+			attach_time:   self.attach_time,
 			attach_source: self.attach_source,
-			writer: self.writer.clone(),
-			attrs: vec![group],
+			writer:        self.writer.clone(),
+			attrs:         vec![group],
 		}
 	}
 }

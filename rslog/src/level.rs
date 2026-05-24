@@ -1,9 +1,7 @@
 use core::fmt::Result;
-use std::{
-	cmp::Ord,
-	fmt::{Display, Formatter},
-	ops::Sub,
-};
+use std::cmp::Ord;
+use std::fmt::{Display, Formatter};
+use std::ops::Sub;
 
 /// Fuly extensible trait for logging so users can extend as they please
 pub trait Level: Display {
@@ -24,18 +22,17 @@ pub const ERROR: RSlogLevel = RSlogLevel(8);
 
 impl Sub for RSlogLevel {
 	type Output = Self;
-	fn sub(self, rhs: Self) -> Self::Output {
-		RSlogLevel(self.0 - rhs.0)
-	}
+
+	fn sub(self, rhs: Self) -> Self::Output { RSlogLevel(self.0 - rhs.0) }
 }
 
 impl Display for RSlogLevel {
 	fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-		match self {
-			&DEBUG => write!(f, "DEBUG"),
-			&INFO => write!(f, "INFO"),
-			&WARN => write!(f, "WARN"),
-			&ERROR => write!(f, "ERROR"),
+		match *self {
+			DEBUG => write!(f, "DEBUG"),
+			INFO => write!(f, "INFO"),
+			WARN => write!(f, "WARN"),
+			ERROR => write!(f, "ERROR"),
 
 			_ if self > &ERROR => write!(f, "ERROR+{}", self.0 - ERROR.0),
 			_ if self > &WARN => write!(f, "WARN+{}", self.0 - WARN.0),
@@ -47,15 +44,11 @@ impl Display for RSlogLevel {
 }
 
 impl From<RSlogLevel> for i8 {
-	fn from(value: RSlogLevel) -> Self {
-		value.0
-	}
+	fn from(value: RSlogLevel) -> Self { value.0 }
 }
 
 impl Level for RSlogLevel {
-	fn value(&self) -> i8 {
-		self.0
-	}
+	fn value(&self) -> i8 { self.0 }
 }
 
 #[cfg(test)]

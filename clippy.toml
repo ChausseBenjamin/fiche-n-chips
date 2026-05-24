@@ -1,0 +1,2 @@
+min-ident-chars-threshold = 1
+allow-unwrap-in-tests = true

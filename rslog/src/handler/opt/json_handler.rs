@@ -1,4 +1,7 @@
-use std::{any::Any, error::Error, io::Write, sync::Arc};
+use std::any::Any;
+use std::error::Error;
+use std::io::Write;
+use std::sync::Arc;
 
 use serde_json::{Map, Value};
 
@@ -8,9 +11,7 @@ use crate::{Attr, Handler, Level, Record};
 pub struct JsonHandler<W: Write>(CommonHandler<W>);
 
 impl<W: Write> JsonHandler<W> {
-	pub fn new(writer: W) -> Self {
-		Self(CommonHandler::new(writer))
-	}
+	pub fn new(writer: W) -> Self { Self(CommonHandler::new(writer)) }
 
 	pub fn app_name(mut self, name: impl Into<Arc<str>>) -> Self {
 		self.0.app_name = Some(name.into());
@@ -37,7 +38,10 @@ impl<W: Write> JsonHandler<W> {
 		for attr in attrs {
 			match attr {
 				Attr::Obj(leaf) => {
-					map.insert(leaf.key.to_string(), Value::String(leaf.value.to_string()));
+					map.insert(
+						leaf.key.to_string(),
+						Value::String(leaf.value.to_string()),
+					);
 				}
 				Attr::Grp(group) => {
 					map.insert(
@@ -67,12 +71,10 @@ impl<W: Write + Send + 'static> Handler for JsonHandler<W> {
 		obj.insert("level".into(), Value::String(rec.level.to_string()));
 
 		if self.0.attach_time {
-			let timestamp = rec
-				.time
-				.duration_since(std::time::UNIX_EPOCH)
-				.map(|d| d.as_secs())
-				.unwrap_or(0);
-			obj.insert("time".into(), Value::Number(timestamp.into()));
+			obj.insert(
+				"time".into(),
+				Value::String(crate::util::format_time(rec.time)),
+			);
 		}
 
 		if let Some(name) = &self.0.app_name {
@@ -113,18 +115,20 @@ impl<W: Write + Send + 'static> Handler for JsonHandler<W> {
 
 #[cfg(test)]
 mod tests {
-	use super::*;
 	use std::sync::Arc;
 	use std::time::SystemTime;
-	use crate::{Record, Source, DEBUG, INFO, WARN, ERROR, attr, group};
+
 	use serde_json::Value;
+
+	use super::*;
+	use crate::{attr, group, Record, Source, DEBUG, ERROR, INFO, WARN};
 
 	fn basic_record(msg: &str) -> Record {
 		Record {
-			time: SystemTime::UNIX_EPOCH,
-			msg: Arc::from(msg),
+			time:  SystemTime::UNIX_EPOCH,
+			msg:   Arc::from(msg),
 			level: Arc::new(INFO),
-			src: Source::new("test_module", "test_file.rs", 42),
+			src:   Source::new("test_module", "test_file.rs", 42),
 			attrs: vec![],
 		}
 	}
@@ -162,7 +166,9 @@ mod tests {
 		handler.handle(&(), rec).unwrap();
 		let writer = handler.0.writer.lock().unwrap();
 		let output: Value = serde_json::from_slice(&writer).unwrap();
-		assert_eq!(output["time"], 0);
+		assert!(output["time"].is_string(), "time is not a string: {:?}", output["time"]);
+		let time_str = output["time"].as_str().unwrap();
+		assert_eq!(time_str.len(), 23, "time string length: {time_str}");
 	}
 
 	#[test]
@@ -182,15 +188,14 @@ mod tests {
 	#[test]
 	fn handle_with_app_name_and_time() {
 		let buf = Vec::new();
-		let mut handler = JsonHandler::new(buf)
-			.app_name("myapp")
-			.min_level(DEBUG.value());
+		let mut handler =
+			JsonHandler::new(buf).app_name("myapp").min_level(DEBUG.value());
 		let rec = basic_record("hello");
 		handler.handle(&(), rec).unwrap();
 		let writer = handler.0.writer.lock().unwrap();
 		let output: Value = serde_json::from_slice(&writer).unwrap();
 		assert_eq!(output["app_name"], "myapp");
-		assert_eq!(output["time"], 0);
+		assert!(output["time"].is_string(), "time is not a string: {:?}", output["time"]);
 	}
 
 	#[test]
@@ -212,13 +217,9 @@ mod tests {
 	#[test]
 	fn handle_with_handler_attrs() {
 		let buf = Vec::new();
-		let mut handler = JsonHandler::new(buf)
-			.attach_time(false)
-			.min_level(DEBUG.value());
-		handler.0.attrs = vec![
-			attr!("method", "GET"),
-			attr!("status", 200),
-		];
+		let mut handler =
+			JsonHandler::new(buf).attach_time(false).min_level(DEBUG.value());
+		handler.0.attrs = vec![attr!("method", "GET"), attr!("status", 200)];
 		let rec = basic_record("request");
 		handler.handle(&(), rec).unwrap();
 		let writer = handler.0.writer.lock().unwrap();
@@ -230,9 +231,8 @@ mod tests {
 	#[test]
 	fn handle_with_grouped_handler_attrs() {
 		let buf = Vec::new();
-		let mut handler = JsonHandler::new(buf)
-			.attach_time(false)
-			.min_level(DEBUG.value());
+		let mut handler =
+			JsonHandler::new(buf).attach_time(false).min_level(DEBUG.value());
 		handler.0.attrs = vec![group!("http",
 			"method" => "GET",
 			"status" => 200,
@@ -262,7 +262,7 @@ mod tests {
 		assert_eq!(output["msg"], "request");
 		assert_eq!(output["level"], "INFO");
 		assert_eq!(output["app_name"], "myapp");
-		assert_eq!(output["time"], 0);
+		assert!(output["time"].is_string(), "time is not a string: {:?}", output["time"]);
 		assert_eq!(output["source"]["module"], "test_module");
 		assert_eq!(output["http"]["method"], "POST");
 	}
@@ -272,14 +272,13 @@ mod tests {
 		// `handle` does not filter; filtering is the caller's
 		// responsibility via `enabled`. This test documents that contract.
 		let buf = Vec::new();
-		let mut handler = JsonHandler::new(buf)
-			.attach_time(false)
-			.min_level(ERROR.value());
+		let mut handler =
+			JsonHandler::new(buf).attach_time(false).min_level(ERROR.value());
 		let rec = Record {
-			time: SystemTime::UNIX_EPOCH,
-			msg: Arc::from("warn_msg"),
+			time:  SystemTime::UNIX_EPOCH,
+			msg:   Arc::from("warn_msg"),
 			level: Arc::new(WARN),
-			src: Source::new("m", "f", 1),
+			src:   Source::new("m", "f", 1),
 			attrs: vec![],
 		};
 		handler.handle(&(), rec).unwrap();
@@ -293,11 +292,9 @@ mod tests {
 	#[test]
 	fn with_attrs_adds_to_handler_attrs() {
 		let buf = Vec::new();
-		let mut handler = JsonHandler::new(buf)
-			.attach_time(false)
-			.min_level(DEBUG.value());
-		let mut forked =
-			handler.with_attrs(vec![attr!("env", "prod")]);
+		let mut handler =
+			JsonHandler::new(buf).attach_time(false).min_level(DEBUG.value());
+		let mut forked = handler.with_attrs(vec![attr!("env", "prod")]);
 
 		let rec1 = basic_record("orig");
 		handler.handle(&(), rec1).unwrap();
@@ -322,9 +319,8 @@ mod tests {
 	#[test]
 	fn with_group_nests_attrs() {
 		let buf = Vec::new();
-		let mut handler = JsonHandler::new(buf)
-			.attach_time(false)
-			.min_level(DEBUG.value());
+		let mut handler =
+			JsonHandler::new(buf).attach_time(false).min_level(DEBUG.value());
 		handler.0.attrs = vec![attr!("key", "val")];
 		let mut grouped = handler.with_group("ns".into());
 

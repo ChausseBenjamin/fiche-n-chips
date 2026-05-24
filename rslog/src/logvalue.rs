@@ -8,7 +8,7 @@ pub trait LogValuer {
 
 #[derive(Debug, PartialEq)]
 pub struct LogValue<T> {
-	inner: T,
+	inner:      T,
 	display_fn: fn(&T, &mut Formatter<'_>) -> Result,
 }
 
@@ -31,7 +31,7 @@ pub mod __prefer_log_fmt {
 	impl<T: LogValuer> Wrap<T> {
 		pub fn resolve(self) -> LogValue<T> {
 			LogValue {
-				inner: self.0,
+				inner:      self.0,
 				display_fn: |v, f| v.fmt_logged(f),
 			}
 		}
@@ -44,9 +44,10 @@ pub mod __prefer_log_fmt {
 
 	impl<T: Display> ResolveFallback for Wrap<T> {
 		type Inner = T;
+
 		fn resolve(self) -> LogValue<T> {
 			LogValue {
-				inner: self.0,
+				inner:      self.0,
 				display_fn: |v, f| Display::fmt(v, f),
 			}
 		}
@@ -96,9 +97,7 @@ mod tests {
 	#[derive(Debug, PartialEq, Clone)]
 	pub struct DisplayAndLog;
 	impl Display for DisplayAndLog {
-		fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-			f.write_str("Pa$$w0rd")
-		}
+		fn fmt(&self, f: &mut Formatter<'_>) -> Result { f.write_str("Pa$$w0rd") }
 	}
 	impl LogValuer for DisplayAndLog {
 		fn fmt_logged(&self, f: &mut Formatter<'_>) -> Result {

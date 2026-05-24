@@ -3,6 +3,10 @@ name = "rslog"
 version = "0.1.0"
 edition = "2021"
 
+[lints]
+# Inherit workspace lint policy.
+workspace = true
+
 [features]
 json = ["dep:serde_json"]
 actix = ["dep:actix-web"]

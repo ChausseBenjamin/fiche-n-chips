@@ -1,7 +1,5 @@
-use std::{
-	fmt::{Debug, Display},
-	sync::Arc,
-};
+use std::fmt::{Debug, Display};
+use std::sync::Arc;
 
 // I thought of wrapping the entire Attr behind a single Arc so inner values
 // don't have to manage individual reference counters. It made sense in my mind
@@ -31,13 +29,13 @@ pub enum Attr {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct AttrGroup {
-	pub key: Arc<str>,
+	pub key:   Arc<str>,
 	pub attrs: Arc<[Attr]>,
 }
 
 #[derive(Clone)]
 pub struct AttrLeaf {
-	pub key: Arc<str>,
+	pub key:   Arc<str>,
 	pub value: Arc<dyn Display + Send + Sync>,
 }
 
@@ -64,6 +62,7 @@ impl Attr {
 	pub fn group(key: Arc<str>, attrs: Arc<[Self]>) -> Self {
 		Attr::Grp(AttrGroup { key, attrs })
 	}
+
 	pub fn object(key: Arc<str>, value: Arc<dyn Display + Send + Sync>) -> Self {
 		Attr::Obj(AttrLeaf { key, value })
 	}
@@ -155,7 +154,7 @@ mod tests {
 	fn attr_macro_single() {
 		let attr = attr!("foo", 42);
 		let expected = Attr::Obj(AttrLeaf {
-			key: Arc::from("foo"),
+			key:   Arc::from("foo"),
 			value: Arc::new(log_val!(42)),
 		});
 		assert_eq!(attr, expected);
@@ -171,15 +170,15 @@ mod tests {
 		let expected = Arc::<[Attr]>::from(
 			vec![
 				Attr::Obj(AttrLeaf {
-					key: Arc::from("user_id"),
+					key:   Arc::from("user_id"),
 					value: Arc::new(log_val!(12)),
 				}),
 				Attr::Obj(AttrLeaf {
-					key: Arc::from("name"),
+					key:   Arc::from("name"),
 					value: Arc::new(log_val!("John")),
 				}),
 				Attr::Obj(AttrLeaf {
-					key: Arc::from("surname"),
+					key:   Arc::from("surname"),
 					value: Arc::new(log_val!("Doe")),
 				}),
 			]
@@ -198,15 +197,15 @@ mod tests {
 		let expected = Arc::<[Attr]>::from(
 			vec![
 				Attr::Obj(AttrLeaf {
-					key: Arc::from("user_id"),
+					key:   Arc::from("user_id"),
 					value: Arc::new(log_val!(12)),
 				}),
 				Attr::Obj(AttrLeaf {
-					key: Arc::from("name"),
+					key:   Arc::from("name"),
 					value: Arc::new(log_val!("John")),
 				}),
 				Attr::Obj(AttrLeaf {
-					key: Arc::from("surname"),
+					key:   Arc::from("surname"),
 					value: Arc::new(log_val!("Doe")),
 				}),
 			]
@@ -223,15 +222,15 @@ mod tests {
 			"child2" => 20
 		);
 		let expected = Attr::Grp(AttrGroup {
-			key: Arc::from("parent"),
+			key:   Arc::from("parent"),
 			attrs: Arc::<[Attr]>::from(
 				vec![
 					Attr::Obj(AttrLeaf {
-						key: Arc::from("child1"),
+						key:   Arc::from("child1"),
 						value: Arc::new(log_val!(10)),
 					}),
 					Attr::Obj(AttrLeaf {
-						key: Arc::from("child2"),
+						key:   Arc::from("child2"),
 						value: Arc::new(log_val!(20)),
 					}),
 				]
@@ -246,15 +245,15 @@ mod tests {
 			attr!("child2", 40)
 		);
 		let expected = Attr::Grp(AttrGroup {
-			key: Arc::from("parent"),
+			key:   Arc::from("parent"),
 			attrs: Arc::<[Attr]>::from(
 				vec![
 					Attr::Obj(AttrLeaf {
-						key: Arc::from("child1"),
+						key:   Arc::from("child1"),
 						value: Arc::new(log_val!(30)),
 					}),
 					Attr::Obj(AttrLeaf {
-						key: Arc::from("child2"),
+						key:   Arc::from("child2"),
 						value: Arc::new(log_val!(40)),
 					}),
 				]
@@ -280,30 +279,30 @@ mod tests {
 		let expected = Arc::<[Attr]>::from(
 			vec![
 				Attr::Obj(AttrLeaf {
-					key: Arc::from("top_level"),
+					key:   Arc::from("top_level"),
 					value: Arc::new(log_val!("root")),
 				}),
 				Attr::Obj(AttrLeaf {
-					key: Arc::from("middle"),
+					key:   Arc::from("middle"),
 					value: Arc::new(log_val!(99)),
 				}),
 				Attr::Grp(AttrGroup {
-					key: Arc::from("outer_group"),
+					key:   Arc::from("outer_group"),
 					attrs: Arc::<[Attr]>::from(
 						vec![
 							Attr::Obj(AttrLeaf {
-								key: Arc::from("a"),
+								key:   Arc::from("a"),
 								value: Arc::new(log_val!(1)),
 							}),
 							Attr::Obj(AttrLeaf {
-								key: Arc::from("b"),
+								key:   Arc::from("b"),
 								value: Arc::new(log_val!(2)),
 							}),
 							Attr::Grp(AttrGroup {
-								key: Arc::from("inner_group"),
+								key:   Arc::from("inner_group"),
 								attrs: Arc::<[Attr]>::from(
 									vec![Attr::Obj(AttrLeaf {
-										key: Arc::from("z"),
+										key:   Arc::from("z"),
 										value: Arc::new(log_val!(3)),
 									})]
 									.into_boxed_slice(),
