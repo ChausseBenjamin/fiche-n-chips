@@ -6,7 +6,6 @@ use rslog::{attrs, error};
 
 use super::client::{Client, ResponseFmt as RespFmt};
 use crate::config::logging::ERR_KEY;
-use crate::plain;
 use crate::reserved::{FileContents, WebFile};
 use crate::ui::{self, UiString};
 use crate::util::{decompress, sorry};
@@ -36,16 +35,12 @@ pub(super) fn handle_static(
 						);
 						let mut resp = HttpResponse::InternalServerError();
 						resp.insert_header(("Content-Type", "text/plain; charset=utf-8"));
-						return resp.body(match client.prefered_format() {
-							RespFmt::Ansi => format!(
-									"You requested `{}` but the server failed to decompress it.\n{}",
-									ui::string(endpoint.path().display(), &[ui::BOLD, ui::YELLOW_FG]), sorry(),
-							),
-							RespFmt::Html | RespFmt::Plain => plain!(
-									"You requested `{}` but the server failed to decompress it.\n{}",
-									endpoint.path().display(), sorry(),
-              ),
-						});
+						return resp.body(ui::format!(
+							matches!(client.prefered_format(), RespFmt::Ansi),
+							"You requested `{}` but the server failed to decompress it.\n{}",
+							ui::string(endpoint.path().display(), &[ui::BOLD, ui::YELLOW_FG]),
+							sorry(),
+						));
 					}
 				}
 			}
@@ -59,12 +54,6 @@ pub(super) fn handle_404(
 	endpoint: Option<&'_ WebFile<'static>>,
 	origin: &Path,
 ) -> HttpResponse {
-	macro_rules! tmplt {
-		() => {
-			"You requested '{}' but it doesn't seem to exist.\n{}"
-		};
-	}
-
 	let mut resp = HttpResponse::NotFound();
 	resp.insert_header(("Content-Type", "text/plain; charset=utf-8"));
 	let client = Client::from(req);
@@ -73,8 +62,12 @@ pub(super) fn handle_404(
 		ui::string(origin.display(), &[ui::BOLD, ui::YELLOW_FG]);
 
 	match client.prefered_format() {
-		RespFmt::Ansi => resp.body(format!(tmplt!(), origin_txt, sorry())),
-		RespFmt::Plain => resp.body(crate::plain!(tmplt!(), origin_txt, sorry())),
+		RespFmt::Ansi | RespFmt::Plain => resp.body(ui::format!(
+			matches!(client.prefered_format(), RespFmt::Ansi),
+			"You requested '{}' but it doesn't seem to exist.\n{}",
+			origin_txt,
+			sorry(),
+		)),
 		RespFmt::Html => {
 			if let Some(page) = endpoint {
 				handle_static(req, page)

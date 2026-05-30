@@ -163,6 +163,17 @@ macro_rules! plain {
     }};
 }
 
+macro_rules! __format_for {
+    ($styled:expr, $fmt:literal $(, $arg:expr)* $(,)?) => {{
+        if $styled {
+            std::format!($fmt $(, $arg)*)
+        } else {
+            $crate::plain!($fmt $(, $arg)*)
+        }
+    }};
+}
+pub(crate) use __format_for as format;
+
 #[cfg(test)]
 mod tests {
 	use super::{self as ui, *};

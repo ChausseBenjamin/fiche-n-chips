@@ -2,6 +2,7 @@
 
 # meant to be run from the git root
 
+export RUST_BACKTRACE=1
 export PUBLIC_ADDR="localhost"
 export LISTEN_ADDR="127.0.0.1"
 export HTTP_PORT="9001"

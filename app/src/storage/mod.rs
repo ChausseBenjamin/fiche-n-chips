@@ -50,10 +50,7 @@ impl Storage {
 		let db = Builder::new_local(path_str).build().await?;
 		let conn = db.connect()?;
 
-		if !db_exists {
-			conn.execute(DB_SCHEMA, ()).await?;
-			conn.pragma_update("user_version", Self::schema_fingerprint()).await?;
-		} else {
+		if db_exists {
 			// INTEGRITY CHECK:
 			let mut rows = conn.query("PRAGMA integrity_check", ()).await?;
 			if let Some(row) = rows.next().await? {
@@ -85,6 +82,9 @@ impl Storage {
 				std::fs::rename(&db_path, &backup)?;
 				return Box::pin(Self::setup(cfg)).await;
 			}
+		} else {
+			conn.execute(DB_SCHEMA, ()).await?;
+			conn.pragma_update("user_version", Self::schema_fingerprint()).await?;
 		}
 
 		// PRAGMA RULES:
@@ -107,10 +107,10 @@ impl Storage {
 	fn schema_fingerprint() -> i64 {
 		let mut hash: u32 = 2_166_136_261;
 		for b in DB_SCHEMA.bytes() {
-			hash ^= b as u32;
+			hash ^= u32::from(b);
 			hash = hash.wrapping_mul(16_777_619);
 		}
-		hash as i64
+		hash.cast_signed().into()
 	}
 
 	pub async fn sync_reserved_routes(

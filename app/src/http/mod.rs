@@ -21,7 +21,7 @@ use crate::reserved::{ReservedPath as ResPath, ReservedPathProvider, WebFile};
 use crate::storage::model::RowEntry;
 use crate::storage::{self, Storage};
 use crate::util::{normalize_http, sorry};
-use crate::{plain, ui};
+use crate::ui;
 
 const NOT_FOUND_PATH: &str = "/404";
 
@@ -103,24 +103,13 @@ impl Server {
 				let client = Client::from(&req);
 				let mut resp = HttpResponse::MethodNotAllowed();
 				resp.insert_header(("Allow", "GET, DELETE"));
-				resp.body(match client.prefered_format() {
-					RespFmt::Ansi => {
-						format!(
-							"Using a `{}` method isn't allowed when reaching `{}`.\n{}",
-							ui::string(req.method(), &[ui::BOLD, ui::BLUE_FG]),
-							ui::string(path.display(), &[ui::BOLD, ui::YELLOW_FG]),
-							sorry(),
-						)
-					}
-					RespFmt::Html | RespFmt::Plain => {
-						plain!(
-							"Using a `{}` method isn't allowed when reaching `{}`.\n{}",
-							ui::string(req.method(), &[ui::BOLD, ui::BLUE_FG]),
-							ui::string(path.display(), &[ui::BOLD, ui::YELLOW_FG]),
-							sorry(),
-						)
-					}
-				})
+				resp.body(ui::format!(
+					matches!(client.prefered_format(), RespFmt::Ansi),
+					"Using a `{}` method isn't allowed when reaching `{}`.\n{}",
+					ui::string(req.method(), &[ui::BOLD, ui::BLUE_FG]),
+					ui::string(path.display(), &[ui::BOLD, ui::YELLOW_FG]),
+					sorry(),
+				))
 			}
 		}
 	}
