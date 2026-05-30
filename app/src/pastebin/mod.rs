@@ -10,6 +10,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpListener;
 use tokio::time::{timeout, Duration};
+use tokio_util::sync::CancellationToken;
 
 use crate::config::logging::ERR_KEY;
 use crate::config::Config;
@@ -34,7 +35,7 @@ impl Pastebin {
 		Self { cfg, db, slugs }
 	}
 
-	pub async fn listen(&self) -> io::Result<()> {
+	pub async fn listen(&self, shutdown: CancellationToken) -> io::Result<()> {
 		let addr = format!(
 			"{}:{}",
 			self.cfg.server.listen_addr, self.cfg.server.paste_port,
@@ -46,53 +47,59 @@ impl Pastebin {
 		let max_buffer = self.cfg.pastebin.max_buffer.get() as usize;
 		let read_timeout = self.cfg.pastebin.read_timeout;
 		loop {
-			// XXX: hash _addr for rate_limiting, blacklisting, maybe?
-			let (sock, _addr) = listener.accept().await?;
-			let db = self.db.clone();
-			let slugs = self.slugs.clone();
-			let cfg = self.cfg.clone();
+			tokio::select! {
+				result = listener.accept() => {
+					// XXX: hash _addr for rate_limiting, blacklisting, maybe?
+					let (sock, _addr) = result?;
+					let db = self.db.clone();
+					let slugs = self.slugs.clone();
+					let cfg = self.cfg.clone();
 
-			tokio::spawn(async move {
-				let result: Result<()> = async {
-					let (mut reader, writer) = sock.into_split();
-					let RawInput(raw, busted) =
-						Self::recv_paste(max_buffer, read_timeout, &mut reader).await?;
-          let paste = PasteInput::from(raw);
+					tokio::spawn(async move {
+						let result: Result<()> = async {
+							let (mut reader, writer) = sock.into_split();
+							let RawInput(raw, busted) =
+								Self::recv_paste(max_buffer, read_timeout, &mut reader).await?;
+							let paste = PasteInput::from(raw);
 
-					if let Some(slug) = Self::find_match(&db, &paste).await? {
-						// TODO: I'm on the fence about wether or not to include this extra.
-						// If it's not the same author uploading twice, I'm potentially
-						// giving info about someone.
-						let msg =
-							Some("It apears this has already been uploaded at some point.\nHere is the url from the original upload.\n");
-						Self::return_url(writer, &cfg, slug.clone(), msg).await?;
-            debug("reused existing paste", attrs!("slug" => slug));
-						return Ok(());
-					}
+							if let Some(slug) = Self::find_match(&db, &paste).await? {
+								let msg =
+									Some("It apears this has already been uploaded at some point.\nHere is the url from the original upload.\n");
+								Self::return_url(writer, &cfg, slug.clone(), msg).await?;
+								debug("reused existing paste", attrs!("slug" => slug));
+								return Ok(());
+							}
 
-          let owned = if busted {
-            debug("received oversized paste", src!());
-            Some(format!("It looks like what you uploaded was a bit too big and had to get cut short.\n{}", sorry()))
-          } else {
-              None
-          };
-          let msg = owned.as_deref();
+							let owned = if busted {
+								debug("received oversized paste", src!());
+								Some(format!("It looks like what you uploaded was a bit too big and had to get cut short.\n{}", sorry()))
+							} else {
+									None
+							};
+							let msg = owned.as_deref();
 
-					let slug = slugs.gen_unique(&db).await?;
-					let compressed = paste.try_into_compressed_paste(slug.clone())?;
-					let _created = db.queries.insert(&compressed).await?;
-					Self::return_url(writer, &cfg, slug.clone(), msg).await?;
-          debug("created new paste", attrs!("slug" => slug));
+							let slug = slugs.gen_unique(&db).await?;
+							let compressed = paste.try_into_compressed_paste(slug.clone())?;
+							let _created = db.queries.insert(&compressed).await?;
+							Self::return_url(writer, &cfg, slug.clone(), msg).await?;
+							debug("created new paste", attrs!("slug" => slug));
 
-					Ok(())
+							Ok(())
+						}
+						.await;
+
+						if let Err(e) = result {
+							error("failed to handle paste", attrs!(ERR_KEY => e));
+						}
+					});
 				}
-				.await;
-
-				if let Err(e) = result {
-					error("failed to handle paste", attrs!(ERR_KEY => e));
+				_ = shutdown.cancelled() => {
+					info("pastebin server shutting down", src!());
+					break;
 				}
-			});
+			}
 		}
+		Ok(())
 	}
 
 	async fn find_match(

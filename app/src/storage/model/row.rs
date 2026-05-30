@@ -47,13 +47,12 @@ pub trait Storable {
 	fn kind(&self) -> RouteKind;
 	fn hash(&self) -> Option<i64>;
 	fn content(&self) -> Option<&[u8]>;
-	fn created(&self) -> Option<SystemTime>;
 }
 
 pub enum RowEntry {
 	Reserved(Reserved),
-	Redirect(Redirect),
-	Paste(CompressedPaste),
+	Redirect(Redirect, SystemTime),
+	Paste(CompressedPaste, SystemTime),
 }
 
 impl TryFrom<RouteRow> for RowEntry {
@@ -64,18 +63,28 @@ impl TryFrom<RouteRow> for RowEntry {
 		Ok(match value.kind {
 			RouteKind::Reserved => RE::Reserved(Reserved(value.id)),
 			RouteKind::Redirect => {
-				RE::Redirect(Redirect::try_from(CompressedRedirect {
-					short:       value.id,
-					// TODO: Err for missing content (add case to enum?)
-					destination: value.content.unwrap_or_default(),
-				})?)
+				RE::Redirect(
+					Redirect::try_from(CompressedRedirect {
+						short:       value.id,
+						// TODO: Err for missing content (add case to enum?)
+						destination: value.content.unwrap_or_default(),
+					})?,
+					value.created.ok_or_else(|| {
+						Error::ParseErr("missing created_on for redirect".into())
+					})?,
+				)
 			}
-			RouteKind::Paste => RE::Paste(CompressedPaste {
-				slug:    value.id,
-				// TODO: Err for missing hash and/or content (same as above)
-				hash:    value.hash.unwrap_or_default().cast_unsigned(),
-				content: value.content.unwrap_or_default(),
-			}),
+			RouteKind::Paste => RE::Paste(
+				CompressedPaste {
+					slug:    value.id,
+					// TODO: Err for missing hash and/or content (same as above)
+					hash:    value.hash.unwrap_or_default().cast_unsigned(),
+					content: value.content.unwrap_or_default(),
+				},
+				value.created.ok_or_else(|| {
+					Error::ParseErr("missing created_on for paste".into())
+				})?,
+			),
 		})
 	}
 }

@@ -25,8 +25,6 @@ impl Storable for CompressedPaste {
 	fn hash(&self) -> Option<i64> { Some(self.hash as i64) }
 
 	fn content(&self) -> Option<&[u8]> { Some(&self.content) }
-
-	fn created(&self) -> Option<SystemTime> { None }
 }
 
 pub struct PasteRecord {

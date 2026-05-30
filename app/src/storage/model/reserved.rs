@@ -15,8 +15,6 @@ impl Storable for Reserved {
 	fn hash(&self) -> Option<i64> { None }
 
 	fn content(&self) -> Option<&[u8]> { None }
-
-	fn created(&self) -> Option<SystemTime> { None }
 }
 
 impl From<&ReservedPath> for Reserved {

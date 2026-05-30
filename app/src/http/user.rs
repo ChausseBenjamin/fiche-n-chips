@@ -18,8 +18,8 @@ pub(super) fn handle_entry(req: &HttpRequest, row: RowEntry) -> HttpResponse {
 			error("static web server got bypassed", src!());
 			HttpResponse::InternalServerError().finish()
 		}
-		RowEntry::Redirect(redir) => handle_redirect(&redir),
-		RowEntry::Paste(paste) => handle_paste(req, paste),
+		RowEntry::Redirect(redir, _) => handle_redirect(&redir),
+		RowEntry::Paste(paste, _) => handle_paste(req, paste),
 	}
 }
 

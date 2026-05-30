@@ -3,25 +3,32 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use clap::{Args, Parser};
-use humantime::format_duration;
 use logging::LoggingCfg;
-use rslog::group;
 
 use crate::util::StorageSize;
 
 #[derive(Parser)]
 #[command(version, about="A fiche-like pastebin with extra snacks", long_about = None)]
 pub struct Config {
+	/// Confirations related to networking and communication with the outside
+	/// world
 	#[clap(flatten)]
 	pub server:     ServerCfg,
-	#[clap(flatten)]
-	pub logging:    LoggingCfg,
-	#[clap(flatten)]
-	pub management: ManagementCfg,
+	/// Settings exclusive to the management of pastebins
+	/// (creation/deletion/etc...)
 	#[clap(flatten)]
 	pub pastebin:   PastebinCfg,
+	/// Settings exclusive to the management of redirect urls
+	/// (creation/deletion/etc...)
 	#[clap(flatten)]
 	pub redirect:   RedirectCfg,
+	/// Configurations that are either internal or relate to multiple areas at
+	/// once (ex: redirect+pastebin)
+	#[clap(flatten)]
+	pub management: ManagementCfg,
+	/// Formatting and miscellaneous informations related to runtime logs
+	#[clap(flatten)]
+	pub logging:    LoggingCfg,
 }
 
 #[derive(Args)]
@@ -29,20 +36,23 @@ pub struct Config {
 pub struct ServerCfg {
 	/// Address advertised to users in API and TCP responses
 	#[arg(long, env = "PUBLIC_ADDR", default_value = "localhost")]
-	pub public_addr: Box<str>,
+	pub public_addr:      Box<str>,
+	/// Email of the person maintaining the server
+	#[arg(long, env = "MAINTAINER_EMAIL", default_value = "john@example.com")]
+	pub maintainer_email: Box<str>,
 	/// Address to bind to (use 0.0.0.0 to be accessible from other devices)
 	#[arg(long, env = "LISTEN_ADDR", default_value_t = Box::from("127.0.0.1"))]
-	pub listen_addr: Box<str>,
+	pub listen_addr:      Box<str>,
 	/// Port the HTTP server listens on
 	#[arg(long, env = "HTTP_PORT", default_value_t = 9001)] // over 9000...
 	pub http_port: u16,
 	/// Port the raw TCP pastebin listener binds to
 	#[arg(long, env = "PASTE_PORT", default_value_t = 9002)]
-	pub paste_port:  u16,
+	pub paste_port:       u16,
 	/// Directory containing hard-coded html files the server should host
 	/// (files packaged in the binary will be used if none is provided)
 	#[arg(long, env = "HTML_DIR")]
-	pub html_dir:    Option<PathBuf>,
+	pub html_dir:         Option<PathBuf>,
 }
 
 #[derive(Args)]
@@ -66,6 +76,9 @@ pub struct ManagementCfg {
 	/// clean them up
 	#[arg(long, env = "CLEANUP_INTERVAL", default_value = "1h", value_parser = parse_duration)]
 	pub cleanup_interval: Duration,
+	/// Graceful shutdown timeout before forced termination
+	#[arg(long, env = "SHUTDOWN_TIMEOUT", default_value = "10s", value_parser = parse_duration)]
+	pub shutdown_timeout: Duration,
 	/// A planned feature is to issue notifications using ntfy.sh about
 	/// various events. Ex:
 	/// - warning 1month before expiry

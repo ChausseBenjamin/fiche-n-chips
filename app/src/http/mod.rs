@@ -13,6 +13,7 @@ use api::{api_delete, api_post};
 use client::ResponseFmt as RespFmt;
 use rslog::{attrs, debug};
 use service::{handle_404, handle_static};
+use tokio_util::sync::CancellationToken;
 use user::handle_entry;
 
 use crate::config::Config;
@@ -20,8 +21,8 @@ use crate::http::client::Client;
 use crate::reserved::{ReservedPath as ResPath, ReservedPathProvider, WebFile};
 use crate::storage::model::RowEntry;
 use crate::storage::{self, Storage};
-use crate::util::{normalize_http, sorry};
 use crate::ui;
+use crate::util::{normalize_http, sorry};
 
 const NOT_FOUND_PATH: &str = "/404";
 
@@ -40,15 +41,21 @@ impl Server {
 		Self { cfg, db, reserved }
 	}
 
-	pub async fn listen(self: Arc<Self>) -> io::Result<()> {
+	pub async fn listen(
+		self: Arc<Self>,
+		shutdown: CancellationToken,
+	) -> io::Result<()> {
 		let addr = self.cfg.server.listen_addr.clone();
 		let port = self.cfg.server.http_port;
+		let timeout = self.cfg.server.shutdown_timeout;
 		HttpServer::new(move || {
 			App::new()
 				.app_data(web::Data::from(self.clone()))
 				.default_service(web::to(Server::handler))
 		})
 		.bind((addr.as_ref(), port))?
+		.shutdown_timeout(timeout.as_secs())
+		.shutdown_signal(shutdown.cancelled_owned())
 		.run()
 		.await
 	}
@@ -101,7 +108,13 @@ impl Server {
 			}
 			(&Method::DELETE, None) => {
 				if let Ok(p) = Self::get_row(self.db.clone(), slug_path.clone()).await {
-					return api_delete(req, p).await;
+					return api_delete(
+						&req,
+						p,
+						self.cfg.management.retention,
+						self.db.clone(),
+					)
+					.await;
 				}
 
 				debug(

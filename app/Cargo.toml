@@ -14,7 +14,8 @@ clap = { version = "4.6.1", features = ["derive", "env"] }
 humantime = "2.3.0"
 
 # Web interactions
-tokio = {version = "1.0.1", features = ["rt-multi-thread", "macros", "net", "io-util", "time"]}
+tokio = {version = "1.0.1", features = ["rt-multi-thread", "macros", "net", "io-util", "time", "signal"]}
+tokio-util = { version = "0.7", features = ["rt"] }
 actix-web = { version = "4", default-features = false, features = ["macros"] }
 
 # Specialized tools (specific to this project)

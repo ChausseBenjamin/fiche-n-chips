@@ -18,8 +18,6 @@ impl Storable for CompressedRedirect {
 	fn hash(&self) -> Option<i64> { None }
 
 	fn content(&self) -> Option<&[u8]> { Some(&self.destination) }
-
-	fn created(&self) -> Option<SystemTime> { None }
 }
 
 pub struct RedirectInput(RedirectInputInner);
@@ -56,11 +54,13 @@ impl RedirectInput {
 pub struct Redirect(RedirectInner);
 
 impl Redirect {
+	pub fn origin(&self) -> &str { &self.0.origin }
+
 	pub fn destination(&self) -> &str { &self.0.destination }
 }
 
 struct RedirectInner {
-	short:       String,
+	origin:      String,
 	destination: String,
 }
 
@@ -69,7 +69,7 @@ impl TryFrom<CompressedRedirect> for Redirect {
 
 	fn try_from(value: CompressedRedirect) -> Result<Self> {
 		Ok(Self(RedirectInner {
-			short:       value.short,
+			origin:      value.short,
 			destination: decompress(value.destination)?,
 		}))
 	}
