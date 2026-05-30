@@ -8,7 +8,7 @@ mod statements;
 use const_format::formatcp;
 pub use error::{Error, Result};
 use model::{Reserved, RouteKind, Storable};
-use rslog::{attrs, debug, error, src};
+use rslog::{attrs, debug, error, info, src, warn};
 use statements::Statements;
 use turso::{Builder, Connection, Value};
 
@@ -37,9 +37,7 @@ pub struct Storage {
 impl Storage {
 	pub async fn setup(cfg: Arc<Config>) -> Result<Self> {
 		// INITIAL SETUP:
-		debug("setting up the database connection", src!());
 		let db_path = valid_filepath(&cfg.management.db_path, DEFAULT_DB_NAME)?;
-		let db_exists = db_path.exists();
 		let path_str = db_path.to_str().ok_or_else(|| {
 			error(
 				"failed to parse provided path",
@@ -47,6 +45,11 @@ impl Storage {
 			);
 			Error::SetupErr("db path contains invalid UTF-8".to_string())
 		})?;
+		let db_exists = db_path.exists();
+		info(
+			"opening database",
+			attrs!("path" => path_str.to_owned(), "exists" => db_exists),
+		);
 		let db = Builder::new_local(path_str).build().await?;
 		let conn = db.connect()?;
 
@@ -60,6 +63,7 @@ impl Storage {
 						"integrity check failed: {msg}"
 					)));
 				}
+				debug("integrity check passed", src!());
 			}
 
 			// SCHEMA FINGERPRINT CHECK:
@@ -67,8 +71,17 @@ impl Storage {
 				let mut rows = conn.query("PRAGMA user_version", ()).await?;
 				rows.next().await?.map(|r| r.get(0)).transpose()?.unwrap_or(0)
 			};
+			let current = Self::schema_fingerprint();
+			debug(
+				"schema fingerprint",
+				attrs!("stored" => stored, "current" => current),
+			);
 
-			if stored != Self::schema_fingerprint() {
+			if stored != current {
+				warn(
+					"database schema mismatch — backing up and recreating",
+					attrs!("stored" => stored, "current" => current),
+				);
 				drop(conn);
 				drop(db);
 				let backup = db_path.with_file_name(format!(
@@ -79,10 +92,16 @@ impl Storage {
 						.as_nanos(),
 					db_path.file_name().unwrap_or_default().to_string_lossy()
 				));
+				info(
+					"database backed up",
+					attrs!("backup" => backup.display().to_string()),
+				);
 				std::fs::rename(&db_path, &backup)?;
+				info("retrying database setup", src!());
 				return Box::pin(Self::setup(cfg)).await;
 			}
 		} else {
+			info("creating new database", src!());
 			conn.execute(DB_SCHEMA, ()).await?;
 			conn.pragma_update("user_version", Self::schema_fingerprint()).await?;
 		}
@@ -93,10 +112,13 @@ impl Storage {
 			.chain([PragmaCfg::mem_cache(cfg.management.db_cache)].iter())
 		{
 			conn.pragma_update(p.name, p.val).await?;
+			debug("applied pragma", attrs!("name" => p.name, "value" => p.val));
 		}
 
 		// FINAL TOUCHES:
 		let queries = Statements::setup(&conn).await?;
+
+		info("database setup complete", src!());
 
 		Ok(Self {
 			connection: conn,

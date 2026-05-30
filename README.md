@@ -8,15 +8,15 @@ A rewrite of the fiche terminal pastebin with extra snacks:
   - [ ] url-shortening (API)
 - [x] data stored in a simple sqlite database
 - [x] data compresed with brotli in the server
-- [ ] web hosting (for homepage, 404, style.css robots.txt, favicon, etc...)
+- [x] web hosting (for homepage, 404, style.css robots.txt, favicon, etc...)
   - [x] Supports either
     - [x] files embedded in the binary
     - [x] specified directory (file list only detected at startup)
-  - [ ] Accepts multiple equivalent paths:
-    - [ ] with or without trailing slashes
-      * must fix relative paths for shit like favicons+css+svgs...
+  - [x] Accepts multiple equivalent paths:
+    - [x] with or without trailing slashes
     - [x] with or without the file extension
 - [ ] automatic cleanup after a set time-period (1yr by default)
+- [ ] user-based deletion within 10min. of creating a paste/redirect
 - [ ] graceful shutdown
 - [ ] user-privacy conscious (IPs can be salted+hashed to help user anonimity)
     - [ ] rate-limiting based on hashed/anonimized IPs

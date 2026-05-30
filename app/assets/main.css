@@ -3,9 +3,12 @@
   --bg-alt: #1a1a1a;
   --fg: #e0e0e0;
   --fg-muted: #808080;
+  --border: #333;
   --red: #d62828;
   --red-bright: #ef233c;
-  --border: #333;
+	--red-muted: #c23838;
+	--yellow: #E8B589;
+	--blue: #6E94B2;
 }
 
 * {

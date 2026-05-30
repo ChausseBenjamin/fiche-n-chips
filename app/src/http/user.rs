@@ -1,5 +1,5 @@
 use actix_web::{HttpRequest, HttpResponse};
-use rslog::{attrs, error, src};
+use rslog::{attrs, debug, error, src};
 
 use super::client::Client;
 use crate::config::logging::ERR_KEY;
@@ -24,8 +24,13 @@ pub(super) fn handle_entry(req: &HttpRequest, row: RowEntry) -> HttpResponse {
 }
 
 fn handle_redirect(redir: &Redirect) -> HttpResponse {
+	let dest = redir.destination();
+	debug(
+		"serving redirect",
+		attrs!("destination" => dest.to_owned()),
+	);
 	HttpResponse::Found()
-		.insert_header(("Location", redir.destination()))
+		.insert_header(("Location", dest))
 		.finish()
 }
 
@@ -33,6 +38,10 @@ fn handle_paste(req: &HttpRequest, paste: CompressedPaste) -> HttpResponse {
 	let client = Client::from(req);
 	let path = paste.slug();
 	let comp_data = paste.into_content();
+	debug(
+		"serving paste",
+		attrs!("path" => path.clone(), "compressed" => client.accepts_compression()),
+	);
 	let mut resp = HttpResponse::Ok();
 	if client.accepts_compression() {
 		resp.insert_header(("Content-Encoding", "br"));

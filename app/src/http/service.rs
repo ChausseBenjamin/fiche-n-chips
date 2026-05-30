@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::path::Path;
 
 use actix_web::{HttpRequest, HttpResponse};
-use rslog::{attrs, error};
+use rslog::{attrs, debug, error};
 
 use super::client::{Client, ResponseFmt as RespFmt};
 use crate::config::logging::ERR_KEY;
@@ -14,6 +14,10 @@ pub(super) fn handle_static(
 	req: &HttpRequest,
 	endpoint: &'_ WebFile<'static>,
 ) -> HttpResponse {
+	debug(
+		"serving static file",
+		attrs!("path" => endpoint.path().display().to_string(), "mime" => endpoint.mime().to_owned()),
+	);
 	let mut resp = HttpResponse::Ok();
 	resp.insert_header(("Content-Type", endpoint.mime()));
 	let client = Client::from(req);
@@ -64,7 +68,7 @@ pub(super) fn handle_404(
 	match client.prefered_format() {
 		RespFmt::Ansi | RespFmt::Plain => resp.body(ui::format!(
 			matches!(client.prefered_format(), RespFmt::Ansi),
-			"You requested '{}' but it doesn't seem to exist.\n{}",
+			"You requested `{}` but it doesn't seem to exist.\n{}",
 			origin_txt,
 			sorry(),
 		)),

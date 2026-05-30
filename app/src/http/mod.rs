@@ -64,8 +64,19 @@ impl Server {
 		let path = normalize_http(Path::new(req.uri().path()));
 		let slug_path = path.strip_prefix("/").unwrap_or(&path).to_path_buf();
 
+		debug(
+			"dispatching request",
+			attrs!("method" => req.method().to_string(), "path" => path.display().to_string()),
+		);
+
 		match (req.method(), self.reserved.get(&path)) {
-			(&Method::GET, Some(ResPath::File(file))) => handle_static(&req, file),
+			(&Method::GET, Some(ResPath::File(file))) => {
+				debug(
+					"matched reserved file",
+					attrs!("path" => path.display().to_string()),
+				);
+				handle_static(&req, file)
+			}
 			(_, Some(ResPath::File(_))) => HttpResponse::MethodNotAllowed()
 				.insert_header(("Allow", "GET"))
 				.finish(),

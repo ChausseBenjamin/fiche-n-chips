@@ -98,6 +98,16 @@
       color: var(--fg-muted);
     }
 
+		.terminal-output #slug-id {
+			font-weight: 700;
+			color: var(--yellow);
+		}
+
+		.terminal-output .sorry-msg {
+			font-weight: 700;
+			color: var(--red-muted);
+		}
+
     .home-link {
       display: inline-flex;
       align-items: center;
@@ -139,10 +149,13 @@
         <p class="error-message">file not found</p>
 
         <div class="terminal-output">
-          <div class="line"><span class="prompt">$ </span><span class="command">cat <span id="slug-cat">????</span></span></div>
-          <div class="line"><span class="output">cat: <span id="slug-error">????</span>: No such file or directory</span></div>
           <div class="line"><span class="prompt">$ </span><span class="command">curl https://1yr.ca/<span id="slug-curl">????</span></span></div>
-          <div class="line"><span class="output">{"error": "not found"}</span></div>
+          <div class="line">
+						<span class="output">
+							You requested `<span id="slug-id">????</span>` but it doesn't seem to exist<br>
+							<span class="sorry-msg">Sorry Eh...</span>
+						</span>
+					</div>
         </div>
 
         <a href="/" class="home-link">
@@ -162,9 +175,8 @@
     var path = window.location.pathname;
     var slug = path.replace(/^\/+|\/+$/g, '');
     if (slug) {
-      document.getElementById('slug-cat').textContent = slug;
-      document.getElementById('slug-error').textContent = slug;
       document.getElementById('slug-curl').textContent = slug;
+      document.getElementById('slug-id').textContent = slug;
     }
   </script>
 </body>
