@@ -2,31 +2,36 @@
 
 A rewrite of the fiche terminal pastebin with extra snacks:
 
-- single Rust binary
-- dual purpose
-  * terminal pastebin (netcat)
-  * url-shortening (API)
-- data stored in a simple sqlite database
-- data compresed with brotli in the server
-- web hosting (for homepage, 404, style.css robots.txt, favicon, etc...)
-  * Supports either
-    - files embedded in the binary
-    - specified directory (file list only detected at startup)
-  * Accepts multiple equivalent paths:
-    - with or without trailing slashes
-    - with or without the file extension
-- automatic cleanup after a set time-period (1yr by default)
-- privacy conscious logging (IPs can be salted+hashed for better anonimity)
+- [x] single Rust binary
+- [ ] dual purpose
+  - [x] terminal pastebin (netcat)
+  - [ ] url-shortening (API)
+- [x] data stored in a simple sqlite database
+- [x] data compresed with brotli in the server
+- [ ] web hosting (for homepage, 404, style.css robots.txt, favicon, etc...)
+  - [x] Supports either
+    - [x] files embedded in the binary
+    - [x] specified directory (file list only detected at startup)
+  - [ ] Accepts multiple equivalent paths:
+    - [ ] with or without trailing slashes
+      * must fix relative paths for shit like favicons+css+svgs...
+    - [x] with or without the file extension
+- [ ] automatic cleanup after a set time-period (1yr by default)
+- [ ] graceful shutdown
+- [ ] privacy conscious logging (IPs can be salted+hashed for better anonimity)
+- [ ] [ntfy.sh][4] support for notifications:
+  - [ ] prematurely deleted pastebin (server storage shortage)
+  - [ ] short-url about to expire (ex: 1 week prior)
 
 **Totally useless but fun**:
 
 Client aware responses (for errors/404s/etc...)
-- Markdown/ascii versions of pages when using `cURL`
-- Error messages
-Example flow of a response for an inexistent URL:
-  * Terminal -> Text-based message with ANSI escaped syntax highlighting
-  * Terminal with no-color header -> vanilla plain-text
-  * Browser -> 404.html webpage
+- [ ] Markdown/ascii versions of pages when using `cURL`
+- [x] Error messages
+      Example flow of a response for an inexistent URL:
+  - [x] Terminal -> Text-based message with ANSI escaped syntax highlighting
+  - [x] Terminal with `X-Disable-Colors: true` -> vanilla plain-text
+  - [x] Browser -> 404.html webpage
 
 ### API examples
 
@@ -71,3 +76,4 @@ the way.
 [1]: https://github.com/solusipse/fiche
 [2]: https://termbin.com
 [3]: https://1yr.ca
+[4]: https://ntfy.sh
