@@ -6,6 +6,7 @@ use rslog::{attrs, error};
 
 use super::client::{Client, ResponseFmt as RespFmt};
 use crate::config::logging::ERR_KEY;
+use crate::plain;
 use crate::reserved::{FileContents, WebFile};
 use crate::ui::{self, UiString};
 use crate::util::{decompress, sorry};
@@ -15,6 +16,7 @@ pub(super) fn handle_static(
 	endpoint: &'_ WebFile<'static>,
 ) -> HttpResponse {
 	let mut resp = HttpResponse::Ok();
+	resp.insert_header(("Content-Type", endpoint.mime()));
 	let client = Client::from(req);
 	let content: Cow<'_, [u8]> = match endpoint.content() {
 		FileContents::Raw(cow) => cow.clone(),
@@ -32,7 +34,18 @@ pub(super) fn handle_static(
                 "path" => format!("{}",endpoint.path().display()),
                 ERR_KEY => err),
 						);
-						return HttpResponse::InternalServerError().finish();
+						let mut resp = HttpResponse::InternalServerError();
+						resp.insert_header(("Content-Type", "text/plain; charset=utf-8"));
+						return resp.body(match client.prefered_format() {
+							RespFmt::Ansi => format!(
+									"You requested `{}` but the server failed to decompress it.\n{}",
+									ui::string(endpoint.path().display(), &[ui::BOLD, ui::YELLOW_FG]), sorry(),
+							),
+							RespFmt::Html | RespFmt::Plain => plain!(
+									"You requested `{}` but the server failed to decompress it.\n{}",
+									endpoint.path().display(), sorry(),
+              ),
+						});
 					}
 				}
 			}
@@ -53,6 +66,7 @@ pub(super) fn handle_404(
 	}
 
 	let mut resp = HttpResponse::NotFound();
+	resp.insert_header(("Content-Type", "text/plain; charset=utf-8"));
 	let client = Client::from(req);
 
 	let origin_txt: UiString =

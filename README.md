@@ -18,7 +18,9 @@ A rewrite of the fiche terminal pastebin with extra snacks:
     - [x] with or without the file extension
 - [ ] automatic cleanup after a set time-period (1yr by default)
 - [ ] graceful shutdown
-- [ ] privacy conscious logging (IPs can be salted+hashed for better anonimity)
+- [ ] user-privacy conscious (IPs can be salted+hashed to help user anonimity)
+    - [ ] rate-limiting based on hashed/anonimized IPs
+    - [ ] logs only track hashed/anonimized IPs
 - [ ] [ntfy.sh][4] support for notifications:
   - [ ] prematurely deleted pastebin (server storage shortage)
   - [ ] short-url about to expire (ex: 1 week prior)

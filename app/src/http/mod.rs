@@ -3,21 +3,25 @@ mod client;
 mod service; // Issued by the service
 mod user; // Issued by users
 
+use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use actix_web::http::Method;
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer};
 use api::{api_delete, api_post};
+use client::ResponseFmt as RespFmt;
 use rslog::{attrs, debug};
 use service::{handle_404, handle_static};
 use user::handle_entry;
 
 use crate::config::Config;
+use crate::http::client::Client;
 use crate::reserved::{ReservedPath as ResPath, ReservedPathProvider, WebFile};
 use crate::storage::model::RowEntry;
 use crate::storage::{self, Storage};
-use crate::util::normalize_http;
+use crate::util::{normalize_http, sorry};
+use crate::{plain, ui};
 
 const NOT_FOUND_PATH: &str = "/404";
 
@@ -34,6 +38,26 @@ impl Server {
 		reserved: Arc<ReservedPathProvider>,
 	) -> Self {
 		Self { cfg, db, reserved }
+	}
+
+	pub async fn listen(self: Arc<Self>) -> io::Result<()> {
+		let addr = self.cfg.server.listen_addr.clone();
+		let port = self.cfg.server.http_port;
+		HttpServer::new(move || {
+			App::new()
+				.app_data(web::Data::from(self.clone()))
+				.default_service(web::to(Server::handler))
+		})
+		.bind((addr.as_ref(), port))?
+		.run()
+		.await
+	}
+
+	pub async fn handler(
+		req: HttpRequest,
+		server: web::Data<Self>,
+	) -> HttpResponse {
+		server.dispatch(req).await
 	}
 
 	async fn dispatch(&self, req: HttpRequest) -> HttpResponse {
@@ -75,9 +99,29 @@ impl Server {
 				);
 				handle_404(&req, self.get_404(), slug_path.as_path())
 			}
-			(_, None) => HttpResponse::MethodNotAllowed()
-				.insert_header(("Allow", "GET, DELETE"))
-				.finish(),
+			(_, None) => {
+				let client = Client::from(&req);
+				let mut resp = HttpResponse::MethodNotAllowed();
+				resp.insert_header(("Allow", "GET, DELETE"));
+				resp.body(match client.prefered_format() {
+					RespFmt::Ansi => {
+						format!(
+							"Using a `{}` method isn't allowed when reaching `{}`.\n{}",
+							ui::string(req.method(), &[ui::BOLD, ui::BLUE_FG]),
+							ui::string(path.display(), &[ui::BOLD, ui::YELLOW_FG]),
+							sorry(),
+						)
+					}
+					RespFmt::Html | RespFmt::Plain => {
+						plain!(
+							"Using a `{}` method isn't allowed when reaching `{}`.\n{}",
+							ui::string(req.method(), &[ui::BOLD, ui::BLUE_FG]),
+							ui::string(path.display(), &[ui::BOLD, ui::YELLOW_FG]),
+							sorry(),
+						)
+					}
+				})
+			}
 		}
 	}
 
@@ -93,12 +137,5 @@ impl Server {
 			ResPath::File(f) => Some(f),
 			ResPath::Api(_) => None,
 		})
-	}
-
-	pub async fn handler(
-		req: HttpRequest,
-		server: web::Data<Self>,
-	) -> HttpResponse {
-		server.dispatch(req).await
 	}
 }

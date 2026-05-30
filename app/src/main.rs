@@ -53,18 +53,8 @@ async fn main() -> Result<()> {
 
 	let (_pb, _http) = tokio::join!(
 		pb.listen(),
+		http.listen(),
 		// TODO: async scheduled task that manages cleanups
-		async {
-			HttpServer::new(move || {
-				App::new()
-					.app_data(web::Data::from(http.clone()))
-					.default_service(web::to(http::Server::handler))
-			})
-			.bind((cfg.server.listen_addr.as_ref(), cfg.server.http_port))
-			.unwrap()
-			.run()
-			.await
-		},
 	);
 
 	Ok(())

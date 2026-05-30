@@ -12,8 +12,22 @@ macro_rules! embed {
 				env!("OUT_DIR"),
 				$path
 			)))),
+			mime:    Cow::Borrowed(mime_for_extension(Path::new($path))),
 		})
 	};
+}
+
+fn mime_for_extension(path: &Path) -> &'static str {
+	match path.extension().and_then(|e| e.to_str()) {
+		Some("html") => "text/html; charset=utf-8",
+		Some("css") => "text/css; charset=utf-8",
+		Some("svg") => "image/svg+xml",
+		Some("ico") => "image/x-icon",
+		Some("txt") => "text/plain; charset=utf-8",
+		Some("xml") => "text/xml",
+		Some("woff2") => "font/woff2",
+		_ => "application/octet-stream",
+	}
 }
 
 #[rustfmt::skip]
@@ -35,6 +49,7 @@ pub struct WebFile<'a>(WebFileInner<'a>);
 impl WebFile<'static> {
 	pub fn new(path: PathBuf, content: Vec<u8>, compressed: bool) -> Self {
 		WebFile(WebFileInner {
+			mime:    Cow::Borrowed(mime_for_extension(&path)),
 			path:    Cow::Owned(path),
 			content: if compressed {
 				FileContents::Brotli(Cow::Owned(content))
@@ -48,12 +63,15 @@ impl WebFile<'static> {
 impl WebFile<'_> {
 	pub fn path(&self) -> &Path { &self.0.path }
 
+	pub fn mime(&self) -> &str { self.0.mime.as_ref() }
+
 	pub(crate) fn content(&self) -> &FileContents<'_> { &self.0.content }
 }
 
 struct WebFileInner<'a> {
 	path:    Cow<'a, Path>,
 	content: FileContents<'a>,
+	mime:    Cow<'a, str>,
 }
 
 pub enum FileContents<'a> {
