@@ -64,6 +64,9 @@ pub struct ManagementCfg {
 	/// How much of the database to cache in memory (MB)
 	#[arg(long, env = "DB_CACHE", default_value_t = 32)]
 	pub db_cache:         u16,
+	/// Period after creation during which a user is allowed to delete an entry
+	#[arg(long, env = "USER_DELETION_WINDOW", default_value = "10m", value_parser = parse_duration)]
+	pub deletion_window:  Duration,
 	/// How long pastes and redirects are retained
 	#[arg(long, env = "RETENTION", default_value = "365days", value_parser = parse_duration)]
 	pub retention:        Duration,

@@ -1,4 +1,5 @@
 #![feature(random, core_float_math)]
+mod cleanup;
 mod config;
 mod http;
 mod pastebin;
@@ -16,6 +17,7 @@ use config::Config;
 use rslog::{attrs, error, info, src, warn, Logger};
 use tokio_util::sync::CancellationToken;
 
+use crate::cleanup::Cleaner;
 use crate::pastebin::Pastebin;
 use crate::reserved::ReservedPathProvider;
 use crate::storage::Storage;
@@ -46,6 +48,8 @@ async fn main() -> Result<()> {
 		)
 		.await;
 
+	let cleaner = Arc::from(Cleaner::new(cfg.clone(), storage.clone()));
+
 	let shutdown = CancellationToken::new();
 	let shutdown_timeout = cfg.management.shutdown_timeout;
 
@@ -66,6 +70,8 @@ async fn main() -> Result<()> {
 		);
 		sig.cancel();
 	});
+
+	tokio::spawn(cleaner.autoclean(shutdown.clone()));
 
 	let pb = Pastebin::new(cfg.clone(), storage.clone(), slugs.clone());
 	let http = Arc::new(http::Server::new(
