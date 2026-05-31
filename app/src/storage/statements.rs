@@ -21,7 +21,7 @@ impl Statements {
 	pub async fn setup(conn: &Connection) -> Result<Self, Error> {
 		Ok(Self( InnerStatements{
       del_expired: conn.prepare_cached(
-        "DELETE FROM routes WHERE kind != 0 AND created_on < datetime('now', ?) RETURNING id, created_on"
+        "DELETE FROM routes WHERE kind != 0 AND created_on < CAST(strftime('%s', 'now') AS INTEGER) - ? RETURNING id, created_on"
         ).await?,
 			del_from_path: conn.prepare_cached(
         "DELETE FROM routes WHERE id = ? RETURNING id, created_on"
@@ -82,7 +82,7 @@ impl Statements {
 		range: Duration,
 	) -> Result<Vec<DeletedRoute>, Error> {
 		let mut cmd = self.0.del_expired.clone();
-		let mut rows = cmd.query([format!("-{} seconds", range.as_secs())]).await?;
+		let mut rows = cmd.query([range.as_secs() as i64]).await?;
 		let mut results: Vec<DeletedRoute> = Vec::new();
 		while let Some(row) = rows.next().await? {
 			results.push(DeletedRoute {
