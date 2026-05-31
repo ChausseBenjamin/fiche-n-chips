@@ -97,7 +97,7 @@ impl Server {
 				.finish(),
 
 			(&Method::POST, Some(ResPath::Api(path))) => {
-				api_post(&req, path.clone(), body, self.slugs.clone(), &self.cfg).await
+				api_post(&req, path.clone(), body, self.slugs.clone(), self.db.clone(), &self.cfg).await
 			}
 			(_, Some(ResPath::Api(_))) => HttpResponse::MethodNotAllowed()
 				.insert_header(("Allow", "POST"))

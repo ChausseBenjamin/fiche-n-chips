@@ -45,6 +45,10 @@ impl RedirectInput {
 		let short = match self.0.short {
 			// TODO: return an error if undesireable characters are used in the slug:
 			// `.`, `?`, `&`, etc...
+			// The goal is two-fold:
+			// - Avoid urls that contains characters used for RESTful parameters
+			// - Avoid accepting characters that would get stripped by
+			// crate::util::path::normalize_http
 			Some(v) => v,
 			None => slugs.gen_unique(&db).await?,
 		};

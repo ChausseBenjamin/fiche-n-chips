@@ -1,5 +1,3 @@
-use std::time::SystemTime;
-
 use xxhash_rust::xxh3::xxh3_64_with_seed;
 
 use super::{Result, RouteKind, Storable};
