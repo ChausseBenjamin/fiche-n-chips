@@ -62,7 +62,7 @@ pub async fn api_post(
 				}
 			};
 			let redirect = match RedirectInput::new(req.url, req.slug)
-				.try_into_compressed_redirect(db, slugs)
+				.try_into_compressed_redirect(&db, slugs)
 				.await
 			{
 				Ok(v) => v,
@@ -108,7 +108,7 @@ pub async fn api_post(
 			error(
 				"user reached a supposedly unreachable api endpoint",
 				attrs!(
-					"path" => endpoint.display(),
+					"path" => endpoint.to_string_lossy().to_string(),
 				),
 			);
 			resp.body(ui::format!(

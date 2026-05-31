@@ -38,7 +38,7 @@ impl RedirectInput {
 	// Can't use trait as I need outside info
 	pub async fn try_into_compressed_redirect(
 		self,
-		db: Arc<Storage>,
+		db: &Storage,
 		slugs: Arc<SlugGenerator>,
 	) -> Result<CompressedRedirect> {
 		let destination = compress(self.0.destination)?;
