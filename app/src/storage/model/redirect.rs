@@ -1,8 +1,26 @@
+use std::path::Path;
 use std::sync::Arc;
 
 use super::{Result, RouteKind, Storable};
 use crate::storage::Storage;
-use crate::util::{compress, decompress, SlugGenerator};
+use crate::util::{compress, decompress, normalize_http, SlugGenerator};
+
+fn validate_slug(slug: &str) -> Result<()> {
+	let undesirable = ['.', '?', '&', '/'];
+	if let Some(c) = slug.chars().find(|c| undesirable.contains(c)) {
+		return Err(super::Error::ParseErr(format!(
+			"slug contains undesirable character: '{c}'"
+		)));
+	}
+	let normalized = normalize_http(Path::new(slug));
+	let normalized = normalized.to_string_lossy();
+	if normalized.len() != slug.len() {
+		return Err(super::Error::ParseErr(format!(
+			"slug would be mangled by path normalization ('{slug}' -> '{normalized}')"
+		)));
+	}
+	Ok(())
+}
 
 pub struct CompressedRedirect {
 	pub(super) short:       String,
@@ -43,14 +61,11 @@ impl RedirectInput {
 	) -> Result<CompressedRedirect> {
 		let destination = compress(self.0.destination)?;
 		let short = match self.0.short {
-			// TODO: return an error if undesireable characters are used in the slug:
-			// `.`, `?`, `&`, etc...
-			// The goal is two-fold:
-			// - Avoid urls that contains characters used for RESTful parameters
-			// - Avoid accepting characters that would get stripped by
-			// crate::util::path::normalize_http
-			Some(v) => v,
-			None => slugs.gen_unique(&db).await?,
+			Some(v) => {
+				validate_slug(&v)?;
+				v
+			}
+			None => slugs.gen_unique(db).await?,
 		};
 		Ok(CompressedRedirect { short, destination })
 	}
