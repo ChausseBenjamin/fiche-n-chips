@@ -2,6 +2,7 @@
 mod cleanup;
 mod config;
 mod http;
+mod limiter;
 mod pastebin;
 mod reserved;
 mod storage;
