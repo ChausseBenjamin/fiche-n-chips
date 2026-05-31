@@ -154,6 +154,15 @@
       white-space: pre;
     }
 
+    code.output .fg-green {
+      color: var(--green);
+    }
+
+    code.output .hl {
+      font-weight: 700;
+      color: var(--yellow);
+    }
+
     .inline-code {
       display: inline;
       padding: 0.2rem 0.4rem;
@@ -664,34 +673,27 @@
           <h3 id="short-api">api</h3>
 
           <p>Create a shortened URL with a POST request:</p>
-          <code>curl -X POST "https://1yr.ca/api/shorten" \
-  -H "Content-Type: application/json" \
+					<code>curl -X POST "https://1yr.ca/api/shorten" \<br>&emsp;
+						-H "Content-Type: application/json" \<br>&emsp;
   -d '{"url": "https://example.com/long/url"}'</code>
-          <code class="output json">{
-  "short": "https://1yr.ca/m3np/",
-  "slug": "m3np",
-  "expires": "2026-05-04T12:00:00Z"
-}</code>
+          <code class="output">Successfully created a short url for the
+						requested target, <span class="fg-green">cheers!</span><br>You may
+						use the url below:<br>https://1yr.ca/m3np</code>
 
           <p>Optionally specify a custom slug:</p>
-          <code>curl -X POST "https://1yr.ca/api/shorten" \
-  -H "Content-Type: application/json" \
+          <code>curl -X POST "https://1yr.ca/api/shorten" \<br>&emsp;
+  -H "Content-Type: application/json" \<br>&emsp;
   -d '{"url": "https://example.com", "slug": "mylink"}'</code>
-          <code class="output json">{
-  "short": "https://1yr.ca/mylink/",
-  "slug": "mylink",
-  "expires": "2026-05-04T12:00:00Z"
-}</code>
+          <code class="output">Successfully created a short url for the
+						requested target, <span class="fg-green">cheers!</span><br>You may
+						use the url below:<br>https://1yr.ca/mylink</code>
 
           <h3 id="short-delete">delete</h3>
 
           <p>For the first 10 minutes after creating a link, you can delete it from the same IP address:</p>
 
           <code>curl -X DELETE "https://1yr.ca/m3np"</code>
-          <code class="output json">{
-  "success": true,
-  "message": "Link deleted"
-}</code>
+          <code class="output">Successfully deleted `<span class="hl">m3np</span>`, <span class="fg-green">cheers!</span></code>
         </section>
 
         <section>
