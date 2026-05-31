@@ -835,6 +835,18 @@
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
 
+    // Tab routing based on URL hash — open the correct tab for a given section id
+    function routeHash() {
+      var h = location.hash.slice(1);
+      if (!h) return;
+      var r = document.getElementById(h.startsWith('paste-') ? 'tab-pastebin' : h.startsWith('short-') ? 'tab-shortener' : null);
+      if (r) r.checked = true;
+      var e = document.getElementById(h);
+      if (e) setTimeout(function() { e.scrollIntoView(); }, 50);
+    }
+    routeHash();
+    window.addEventListener('hashchange', routeHash);
+
     // Live slug preview
     var slugInput = document.getElementById('slug');
     var slugPreview = document.getElementById('slug-preview');
