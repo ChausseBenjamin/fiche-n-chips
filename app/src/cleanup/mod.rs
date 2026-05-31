@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use humantime::format_duration;
-use rslog::{attrs, error, info};
+use rslog::{attrs, debug, error, info};
 use tokio::time;
 use tokio_util::sync::CancellationToken;
 
@@ -19,16 +19,23 @@ impl Cleaner {
 	pub fn new(cfg: Arc<Config>, db: Arc<Storage>) -> Self { Self { cfg, db } }
 
 	pub async fn autoclean(self: Arc<Self>, shutdown: CancellationToken) {
+		debug(
+			"cleaner initialization",
+			attrs!(
+				"cleanup_interval" => format_duration(self.cfg.management.cleanup_interval),
+				"retention" => format_duration(self.cfg.management.retention),
+			),
+		);
 		let mut interval = time::interval(self.cfg.management.cleanup_interval);
 
 		loop {
 			tokio::select! {
 				biased;
-				_ = shutdown.cancelled() => break,
+				() = shutdown.cancelled() => break,
 				_ = interval.tick() => {},
 			}
 			match self.db.queries.del_expired(self.cfg.management.retention).await {
-				Ok(mut v) => {
+				Ok(v) => {
 					if !v.is_empty() {
 						let now = SystemTime::now();
 						let routes: String = v
@@ -36,9 +43,15 @@ impl Cleaner {
 							.map(|route| format!("`{}`", route.id))
 							.collect::<Vec<String>>()
 							.join(",");
-						v.sort_by_key(|route| route.created);
-						let oldest = &v[0].created;
-						let youngest = &v[v.len() - 1].created;
+						let (oldest, youngest) = v.iter().fold(
+							(&v[0].created, &v[0].created),
+							|(min, max), route| {
+								(
+									if route.created < *min { &route.created } else { min },
+									if route.created > *max { &route.created } else { max },
+								)
+							},
+						);
 						info(
 							"cleaned up expired entries",
 							attrs!(

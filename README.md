@@ -3,9 +3,9 @@
 A rewrite of the fiche terminal pastebin with extra snacks:
 
 - [x] single Rust binary
-- [ ] dual purpose
+- [x] dual purpose
   - [x] terminal pastebin (netcat)
-  - [ ] url-shortening (API)
+  - [x] url-shortening (API)
 - [x] data stored in a simple sqlite database
 - [x] data compresed with brotli in the server
 - [x] web hosting (for homepage, 404, style.css robots.txt, favicon, etc...)
@@ -15,9 +15,9 @@ A rewrite of the fiche terminal pastebin with extra snacks:
   - [x] Accepts multiple equivalent paths:
     - [x] with or without trailing slashes
     - [x] with or without the file extension
-- [ ] automatic cleanup after a set time-period (1yr by default)
-- [ ] user-based deletion within 10min. of creating a paste/redirect
-- [ ] graceful shutdown
+- [x] automatic cleanup after a set time-period (1yr by default)
+- [x] user-based deletion within 10min. of creating a paste/redirect
+- [x] graceful shutdown
 - [ ] user-privacy conscious (IPs can be salted+hashed to help user anonimity)
     - [ ] rate-limiting based on hashed/anonimized IPs
     - [ ] logs only track hashed/anonimized IPs
