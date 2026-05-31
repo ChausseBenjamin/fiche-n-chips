@@ -227,21 +227,6 @@
       margin: 1.5rem 0;
     }
 
-    .os-section {
-      margin: 1rem 0;
-    }
-
-    .os-label {
-      color: var(--fg-muted);
-      font-size: 0.85rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .os-label::before {
-      content: "# ";
-      color: var(--red);
-    }
-
     .contact-line {
       display: flex;
       align-items: center;
@@ -459,6 +444,68 @@
       margin-top: 0;
     }
 
+    /* Shell Tabs */
+    .shell-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 0;
+    }
+
+    .shell-tab-radio {
+      display: none;
+    }
+
+    .shell-tab-label {
+      padding: 0.6rem 1.25rem;
+      cursor: pointer;
+      color: var(--fg-muted);
+      font-size: 0.85rem;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      background-color: var(--bg);
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .shell-tab-label:first-of-type {
+      border-radius: 4px 0 0 0;
+    }
+
+    .shell-tab-label:last-of-type {
+      border-radius: 0 4px 0 0;
+      border-left: none;
+    }
+
+    .shell-tab-label:hover {
+      color: var(--fg);
+      background-color: var(--bg-alt);
+    }
+
+    #tab-zsh:checked ~ .shell-tabs .shell-tab-label[for="tab-zsh"],
+    #tab-bash:checked ~ .shell-tabs .shell-tab-label[for="tab-bash"],
+    #tab-fish:checked ~ .shell-tabs .shell-tab-label[for="tab-fish"] {
+      color: var(--red-bright);
+      background-color: var(--bg-alt);
+      border-color: var(--border);
+      border-bottom: 1px solid var(--bg-alt);
+      position: relative;
+      z-index: 1;
+    }
+
+    .shell-panel {
+      display: none;
+    }
+
+    #tab-zsh:checked ~ .shell-panel.zsh-panel,
+    #tab-bash:checked ~ .shell-panel.bash-panel,
+    #tab-fish:checked ~ .shell-panel.fish-panel {
+      display: block;
+    }
+
+    .shell-panel code {
+      margin-top: 0;
+      border-top-left-radius: 0;
+    }
+
     .url-preview {
       margin-top: 0.75rem;
       padding: 0.5rem 0.75rem;
@@ -540,18 +587,26 @@
 
           <p>To simplify usage, you can add an alias to your shell configuration.</p>
 
-          <hr>
+          <input type="radio" name="shell-tabs" id="tab-zsh" class="shell-tab-radio" checked>
+          <input type="radio" name="shell-tabs" id="tab-bash" class="shell-tab-radio">
+          <input type="radio" name="shell-tabs" id="tab-fish" class="shell-tab-radio">
 
-          <div class="os-section">
-            <div class="os-label">linux (.bashrc)</div>
+          <div class="shell-tabs">
+            <label for="tab-zsh" class="shell-tab-label">zsh</label>
+            <label for="tab-bash" class="shell-tab-label">bash</label>
+            <label for="tab-fish" class="shell-tab-label">fish</label>
+          </div>
+
+          <div class="shell-panel zsh-panel">
+            <code>echo 'alias pb="nc 1yr.ca 443"' >> ~/.zshrc</code>
+          </div>
+
+          <div class="shell-panel bash-panel">
             <code>echo 'alias pb="nc 1yr.ca 443"' >> ~/.bashrc</code>
           </div>
 
-          <hr>
-
-          <div class="os-section">
-            <div class="os-label">mac (.zshrc)</div>
-            <code>echo 'alias pb="nc 1yr.ca 443"' >> ~/.zshrc</code>
+          <div class="shell-panel fish-panel">
+            <code>alias --save pb="nc 1yr.ca 443"</code>
           </div>
 
           <h3 id="paste-delete">request delete</h3>
