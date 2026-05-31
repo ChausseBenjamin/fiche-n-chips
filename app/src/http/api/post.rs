@@ -82,11 +82,12 @@ pub async fn api_post(
 			};
 			match db.queries.insert(&redirect).await {
 				Ok(_) => {
-					return HttpResponse::Ok().body(ui::format!(ansi_resp,
-                "Successfully created a short url for the requested target, {}\nYou may use the url below:\n{}\n",
+					HttpResponse::Ok().body(ui::format!(ansi_resp,
+                "Successfully created a short url for the requested target, {}\nYou may use the url below:\n{}/{}\n",
                 ui::string("cheers!", &[ui::GREEN_FG]),
+                cfg.server.public_addr.to_string(),
                 redirect.id(),
-        ));
+        ))
 				}
 				Err(e) => {
 					error(
@@ -95,12 +96,12 @@ pub async fn api_post(
 								ERR_KEY => e
 						),
 					);
-					return HttpResponse::InternalServerError().body(ui::format!(ansi_resp,
+					HttpResponse::InternalServerError().body(ui::format!(ansi_resp,
             "An internal failure occured whild adding your shortened url to the database.\n{}",
             sorry(),
-          ));
+          ))
 				}
-			};
+			}
 		}
 		_ => {
 			let mut resp = HttpResponse::InternalServerError();

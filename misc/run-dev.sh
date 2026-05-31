@@ -1,9 +1,11 @@
 #!/bin/sh
 
 # meant to be run from the git root
+version="debug"
+[ -z "$1" ] || version="release"
 
 export RUST_BACKTRACE=1
-export PUBLIC_ADDR="localhost"
+export PUBLIC_ADDR="http://localhost:9001"
 export LISTEN_ADDR="127.0.0.1"
 export HTTP_PORT="9001"
 export PASTE_PORT="9002"
@@ -12,13 +14,10 @@ export DB_PATH="app/.internal/"
 export DB_CACHE="32"
 export MAINTAINER_EMAIL="dev@example.com"
 export USER_DELETION_WINDOW="10m"
-# export RETENTION="365days"
-export RETENTION="20s"
+export RETENTION="365days"
 export SLUG_LEN="4"
-# export CLEANUP_INTERVAL="1h"
-export CLEANUP_INTERVAL="10s"
-# export SHUTDOWN_TIMEOUT="10s"
-export SHUTDOWN_TIMEOUT="100ms"
+export CLEANUP_INTERVAL="1h"
+export SHUTDOWN_TIMEOUT="10s"
 export NTFY_SERVER=""
 export NTFY_PREFIX="fiche-n-chips-"
 export PASTE_MAX_SIZE="256KB"
@@ -30,4 +29,4 @@ export LOG_OUTPUT="stdout"
 export LOG_FORMAT="json"
 export LOG_TRACE="true"
 
-target/debug/fiche-n-chips
+target/$version/fiche-n-chips | jq

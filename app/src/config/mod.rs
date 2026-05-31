@@ -35,7 +35,7 @@ pub struct Config {
 #[clap(next_help_heading = "Server")]
 pub struct ServerCfg {
 	/// Address advertised to users in API and TCP responses
-	#[arg(long, env = "PUBLIC_ADDR", default_value = "localhost")]
+	#[arg(long, env = "PUBLIC_ADDR", default_value = "http://localhost:9001")]
 	pub public_addr:      Box<str>,
 	/// Email of the person maintaining the server
 	#[arg(long, env = "MAINTAINER_EMAIL", default_value = "john@example.com")]
