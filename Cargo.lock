@@ -1240,6 +1240,7 @@ dependencies = [
  "lightningcss",
  "minify-html",
  "rslog",
+ "serde",
  "thiserror",
  "tokio",
  "tokio-util",

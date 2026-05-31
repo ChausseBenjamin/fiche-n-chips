@@ -27,6 +27,7 @@ brotli = "8.0.2"                                          # text compression
 rslog = { path = "../rslog", features = ["json"] }
 thiserror = "2.0.18"
 const_format = "0.2.36"
+serde = "1.0.228"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }
