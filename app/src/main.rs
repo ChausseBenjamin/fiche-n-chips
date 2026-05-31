@@ -19,6 +19,7 @@ use tokio_util::sync::CancellationToken;
 use crate::pastebin::Pastebin;
 use crate::reserved::ReservedPathProvider;
 use crate::storage::Storage;
+use crate::util::SlugGenerator;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -27,6 +28,7 @@ async fn main() -> Result<()> {
 	rslog::set_default(logger);
 	info("starting server", src!());
 	let reserved = ReservedPathProvider::new(&cfg);
+	let slugs = Arc::from(SlugGenerator::new(cfg.management.slug_length));
 
 	let storage =
 		Arc::from(Storage::setup(cfg.clone()).await.unwrap_or_else(|e| {
@@ -45,7 +47,7 @@ async fn main() -> Result<()> {
 		.await;
 
 	let shutdown = CancellationToken::new();
-	let shutdown_timeout = cfg.server.shutdown_timeout;
+	let shutdown_timeout = cfg.management.shutdown_timeout;
 
 	let sig = shutdown.clone();
 	tokio::spawn(async move {
@@ -65,11 +67,12 @@ async fn main() -> Result<()> {
 		sig.cancel();
 	});
 
-	let pb = Pastebin::new(cfg.clone(), storage.clone());
+	let pb = Pastebin::new(cfg.clone(), storage.clone(), slugs.clone());
 	let http = Arc::new(http::Server::new(
 		cfg.clone(),
 		storage.clone(),
 		Arc::from(reserved),
+		slugs,
 	));
 
 	let pb_fut = pb.listen(shutdown.clone());

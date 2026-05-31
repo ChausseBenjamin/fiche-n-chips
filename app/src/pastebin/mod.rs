@@ -30,8 +30,11 @@ pub struct Pastebin {
 pub const BUFFER_CAPACITY: usize = 2048;
 
 impl Pastebin {
-	pub fn new(cfg: Arc<Config>, db: Arc<Storage>) -> Self {
-		let slugs = Arc::from(SlugGenerator::new(cfg.management.slug_length));
+	pub fn new(
+		cfg: Arc<Config>,
+		db: Arc<Storage>,
+		slugs: Arc<SlugGenerator>,
+	) -> Self {
 		Self { cfg, db, slugs }
 	}
 

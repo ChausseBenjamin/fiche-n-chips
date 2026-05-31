@@ -22,7 +22,7 @@ use crate::reserved::{ReservedPath as ResPath, ReservedPathProvider, WebFile};
 use crate::storage::model::RowEntry;
 use crate::storage::{self, Storage};
 use crate::ui;
-use crate::util::{normalize_http, sorry};
+use crate::util::{normalize_http, sorry, SlugGenerator};
 
 const NOT_FOUND_PATH: &str = "/404";
 
@@ -30,6 +30,7 @@ pub struct Server {
 	cfg:      Arc<Config>,
 	db:       Arc<Storage>,
 	reserved: Arc<ReservedPathProvider>,
+	slugs:    Arc<SlugGenerator>,
 }
 
 impl Server {
@@ -37,8 +38,14 @@ impl Server {
 		cfg: Arc<Config>,
 		db: Arc<Storage>,
 		reserved: Arc<ReservedPathProvider>,
+		slugs: Arc<SlugGenerator>,
 	) -> Self {
-		Self { cfg, db, reserved }
+		Self {
+			cfg,
+			db,
+			reserved,
+			slugs,
+		}
 	}
 
 	pub async fn listen(
@@ -47,7 +54,7 @@ impl Server {
 	) -> io::Result<()> {
 		let addr = self.cfg.server.listen_addr.clone();
 		let port = self.cfg.server.http_port;
-		let timeout = self.cfg.server.shutdown_timeout;
+		let timeout = self.cfg.management.shutdown_timeout;
 		HttpServer::new(move || {
 			App::new()
 				.app_data(web::Data::from(self.clone()))
@@ -63,11 +70,12 @@ impl Server {
 	pub async fn handler(
 		req: HttpRequest,
 		server: web::Data<Self>,
+		body: web::Bytes,
 	) -> HttpResponse {
-		server.dispatch(req).await
+		server.dispatch(req, body).await
 	}
 
-	async fn dispatch(&self, req: HttpRequest) -> HttpResponse {
+	async fn dispatch(&self, req: HttpRequest, body: web::Bytes) -> HttpResponse {
 		let path = normalize_http(Path::new(req.uri().path()));
 		let slug_path = path.strip_prefix("/").unwrap_or(&path).to_path_buf();
 
@@ -89,7 +97,7 @@ impl Server {
 				.finish(),
 
 			(&Method::POST, Some(ResPath::Api(path))) => {
-				api_post(&req, path.clone()).await
+				api_post(&req, path.clone(), body, self.slugs.clone(), &self.cfg).await
 			}
 			(_, Some(ResPath::Api(_))) => HttpResponse::MethodNotAllowed()
 				.insert_header(("Allow", "POST"))
@@ -108,13 +116,7 @@ impl Server {
 			}
 			(&Method::DELETE, None) => {
 				if let Ok(p) = Self::get_row(self.db.clone(), slug_path.clone()).await {
-					return api_delete(
-						&req,
-						p,
-						self.cfg.management.retention,
-						self.db.clone(),
-					)
-					.await;
+					return api_delete(&req, p, &self.cfg, self.db.clone()).await;
 				}
 
 				debug(

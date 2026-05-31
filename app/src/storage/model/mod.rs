@@ -4,7 +4,7 @@ mod reserved;
 mod row;
 
 pub use paste::{CompressedPaste, PasteInput, PasteRecord};
-pub use redirect::Redirect;
+pub use redirect::{Redirect, RedirectInput};
 pub use reserved::Reserved;
 pub use row::{DeletedRoute, RouteKind, RouteRow, RowEntry, Storable};
 

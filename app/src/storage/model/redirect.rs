@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::time::SystemTime;
 
 use super::{Result, RouteKind, Storable};
 use crate::storage::Storage;
@@ -44,6 +43,8 @@ impl RedirectInput {
 	) -> Result<CompressedRedirect> {
 		let destination = compress(self.0.destination)?;
 		let short = match self.0.short {
+			// TODO: return an error if undesireable characters are used in the slug:
+			// `.`, `?`, `&`, etc...
 			Some(v) => v,
 			None => slugs.gen_unique(&db).await?,
 		};
