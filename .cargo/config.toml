@@ -1,20 +1,40 @@
-# TODO: build for musl when compiling for docker containers
+# ── Global build settings (applied to all targets unless overridden) ──
 [build]
-rustflags = ["-Z", "threads=8"]
 rustc-wrapper = "/usr/bin/sccache"
+rustflags = ["-Z", "threads=8"]
 
-[alias]
-# Sane default: match the typical recommended invocation in docs/examples.
-clippy-all = "clippy --workspace --all-targets --all-features"
+# ── Native gnu builds: mold linker ──
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
 
-# CI mode (non-blocking): runs Clippy with the repo's configured lint levels.
-clippy-ci = "clippy --workspace --all-targets --all-features"
-
-# CI mode (strict).
-# “Strict but low-noise”: only deny the bug-finding correctness group.
-# Useful as an incremental CI step if you want something that passes sooner.
-clippy-ci-strict-correctness = "clippy --workspace --all-targets --all-features -- -D clippy::correctness"
-
+# ── Fallback for other linux targets (uses clang + mold) ──
 [target.'cfg(target_os = "linux")']
 linker = "clang"
 rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+# ── Musl static builds: clang linker, static CRT ──
+[target.x86_64-unknown-linux-musl]
+linker = "clang"
+rustflags = ["-C", "target-feature=+crt-static"]
+
+# ── Environment variables ──
+[env]
+# simsimd crate build script needs a C compiler for musl target
+CC_x86_64_unknown_linux_musl = "gcc"
+
+[alias]
+# ── Build aliases ──
+musl = "build --release --target x86_64-unknown-linux-musl"
+rel = "build --release"
+dev = "build"
+
+# ── Check / Test / Fmt ──
+chk = "check --workspace"
+tst = "test --workspace"
+fmt = "fmt --all"
+
+# ── Clippy ──
+clippy-all = "clippy --workspace --all-targets --all-features"
+clippy-ci = "clippy --workspace --all-targets --all-features"
+clippy-ci-strict-correctness = "clippy --workspace --all-targets --all-features -- -D clippy::correctness"
