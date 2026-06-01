@@ -13,7 +13,7 @@ use rslog::{
 
 use crate::util::valid_filepath;
 
-const DEFAULT_LOGFILE: &str = "/var/log/fiche-n-chips.log";
+const DEFAULT_LOGFILE: &str = "fiche-n-chips.log";
 
 pub const ERR_KEY: &str = "error_message";
 

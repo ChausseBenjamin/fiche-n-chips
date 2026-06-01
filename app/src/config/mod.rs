@@ -60,28 +60,41 @@ pub struct ServerCfg {
 pub struct ManagementCfg {
 	/// Directory containing store.db
 	#[arg(long, env = "DB_PATH", default_value = ".internal/store.db")]
-	pub db_path:          PathBuf,
-	/// How much of the database to cache in memory (MB)
-	#[arg(long, env = "DB_CACHE", default_value_t = 32)]
-	pub db_cache:         u16,
+	pub db_path:           PathBuf,
+	/// How much of the database to cache in memory
+	#[arg(long, env = "DB_CACHE", default_value = "32MB")]
+	pub db_cache:          StorageSize,
+	/// Maximum size the database is allowed to have
+	#[arg(long, env = "DB_MAX_SIZE", default_value = "10GB")]
+	pub db_size:           StorageSize,
+	/// Seed location used to anonymize user IPs
+	#[arg(long, env = "SECRET_SEED_PATH", default_value = ".internal/seed")]
+	pub seed_path:         PathBuf,
+	/// Maximum number of uploads (short-urls or pastes) a user can make in a set
+	/// period
+	#[arg(long, env = "USER_RATE_LIMIT", default_value_t = 100)]
+	pub rate_limit:        u16,
+	/// Time window for the rate limit (e.g. "1h", "15m", "1d")
+	#[arg(long, env = "USER_RATE_LIMIT_PERIOD", default_value = "1h", value_parser = parse_duration)]
+	pub rate_limit_period: Duration,
 	/// Period after creation during which a user is allowed to delete an entry
 	#[arg(long, env = "USER_DELETION_WINDOW", default_value = "10m", value_parser = parse_duration)]
-	pub deletion_window:  Duration,
+	pub deletion_window:   Duration,
 	/// How long pastes and redirects are retained
 	#[arg(long, env = "RETENTION", default_value = "365days", value_parser = parse_duration)]
-	pub retention:        Duration,
+	pub retention:         Duration,
 	/// Character length of generated slugs
 	/// - always the case for paste
 	/// - used for shortening when no short url is provided
 	#[arg(long, env = "SLUG_LEN", default_value_t = 4)]
-	pub slug_length:      u8,
+	pub slug_length:       u8,
 	/// At which time interval the server should check for expired entries and
 	/// clean them up
 	#[arg(long, env = "CLEANUP_INTERVAL", default_value = "1h", value_parser = parse_duration)]
-	pub cleanup_interval: Duration,
+	pub cleanup_interval:  Duration,
 	/// Graceful shutdown timeout before forced termination
 	#[arg(long, env = "SHUTDOWN_TIMEOUT", default_value = "10s", value_parser = parse_duration)]
-	pub shutdown_timeout: Duration,
+	pub shutdown_timeout:  Duration,
 	/// A planned feature is to issue notifications using ntfy.sh about
 	/// various events. Ex:
 	/// - warning 1month before expiry
@@ -91,11 +104,11 @@ pub struct ManagementCfg {
 	/// Setting this to `https://ntfy.sh` (or any hosted instance)
 	/// will enable these notification subscription endpoints once implemented
 	#[arg(long, env = "NTFY_SERVER")]
-	ntfy_server:          Option<Box<str>>,
+	ntfy_server:           Option<Box<str>>,
 	/// url path prefix used for every notification subscription path when
 	/// issuing calls to a ntfy instance
 	#[arg(long, env = "NTFY_PREFIX", default_value = "fiche-n-chips-")]
-	ntfy_prefix:          Option<Box<str>>,
+	ntfy_prefix:           Option<Box<str>>,
 }
 
 #[derive(Args)]

@@ -1,4 +1,5 @@
 #![feature(random, core_float_math)]
+mod anonymizer;
 mod cleanup;
 mod config;
 mod http;
