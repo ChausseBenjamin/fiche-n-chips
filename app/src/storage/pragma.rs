@@ -1,3 +1,5 @@
+use crate::util::StorageSize;
+
 #[derive(Clone, Copy)]
 pub struct PragmaCfg<'a> {
 	pub name: &'a str,
@@ -5,9 +7,9 @@ pub struct PragmaCfg<'a> {
 }
 
 impl PragmaCfg<'_> {
-	pub(super) fn mem_cache(mb: u16) -> Self {
-		// Ok to leak -> this function only ever runs once during setup
-		let cache_str = Box::leak(mb.to_string().into_boxed_str());
+	pub(super) fn mem_cache(size: StorageSize) -> Self {
+		let kib = size.get() / 1024;
+		let cache_str = Box::leak(kib.to_string().into_boxed_str());
 		Self {
 			name: "cache_size",
 			val:  cache_str,
