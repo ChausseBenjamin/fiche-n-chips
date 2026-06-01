@@ -22,7 +22,7 @@ use crate::reserved::{ReservedPath as ResPath, ReservedPathProvider, WebFile};
 use crate::storage::model::RowEntry;
 use crate::storage::{self, Storage};
 use crate::ui;
-use crate::util::{normalize_http, sorry, SlugGenerator};
+use crate::util::{normalize_http, sorry, SlugGenerator, EMPHASIS, IDENT};
 
 const NOT_FOUND_PATH: &str = "/404";
 
@@ -97,7 +97,15 @@ impl Server {
 				.finish(),
 
 			(&Method::POST, Some(ResPath::Api(path))) => {
-				api_post(&req, path.clone(), body, self.slugs.clone(), self.db.clone(), &self.cfg).await
+				api_post(
+					&req,
+					path.clone(),
+					body,
+					self.slugs.clone(),
+					self.db.clone(),
+					&self.cfg,
+				)
+				.await
 			}
 			(_, Some(ResPath::Api(_))) => HttpResponse::MethodNotAllowed()
 				.insert_header(("Allow", "POST"))
@@ -132,8 +140,8 @@ impl Server {
 				resp.body(ui::format!(
 					matches!(client.prefered_format(), RespFmt::Ansi),
 					"Using a `{}` method isn't allowed when reaching `{}`.\n{}",
-					ui::string(req.method(), &[ui::BOLD, ui::BLUE_FG]),
-					ui::string(path.display(), &[ui::BOLD, ui::YELLOW_FG]),
+					ui::string(req.method(), EMPHASIS),
+					ui::string(path.display(), IDENT),
 					sorry(),
 				))
 			}

@@ -13,11 +13,16 @@ const MEBI: u64 = 1024u64.pow(2);
 const GIBI: u64 = 1024u64.pow(3);
 const TEBI: u64 = 1024u64.pow(4);
 
+const BINARY: &[(u64, &str)] =
+	&[(TEBI, "TiB"), (GIBI, "GiB"), (MEBI, "MiB"), (KIBI, "KiB")];
+const DECIMAL: &[(u64, &str)] =
+	&[(TERA, "TB"), (GIGA, "GB"), (MEGA, "MB"), (KILO, "kB")];
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct StorageSize(pub u64);
 
 impl StorageSize {
-	pub fn get(&self) -> u64 { self.0 }
+	pub fn get(self) -> u64 { self.0 }
 }
 
 impl fmt::Display for StorageSize {
@@ -29,12 +34,6 @@ impl fmt::Display for StorageSize {
 impl LogValuer for StorageSize {
 	fn fmt_logged(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let v = self.0;
-
-		const BINARY: &[(u64, &str)] =
-			&[(TEBI, "TiB"), (GIBI, "GiB"), (MEBI, "MiB"), (KIBI, "KiB")];
-
-		const DECIMAL: &[(u64, &str)] =
-			&[(TERA, "TB"), (GIGA, "GB"), (MEGA, "MB"), (KILO, "kB")];
 
 		for &(unit, suffix) in BINARY {
 			if v >= unit && v.is_multiple_of(unit) {

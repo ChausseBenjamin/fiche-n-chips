@@ -11,7 +11,7 @@ use crate::http::client::ResponseFmt as RespFmt;
 use crate::storage::model::{RowEntry as Row, Storable};
 use crate::storage::Storage;
 use crate::ui;
-use crate::util::sorry;
+use crate::util::{sorry, success, CONTACT, EMPHASIS, IDENT};
 
 pub async fn api_delete(
 	req: &HttpRequest,
@@ -54,8 +54,8 @@ pub async fn api_delete(
 			let mut resp = HttpResponse::InternalServerError();
 			return resp.body(ui::format!(ansi_resp,
         "An error occured while attempting to delete `{}`.\nIf you still wish to delete this, please contact <{}> about the issue so he may delete it manually.\n{}",
-        ui::string(id, &[ui::BOLD, ui::YELLOW_FG]),
-        ui::string(maintainer_email, &[ui::BOLD, ui::UNDERLINE]),
+        ui::string(id, IDENT),
+        ui::string(maintainer_email, CONTACT),
         sorry(),
       ));
 		}
@@ -63,17 +63,17 @@ pub async fn api_delete(
 		return resp.body(ui::format!(
 			ansi_resp,
 			"Successfully deleted `{}`, {}\n",
-			ui::string(id, &[ui::BOLD, ui::YELLOW_FG]),
-			ui::string("cheers!", &[ui::GREEN_FG]),
+			ui::string(id, IDENT),
+			success(),
 		));
 	};
 	let mut resp = HttpResponse::Forbidden();
 	return resp.body(ui::format!(ansi_resp,
     "You are trying to delete `{}` but it has been created more than {} ago.\n It can no longer be deleted automatically (created {} ago).\nPlease contact <{}> if you still wish to have this content removed.\n{}",
-    ui::string(id, &[ui::BOLD, ui::YELLOW_FG]),
+    ui::string(id, IDENT),
     humantime::format_duration(max_delay),
-    ui::string(humantime::format_duration(elapsed), &[ui::BLUE_FG]),
-    ui::string(maintainer_email, &[ui::BOLD, ui::UNDERLINE]),
+    ui::string(humantime::format_duration(elapsed), EMPHASIS),
+    ui::string(maintainer_email, CONTACT),
     sorry(),
   ));
 }
