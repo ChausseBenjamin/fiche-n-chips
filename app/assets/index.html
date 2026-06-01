@@ -909,14 +909,17 @@
       result.className = 'form-result visible';
       try {
         var res = await fetch('/' + slug, {
-          method: 'DELETE'
+          method: 'DELETE',
+          headers: {
+            'X-Disable-Colors': 'true'
+          }
         });
-        var data = await res.json();
+        var text = await res.text();
         if (res.ok) {
-          result.textContent = 'Link deleted successfully';
+          result.textContent = text || 'Link deleted successfully';
           result.className = 'form-result visible success';
         } else {
-          result.textContent = data.error || 'Failed to delete link';
+          result.textContent = text || 'Failed to delete link';
           result.className = 'form-result visible error';
         }
       } catch (e) {

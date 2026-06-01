@@ -97,7 +97,7 @@ pub async fn api_post(
 						),
 					);
 					HttpResponse::InternalServerError().body(ui::format!(ansi_resp,
-            "An internal failure occured whild adding your shortened url to the database.\n{}",
+            "An internal failure occured while adding your shortened url to the database.\n{}",
             sorry(),
           ))
 				}
