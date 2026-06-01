@@ -158,8 +158,16 @@ pub mod __prefer_plain {
 macro_rules! plain {
     ($fmt:expr $(, $arg:expr)* $(,)?) => {{
         #[allow(unused_imports)]
-        use $crate::ui::__prefer_plain::ResolveFallback as _;
-        format!($fmt $(, $crate::ui::__prefer_plain::Wrap($arg).resolve())*)
+        use $crate::ui::__prefer_plain::{ResolveFallback as _, Wrap};
+        let __fmt = $fmt.to_string();
+        let __args: Vec<String> = vec![$( Wrap($arg).resolve().to_string() ),*];
+        let mut __parts = __fmt.split("{}");
+        let mut __result = __parts.next().unwrap_or("").to_string();
+        for (__arg, __part) in __args.iter().zip(__parts) {
+            __result.push_str(__arg);
+            __result.push_str(__part);
+        }
+        __result
     }};
 }
 
@@ -278,16 +286,16 @@ mod tests {
 	#[test]
 	fn test_format_macro_styled() {
 		let us = ui::string("hi", &[RED_FG]);
-		let s = format!("{}", us);
-		print("format!(\"{}\", ui_string)", &s);
+		let s = ui::format!(true, "{}", us);
+		print("ui::format!(true, \"{}\", ui_string)", &s);
 		assert_eq!(s, "\x1b[31mhi\x1b[m");
 	}
 
 	#[test]
 	fn test_styled_then_plain() {
 		let name = ui::string("Bob", &[BOLD, YELLOW_FG]);
-		let styled = format!("{}", name);
-		print("format!(\"{}\", name)", &styled);
+		let styled = ui::format!(true, "{}", name.clone());
+		print("ui::format!(true, \"{}\", name)", &styled);
 		assert_eq!(styled, "\x1b[1;33mBob\x1b[m");
 
 		let plain = plain!("{}", name);

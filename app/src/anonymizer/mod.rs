@@ -1,6 +1,6 @@
 use std::fs;
 use std::io::{Error, ErrorKind};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::random::random;
 
 use xxhash_rust::xxh3::xxh3_64_with_secret;
