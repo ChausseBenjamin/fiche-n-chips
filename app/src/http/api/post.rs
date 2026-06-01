@@ -61,6 +61,30 @@ pub async fn api_post(
 					));
 				}
 			};
+
+			let max_url = cfg.redirect.max_raw.get() as usize;
+			if req.url.len() > max_url {
+				return HttpResponse::BadRequest().body(ui::format!(
+					ansi_resp,
+					"The provided URL exceeds the maximum allowed length ({} > {}).\n{}",
+					req.url.len(),
+					max_url,
+					sorry(),
+				));
+			}
+			if let Some(ref slug) = req.slug {
+				let max_slug = cfg.redirect.max_short as usize;
+				if slug.len() > max_slug {
+					return HttpResponse::BadRequest().body(ui::format!(
+						ansi_resp,
+						"The provided slug exceeds the maximum allowed length ({} > {}).\n{}",
+						slug.len(),
+						max_slug,
+						sorry(),
+					));
+				}
+			}
+
 			let redirect = match RedirectInput::new(req.url, req.slug)
 				.try_into_compressed_redirect(&db, slugs)
 				.await
