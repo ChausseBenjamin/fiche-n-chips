@@ -1,9 +1,6 @@
 services:
   fiche-n-chips:
-    image: fiche-n-chips
-    build:
-      context: ../
-      dockerfile: ./Dockerfile
+    image: chaussebenjamin/fiche-n-chips:latest
     ports:
       - "9001:9001"   # HTTP
       - "9002:9002"   # TCP pastebin

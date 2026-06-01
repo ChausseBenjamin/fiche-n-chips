@@ -870,15 +870,18 @@
         var body = slug ? {url: url, slug: slug} : {url: url};
         var res = await fetch('https://1yr.ca/api/shorten', {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Disable-Colors': 'true'
+          },
           body: JSON.stringify(body)
         });
-        var data = await res.json();
+        var text = await res.text();
         if (res.ok) {
-          result.innerHTML = 'Shortened: <a href="' + data.short + '" target="_blank">' + data.short + '</a>';
+          result.innerHTML = text.replace(/\n/g, '<br>');
           result.className = 'form-result visible success';
         } else {
-          result.textContent = data.error || 'Failed to create link';
+          result.textContent = text || 'Failed to create link';
           result.className = 'form-result visible error';
         }
       } catch (e) {
