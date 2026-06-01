@@ -19,6 +19,7 @@ use config::Config;
 use rslog::{attrs, error, info, src, warn, Logger};
 use tokio_util::sync::CancellationToken;
 
+use crate::anonymizer::Anonimizer;
 use crate::cleanup::Cleaner;
 use crate::pastebin::Pastebin;
 use crate::reserved::ReservedPathProvider;
@@ -33,6 +34,7 @@ async fn main() -> Result<()> {
 	info("starting server", src!());
 	let reserved = ReservedPathProvider::new(&cfg);
 	let slugs = Arc::from(SlugGenerator::new(cfg.management.slug_length));
+	let anonimizer = Arc::from(Anonimizer::new(&cfg.management.seed_path)?);
 
 	let storage =
 		Arc::from(Storage::setup(cfg.clone()).await.unwrap_or_else(|e| {

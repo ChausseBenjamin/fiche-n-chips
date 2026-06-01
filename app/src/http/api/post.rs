@@ -13,6 +13,7 @@ use crate::storage::model::{RedirectInput, Storable};
 use crate::storage::Storage;
 use crate::ui;
 use crate::util::{sorry, SlugGenerator};
+use turso::Error as DbError;
 
 fn short_req_demo() -> ui::UiString {
 	ui::string(
@@ -83,6 +84,14 @@ pub async fn api_post(
 						sorry(),
 					));
 				}
+				if db.queries.slug_exists(slug).await.unwrap_or(false) {
+					return HttpResponse::Conflict().body(ui::format!(
+						ansi_resp,
+						"The slug `{}` is already in use by another redirect.\n{}",
+						slug,
+						sorry(),
+					));
+				}
 			}
 
 			let redirect = match RedirectInput::new(req.url, req.slug)
@@ -113,18 +122,25 @@ pub async fn api_post(
                 redirect.id(),
         ))
 				}
-				Err(e) => {
-					error(
-						"failed to insert properly generated short-url into the db",
-						attrs!(
-								ERR_KEY => e
-						),
-					);
-					HttpResponse::InternalServerError().body(ui::format!(ansi_resp,
-            "An internal failure occured while adding your shortened url to the database.\n{}",
-            sorry(),
-          ))
-				}
+				Err(e) => match &e {
+					crate::storage::Error::DbErr(DbError::Constraint(_)) => {
+						HttpResponse::Conflict().body(ui::format!(
+							ansi_resp,
+							"That slug appears to already be taken — please try a different one.\n{}",
+							sorry(),
+						))
+					}
+					_ => {
+						error(
+							"failed to insert properly generated short-url into the db",
+							attrs!(ERR_KEY => e),
+						);
+						HttpResponse::InternalServerError().body(ui::format!(ansi_resp,
+							"An internal failure occured while adding your shortened url to the database.\n{}",
+							sorry(),
+						))
+					}
+				},
 			}
 		}
 		_ => {
