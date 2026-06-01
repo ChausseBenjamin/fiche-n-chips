@@ -56,6 +56,7 @@ unwrap_used = "deny"
 # much larger style shift than “install Clippy”, so we do not enable them.
 
 
+# ── Dev profile ──
 [profile.dev]
 opt-level = 0
 debug = "line-tables-only"
@@ -69,3 +70,20 @@ debug = false
 [profile.dev.build-override]
 opt-level = 3
 codegen-units = 256
+
+# ── Release profile ──
+# Aggressive size optimization for deployment.
+# LTO (fat) performs whole-program inlining and dead-code elimination.
+# codegen-units=1 allows the optimizer to see the whole crate at once.
+# strip=symbols removes ELF symbol tables from the binary.
+# panic=abort eliminates most eh_frame unwinding tables.
+# opt-level="z" optimizes aggressively for size (may impact throughput).
+[profile.release]
+lto             = "fat"
+codegen-units   = 1
+strip           = "symbols"
+opt-level       = 3               # speed-optimized
+panic           = "abort"         # no catch_unwind needed in this server
+overflow-checks = false           # explicit (already default for release)
+debug-assertions = false          # explicit (already default for release)
+incremental     = false
