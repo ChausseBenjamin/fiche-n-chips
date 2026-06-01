@@ -868,7 +868,7 @@
       result.className = 'form-result visible';
       try {
         var body = slug ? {url: url, slug: slug} : {url: url};
-        var res = await fetch('https://1yr.ca/api/shorten', {
+        var res = await fetch('/api/shorten', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -878,7 +878,13 @@
         });
         var text = await res.text();
         if (res.ok) {
-          result.innerHTML = text.replace(/\n/g, '<br>');
+          var lines = text.trim().split('\n');
+          var urlLine = lines[lines.length - 1];
+          if (urlLine && urlLine.startsWith('http')) {
+            result.innerHTML = lines.slice(0, -1).join('\n').replace(/\n/g, '<br>') + '<br>' + '<a href="' + urlLine + '" target="_blank">' + urlLine + '</a>';
+          } else {
+            result.innerHTML = text.replace(/\n/g, '<br>');
+          }
           result.className = 'form-result visible success';
         } else {
           result.textContent = text || 'Failed to create link';
@@ -902,7 +908,7 @@
       result.textContent = 'Deleting...';
       result.className = 'form-result visible';
       try {
-        var res = await fetch('https://1yr.ca/' + slug, {
+        var res = await fetch('/' + slug, {
           method: 'DELETE'
         });
         var data = await res.json();
