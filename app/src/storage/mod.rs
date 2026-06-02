@@ -242,10 +242,22 @@ impl Storage {
 	pub fn spawn_shrink(self: &Arc<Self>, max_bytes: u64) {
 		let this = Arc::clone(self);
 		tokio::spawn(async move {
-			use rslog::{attrs, error};
+			use rslog::{attrs, debug, error, info, src};
 			use crate::config::logging::ERR_KEY;
-			if let Err(e) = this.shrink_to_fit(max_bytes).await {
-				error("failed to shrink db after insert", attrs!(ERR_KEY => e));
+			match this.shrink_to_fit(max_bytes).await {
+				Ok(deleted) => {
+					if deleted.is_empty() {
+						debug("db is within size limit after insert", src!());
+					} else {
+						info(
+							"freed space by deleting old entries after insert",
+							attrs!("count" => deleted.len()),
+						);
+					}
+				}
+				Err(e) => {
+					error("failed to shrink db after insert", attrs!(ERR_KEY => e));
+				}
 			}
 		});
 	}

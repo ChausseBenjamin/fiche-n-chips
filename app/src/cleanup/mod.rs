@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use humantime::format_duration;
-use rslog::{attrs, debug, error, info};
+use rslog::{attrs, debug, error, info, src};
 use tokio::time;
 use tokio_util::sync::CancellationToken;
 
@@ -60,6 +60,8 @@ impl Cleaner {
 								"youngest" => format_duration(now.duration_since(*youngest).unwrap_or_default()),
 							),
 						);
+					} else {
+						debug("no expired entries to clean", src!());
 					}
 				}
 				Err(e) => {
@@ -79,6 +81,8 @@ impl Cleaner {
 							"freed space by deleting old entries",
 							attrs!("count" => v.len()),
 						);
+					} else {
+						debug("db is within size limit", src!());
 					}
 				}
 				Err(e) => {
