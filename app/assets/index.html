@@ -927,6 +927,12 @@
         result.className = 'form-result visible error';
       }
     });
+		document.getElementById('delete-slug').addEventListener('keyup', function(e) {
+			if (e.key === 'Enter') {
+				e.preventDefault();
+				document.getElementById('delete-btn').click();
+			}
+		});
   </script>
 </body>
 </html>
