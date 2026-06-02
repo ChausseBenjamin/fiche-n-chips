@@ -1,42 +1,55 @@
 use std::time::SystemTime;
 
-#[repr(C)]
-struct tm {
-	tm_sec: i32,
-	tm_min: i32,
-	tm_hour: i32,
-	tm_mday: i32,
-	tm_mon: i32,
-	tm_year: i32,
-	tm_wday: i32,
-	tm_yday: i32,
-	tm_isdst: i32,
-}
-
-extern "C" {
-	fn localtime_r(timep: *const i64, result: *mut tm) -> *mut tm;
-}
-
 pub(crate) fn format_time(time: SystemTime) -> String {
 	let duration = time.duration_since(SystemTime::UNIX_EPOCH).unwrap_or_default();
-
-	let secs = duration.as_secs() as i64;
+	let total_secs = duration.as_secs();
 	let millis = duration.subsec_nanos() / 1_000_000;
 
-	let mut t: tm = unsafe { std::mem::zeroed() };
-	unsafe {
-		localtime_r(&secs as *const i64, &mut t as *mut tm);
-	}
+	let secs_of_day = total_secs % 86400;
+	let hour = secs_of_day / 3600;
+	let minute = (secs_of_day % 3600) / 60;
+	let second = secs_of_day % 60;
 
-	let year = t.tm_year + 1900;
-	let month = t.tm_mon + 1;
-	let day = t.tm_mday;
-	let hour = t.tm_hour;
-	let min = t.tm_min;
-	let sec = t.tm_sec;
+	let days = total_secs / 86400;
+	let (year, month, day) = days_to_date(days);
 
 	format!(
 		"{:04}-{:02}-{:02} {:02}:{:02}:{:02}:{:03}",
-		year, month, day, hour, min, sec, millis
+		year, month, day, hour, minute, second, millis
 	)
+}
+
+fn is_leap_year(y: i64) -> bool {
+	(y % 4 == 0 && y % 100 != 0) || y % 400 == 0
+}
+
+fn days_to_date(days: u64) -> (i64, u32, u32) {
+	let mut y = 1970i64;
+	let mut d = days as i64;
+
+	loop {
+		let dim = if is_leap_year(y) { 366 } else { 365 };
+		if d < dim {
+			break;
+		}
+		d -= dim;
+		y += 1;
+	}
+
+	const MONTH_DAYS: [u32; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+	let mut m = 0u32;
+	loop {
+		let dim = if m == 1 && is_leap_year(y) {
+			29
+		} else {
+			MONTH_DAYS[m as usize]
+		};
+		if d < dim as i64 {
+			break;
+		}
+		d -= dim as i64;
+		m += 1;
+	}
+
+	(y, m + 1, (d + 1) as u32)
 }
