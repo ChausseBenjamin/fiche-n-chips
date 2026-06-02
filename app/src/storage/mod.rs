@@ -7,14 +7,14 @@ mod statements;
 
 use const_format::formatcp;
 pub use error::{Error, Result};
-use model::{Reserved, RouteKind, Storable};
+use model::{DeletedRoute, Reserved, RouteKind, Storable};
 use rslog::{attrs, debug, error, info, src, warn};
 use statements::Statements;
 use turso::{Builder, Connection, Value};
 
 use crate::config::Config;
 use crate::storage::pragma::{PragmaCfg, PRAGMA_CONSTRAINTS};
-use crate::util::valid_filepath;
+use crate::util::{from_unix_timestamp, valid_filepath};
 
 // Used if the user provides a path/dir but no filename
 pub const DEFAULT_DB_NAME: &str = "store.db";
@@ -184,5 +184,69 @@ impl Storage {
 
 		tx.commit().await?;
 		Ok(modified)
+	}
+
+	pub async fn shrink_to_fit(&self, max_bytes: u64) -> Result<Vec<DeletedRoute>> {
+		let mut all_deleted = Vec::new();
+
+		let current_size = self.get_db_size().await?;
+		if current_size <= max_bytes {
+			return Ok(all_deleted);
+		}
+
+		let mut conn = self.connection.clone();
+		let tx = conn.transaction().await?;
+
+		loop {
+			let mut rows = tx.query(
+				"DELETE FROM routes WHERE kind != 0 ORDER BY created_on ASC LIMIT 10 RETURNING id, created_on",
+				(),
+			).await?;
+
+			let mut batch = Vec::new();
+			while let Some(row) = rows.next().await? {
+				batch.push(DeletedRoute {
+					id:      row.get(0)?,
+					created: from_unix_timestamp(row.get::<i64>(1)?),
+				});
+			}
+
+			if batch.is_empty() {
+				break;
+			}
+
+			all_deleted.extend(batch);
+		}
+
+		tx.commit().await?;
+
+		Ok(all_deleted)
+	}
+
+	async fn get_db_size(&self) -> Result<u64> {
+		let mut rows = self.connection.query("PRAGMA page_count", ()).await?;
+		let row = rows.next().await?.ok_or_else(|| {
+			Error::SetupErr("failed to query page_count".into())
+		})?;
+		let page_count: i64 = row.get(0)?;
+
+		let mut rows = self.connection.query("PRAGMA page_size", ()).await?;
+		let row = rows.next().await?.ok_or_else(|| {
+			Error::SetupErr("failed to query page_size".into())
+		})?;
+		let page_size: i64 = row.get(0)?;
+
+		Ok(page_count as u64 * page_size as u64)
+	}
+
+	pub fn spawn_shrink(self: &Arc<Self>, max_bytes: u64) {
+		let this = Arc::clone(self);
+		tokio::spawn(async move {
+			use rslog::{attrs, error};
+			use crate::config::logging::ERR_KEY;
+			if let Err(e) = this.shrink_to_fit(max_bytes).await {
+				error("failed to shrink db after insert", attrs!(ERR_KEY => e));
+			}
+		});
 	}
 }

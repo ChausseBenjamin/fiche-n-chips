@@ -71,6 +71,23 @@ impl Cleaner {
 					);
 				}
 			}
+
+			match self.db.shrink_to_fit(self.cfg.management.db_size.get()).await {
+				Ok(v) => {
+					if !v.is_empty() {
+						info(
+							"freed space by deleting old entries",
+							attrs!("count" => v.len()),
+						);
+					}
+				}
+				Err(e) => {
+					error(
+						"failure while shrinking database to max size",
+						attrs!(ERR_KEY => e),
+					);
+				}
+			}
 		}
 	}
 }

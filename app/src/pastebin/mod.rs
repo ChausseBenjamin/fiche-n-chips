@@ -15,7 +15,7 @@ use tokio_util::sync::CancellationToken;
 use crate::anonymizer::Anonimizer;
 use crate::config::logging::ERR_KEY;
 use crate::config::Config;
-use crate::limiter::{RateLimiter, RateLimitStatus};
+use crate::limiter::{RateLimitStatus, RateLimiter};
 use crate::storage::model::PasteInput;
 use crate::storage::Storage;
 use crate::ui;
@@ -25,10 +25,10 @@ use crate::util::{decompress, sorry, SlugGenerator, EMPHASIS, IDENT};
 pub struct RawInput(String, bool);
 
 pub struct Pastebin {
-	cfg:         Arc<Config>,
-	db:          Arc<Storage>,
-	slugs:       Arc<SlugGenerator>,
-	anonimizer:  Arc<Anonimizer>,
+	cfg:          Arc<Config>,
+	db:           Arc<Storage>,
+	slugs:        Arc<SlugGenerator>,
+	anonimizer:   Arc<Anonimizer>,
 	rate_limiter: Arc<Mutex<RateLimiter>>,
 }
 
@@ -42,7 +42,13 @@ impl Pastebin {
 		anonimizer: Arc<Anonimizer>,
 		rate_limiter: Arc<Mutex<RateLimiter>>,
 	) -> Self {
-		Self { cfg, db, slugs, anonimizer, rate_limiter }
+		Self {
+			cfg,
+			db,
+			slugs,
+			anonimizer,
+			rate_limiter,
+		}
 	}
 
 	pub async fn listen(&self, shutdown: CancellationToken) -> io::Result<()> {
@@ -66,12 +72,12 @@ impl Pastebin {
 						std::net::IpAddr::V6(v6) => self.anonimizer.cloak(&v6.octets()),
 					};
 					if let RateLimitStatus::Denied { limit, retry_after } =
-						self.rate_limiter.lock().unwrap().check_and_increment(discrete)
+						self.rate_limiter.lock().unwrap_or_else(std::sync::PoisonError::into_inner).check_and_increment(discrete)
 					{
 						let msg = ui::format!(true,
-							"You've reached the limit ({}).\n Please try again in {}.\n{}",
+							"You've reached the limit ({}).\nPlease try again in {}.\n{}",
 							ui::string(limit, IDENT),
-							ui::string(humantime::format_duration(retry_after), EMPHASIS),
+							ui::string(humantime::format_duration(Duration::from_secs(retry_after.as_secs())), EMPHASIS),
 							sorry(),
 						);
 						if let Err(e) = tokio::io::AsyncWriteExt::write_all(
@@ -115,6 +121,7 @@ impl Pastebin {
 							let slug = slugs.gen_unique(&db).await?;
 							let compressed = paste.try_into_compressed_paste(slug.clone())?;
 							let _created = db.queries.insert(&compressed).await?;
+							db.spawn_shrink(cfg.management.db_size.get());
 							Self::return_url(writer, &cfg, slug.clone(), msg).await?;
 							debug("created new paste", attrs!("slug" => slug));
 

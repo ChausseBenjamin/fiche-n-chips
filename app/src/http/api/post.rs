@@ -140,6 +140,7 @@ async fn handle_shorten(
 			));
 		}
 	};
+	db.spawn_shrink(cfg.management.db_size.get());
 	match db.queries.insert(&redirect).await {
 		Ok(_) => {
 			HttpResponse::Ok().body(ui::format!(ansi_resp,

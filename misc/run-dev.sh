@@ -15,6 +15,8 @@ export DB_CACHE="32"
 export MAINTAINER_EMAIL="dev@example.com"
 export USER_DELETION_WINDOW="10m"
 export RETENTION="365days"
+export SECRET_SEED_PATH="app/.internal"
+
 export SLUG_LEN="4"
 export CLEANUP_INTERVAL="1h"
 export SHUTDOWN_TIMEOUT="10s"

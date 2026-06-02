@@ -6,6 +6,7 @@ mod user; // Issued by users
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use actix_web::http::Method;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer};
@@ -13,13 +14,13 @@ use api::{api_delete, api_post};
 use client::ResponseFmt as RespFmt;
 use rslog::{attrs, debug};
 use service::{handle_404, handle_static};
-use user::handle_entry;
 use tokio_util::sync::CancellationToken;
+use user::handle_entry;
 
 use crate::anonymizer::Anonimizer;
 use crate::config::Config;
 use crate::http::client::Client;
-use crate::limiter::{RateLimiter, RateLimitStatus};
+use crate::limiter::{RateLimitStatus, RateLimiter};
 use crate::reserved::{ReservedPath as ResPath, ReservedPathProvider, WebFile};
 use crate::storage::model::RowEntry;
 use crate::storage::{self, Storage};
@@ -110,16 +111,19 @@ impl Server {
 						std::net::IpAddr::V4(v4) => self.anonimizer.cloak(&v4.octets()),
 						std::net::IpAddr::V6(v6) => self.anonimizer.cloak(&v6.octets()),
 					};
-					if let RateLimitStatus::Denied { limit, retry_after } =
-						self.rate_limiter.lock().unwrap().check_and_increment(discrete)
+					if let RateLimitStatus::Denied { limit, retry_after } = self
+						.rate_limiter
+						.lock()
+						.unwrap_or_else(std::sync::PoisonError::into_inner)
+						.check_and_increment(discrete)
 					{
 						let client = Client::from(&req);
-						let ansi_resp =
-							matches!(client.prefered_format(), RespFmt::Ansi);
-						return HttpResponse::TooManyRequests().body(ui::format!(ansi_resp,
-							"You've reached the limit ({}).\n Please try again in {}.\n{}",
+						let ansi_resp = matches!(client.prefered_format(), RespFmt::Ansi);
+						return HttpResponse::TooManyRequests().body(ui::format!(
+							ansi_resp,
+							"You've reached the limit ({}).\nPlease try again in {}.\n{}",
 							ui::string(limit, IDENT),
-							ui::string(humantime::format_duration(retry_after), EMPHASIS),
+							ui::string(humantime::format_duration(Duration::from_secs(retry_after.as_secs())), EMPHASIS),
 							sorry(),
 						));
 					}
