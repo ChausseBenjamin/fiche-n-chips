@@ -11,7 +11,7 @@ mod ui;
 mod util;
 
 use std::io::Result;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use clap::Parser;
 use config::logging::ERR_KEY;
@@ -21,6 +21,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::anonymizer::Anonimizer;
 use crate::cleanup::Cleaner;
+use crate::limiter::RateLimiter;
 use crate::pastebin::Pastebin;
 use crate::reserved::ReservedPathProvider;
 use crate::storage::Storage;
@@ -35,6 +36,10 @@ async fn main() -> Result<()> {
 	let reserved = ReservedPathProvider::new(&cfg);
 	let slugs = Arc::from(SlugGenerator::new(cfg.management.slug_length));
 	let anonimizer = Arc::from(Anonimizer::new(&cfg.management.seed_path)?);
+	let rate_limiter = Arc::new(Mutex::new(RateLimiter::new(
+		cfg.management.rate_limit,
+		cfg.management.rate_limit_period,
+	)));
 
 	let storage =
 		Arc::from(Storage::setup(cfg.clone()).await.unwrap_or_else(|e| {
@@ -77,12 +82,20 @@ async fn main() -> Result<()> {
 
 	tokio::spawn(cleaner.autoclean(shutdown.clone()));
 
-	let pb = Pastebin::new(cfg.clone(), storage.clone(), slugs.clone());
+	let pb = Pastebin::new(
+		cfg.clone(),
+		storage.clone(),
+		slugs.clone(),
+		anonimizer.clone(),
+		rate_limiter.clone(),
+	);
 	let http = Arc::new(http::Server::new(
 		cfg.clone(),
 		storage.clone(),
 		Arc::from(reserved),
 		slugs,
+		anonimizer,
+		rate_limiter,
 	));
 
 	let pb_fut = pb.listen(shutdown.clone());

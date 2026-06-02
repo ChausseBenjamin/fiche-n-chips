@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 mod error;
 
@@ -12,19 +12,24 @@ use tokio::net::TcpListener;
 use tokio::time::{timeout, Duration};
 use tokio_util::sync::CancellationToken;
 
+use crate::anonymizer::Anonimizer;
 use crate::config::logging::ERR_KEY;
 use crate::config::Config;
+use crate::limiter::{RateLimiter, RateLimitStatus};
 use crate::storage::model::PasteInput;
 use crate::storage::Storage;
-use crate::util::{decompress, sorry, SlugGenerator};
+use crate::ui;
+use crate::util::{decompress, sorry, SlugGenerator, EMPHASIS, IDENT};
 
 //                  data    over-the-limit
 pub struct RawInput(String, bool);
 
 pub struct Pastebin {
-	cfg:   Arc<Config>,
-	db:    Arc<Storage>,
-	slugs: Arc<SlugGenerator>,
+	cfg:         Arc<Config>,
+	db:          Arc<Storage>,
+	slugs:       Arc<SlugGenerator>,
+	anonimizer:  Arc<Anonimizer>,
+	rate_limiter: Arc<Mutex<RateLimiter>>,
 }
 
 pub const BUFFER_CAPACITY: usize = 2048;
@@ -34,8 +39,10 @@ impl Pastebin {
 		cfg: Arc<Config>,
 		db: Arc<Storage>,
 		slugs: Arc<SlugGenerator>,
+		anonimizer: Arc<Anonimizer>,
+		rate_limiter: Arc<Mutex<RateLimiter>>,
 	) -> Self {
-		Self { cfg, db, slugs }
+		Self { cfg, db, slugs, anonimizer, rate_limiter }
 	}
 
 	pub async fn listen(&self, shutdown: CancellationToken) -> io::Result<()> {
@@ -52,8 +59,32 @@ impl Pastebin {
 		loop {
 			tokio::select! {
 				result = listener.accept() => {
-					// XXX: hash _addr for rate_limiting, blacklisting, maybe?
-					let (sock, _addr) = result?;
+					let (mut sock, addr) = result?;
+
+					let discrete = match addr.ip().to_canonical() {
+						std::net::IpAddr::V4(v4) => self.anonimizer.cloak(&v4.octets()),
+						std::net::IpAddr::V6(v6) => self.anonimizer.cloak(&v6.octets()),
+					};
+					if let RateLimitStatus::Denied { limit, retry_after } =
+						self.rate_limiter.lock().unwrap().check_and_increment(discrete)
+					{
+						let msg = ui::format!(true,
+							"You've reached the limit ({}).\n Please try again in {}.\n{}",
+							ui::string(limit, IDENT),
+							ui::string(humantime::format_duration(retry_after), EMPHASIS),
+							sorry(),
+						);
+						if let Err(e) = tokio::io::AsyncWriteExt::write_all(
+							&mut sock,
+							msg.as_bytes(),
+						)
+						.await
+						{
+							error("failed to send rate limit response", attrs!(ERR_KEY => e));
+						}
+						continue;
+					}
+
 					let db = self.db.clone();
 					let slugs = self.slugs.clone();
 					let cfg = self.cfg.clone();
