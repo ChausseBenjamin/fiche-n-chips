@@ -12,13 +12,9 @@ set -euo pipefail
 DOCKER_USER="${1:?Usage: $0 <dockerhub-user> [version]}"
 VERSION="${2:-}"
 
-# If no version was supplied, try to extract it from the workspace Cargo.toml.
-# The workspace Cargo.toml doesn't have a [package] section of its own, so
-# we default to 0.1.0 for a first release.
 if [ -z "$VERSION" ]; then
-    echo "No version specified; defaulting to \"0.1.0\" for the first release."
-    echo "To set a different version: $0 <user> <version>"
-    VERSION="0.1.0"
+    echo "No version specified; reading version from app/Cargo.toml …"
+    VERSION="$(grep '^version = ' app/Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')"
 fi
 
 IMAGE="fiche-n-chips"
