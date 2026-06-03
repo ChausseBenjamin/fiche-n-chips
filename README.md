@@ -165,11 +165,12 @@ misc/run-dev.sh
 - [x] automatic cleanup after a set time-period (1yr by default)
 - [x] user-based deletion within 10min. of creating a paste/redirect
 - [x] graceful shutdown
-- [ ] Add more unit-tests
-- [ ] Add integration tests
-- [ ] user-privacy conscious (IPs can be salted+hashed to help user anonimity)
-    - [ ] rate-limiting based on hashed/anonimized IPs
-    - [ ] logs only track hashed/anonimized IPs
+- [x] user-privacy conscious (IPs can be salted+hashed to help user anonimity)
+    - [x] rate-limiting based on hashed/anonimized IPs
+    - [x] logs only track hashed/anonimized IPs
+- [ ] Manage users with special permissions:
+    - [ ] anonimized whitelist
+    - [ ] anonimized blacklist
 - [ ] [ntfy.sh][4] support for notifications:
   - [ ] prematurely deleted pastebin (server storage shortage)
   - [ ] short-url about to expire (ex: 1 week prior)
