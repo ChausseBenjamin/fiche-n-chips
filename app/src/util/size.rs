@@ -32,6 +32,7 @@ impl fmt::Display for StorageSize {
 }
 
 impl LogValuer for StorageSize {
+	#[allow(clippy::cast_precision_loss)]
 	fn fmt_logged(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let v = self.0;
 
@@ -86,6 +87,7 @@ fn resolve(first: u8, second: Option<u8>) -> Result<Unit, String> {
 	}
 }
 
+#[allow(clippy::cast_precision_loss)]
 fn parse_size(s: &str) -> Result<f64, String> {
 	let s = s.trim();
 	if s.is_empty() {
@@ -148,8 +150,17 @@ fn parse_size(s: &str) -> Result<f64, String> {
 impl FromStr for StorageSize {
 	type Err = String;
 
+	#[allow(
+		clippy::cast_precision_loss,
+		clippy::cast_possible_truncation,
+		clippy::cast_sign_loss
+	)]
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		Ok(StorageSize(parse_size(s)?.round() as u64))
+		let v = parse_size(s)?;
+		if !(0.0..=u64::MAX as f64).contains(&v) {
+			return Err("storage size out of range".into());
+		}
+		Ok(StorageSize(v.round() as u64))
 	}
 }
 

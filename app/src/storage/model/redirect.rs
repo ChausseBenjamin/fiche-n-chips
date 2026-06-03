@@ -8,14 +8,14 @@ use crate::util::{compress, decompress, normalize_http, SlugGenerator};
 fn validate_slug(slug: &str) -> Result<()> {
 	let undesirable = ['.', '?', '&', '/'];
 	if let Some(c) = slug.chars().find(|c| undesirable.contains(c)) {
-		return Err(super::Error::ParseErr(format!(
+		return Err(super::Error::Parse(format!(
 			"slug contains undesirable character: '{c}'"
 		)));
 	}
 	let normalized = normalize_http(Path::new(slug));
 	let normalized = normalized.to_string_lossy();
 	if normalized.len() != slug.len() {
-		return Err(super::Error::ParseErr(format!(
+		return Err(super::Error::Parse(format!(
 			"slug would be mangled by path normalization ('{slug}' -> '{normalized}')"
 		)));
 	}
@@ -49,17 +49,13 @@ impl RedirectInput {
 		Self(RedirectInputInner { short, destination })
 	}
 
-	pub fn destination(&self) -> &str { &self.0.destination }
-
-	pub fn short(&self) -> Option<&str> { self.0.short.as_deref() }
-
 	// Can't use trait as I need outside info
 	pub async fn try_into_compressed_redirect(
 		self,
 		db: &Storage,
 		slugs: Arc<SlugGenerator>,
 	) -> Result<CompressedRedirect> {
-		let destination = compress(self.0.destination)?;
+		let destination = compress(&self.0.destination)?;
 		let short = match self.0.short {
 			Some(v) => {
 				validate_slug(&v)?;
@@ -90,7 +86,7 @@ impl TryFrom<CompressedRedirect> for Redirect {
 	fn try_from(value: CompressedRedirect) -> Result<Self> {
 		Ok(Self(RedirectInner {
 			origin:      value.short,
-			destination: decompress(value.destination)?,
+			destination: decompress(&value.destination)?,
 		}))
 	}
 }

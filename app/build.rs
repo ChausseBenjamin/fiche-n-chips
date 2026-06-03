@@ -4,6 +4,7 @@ use std::path::Path;
 use std::{env, fs};
 
 use brotli::CompressorWriter;
+use lightningcss::stylesheet::{MinifyOptions, ParserOptions};
 
 fn main() {
 	println!("cargo:rerun-if-changed=assets/");
@@ -61,9 +62,9 @@ fn min_html<'a>(src: &str, out: &'a mut Vec<u8>) -> &'a [u8] {
 
 fn min_css<'a>(src: &str, out: &'a mut Vec<u8>) -> &'a [u8] {
 	let mut sheet =
-		lightningcss::stylesheet::StyleSheet::parse(src, Default::default())
+		lightningcss::stylesheet::StyleSheet::parse(src, ParserOptions::default())
 			.unwrap();
-	sheet.minify(Default::default()).unwrap();
+	sheet.minify(MinifyOptions::default()).unwrap();
 	out.clear();
 	out.extend(
 		sheet

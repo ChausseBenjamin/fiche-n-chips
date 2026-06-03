@@ -20,7 +20,7 @@ impl Storable for CompressedPaste {
 
 	fn kind(&self) -> RouteKind { RouteKind::Paste }
 
-	fn hash(&self) -> Option<i64> { Some(self.hash as i64) }
+	fn hash(&self) -> Option<i64> { Some(self.hash.cast_signed()) }
 
 	fn content(&self) -> Option<&[u8]> { Some(&self.content) }
 }
@@ -46,7 +46,7 @@ impl PasteInput {
 		self,
 		slug: String,
 	) -> Result<CompressedPaste> {
-		let compressed = compress(self.0.content)?;
+		let compressed = compress(&self.0.content)?;
 		Ok(CompressedPaste {
 			slug,
 			hash: self.0.hash,

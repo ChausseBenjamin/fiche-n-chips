@@ -47,9 +47,8 @@ pub async fn api_delete(
 			error(
 				"failed to delete element from database",
 				attrs!(
-							"path" => id.clone(),
-								ERR_KEY => err,
-				),
+				"path" => id.clone(),
+				ERR_KEY => err),
 			);
 			let mut resp = HttpResponse::InternalServerError();
 			return resp.body(ui::format!(ansi_resp,
@@ -66,14 +65,15 @@ pub async fn api_delete(
 			ui::string(id, IDENT),
 			success(),
 		));
-	};
+	}
+
 	let mut resp = HttpResponse::Forbidden();
-	return resp.body(ui::format!(ansi_resp,
+	resp.body(ui::format!(ansi_resp,
     "You are trying to delete `{}` but it has been created more than {} ago.\n It can no longer be deleted automatically (created {} ago).\nPlease contact <{}> if you still wish to have this content removed.\n{}",
     ui::string(id, IDENT),
     humantime::format_duration(max_delay),
     ui::string(humantime::format_duration(elapsed), EMPHASIS),
     ui::string(maintainer_email, CONTACT),
     sorry(),
-  ));
+  ))
 }

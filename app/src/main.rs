@@ -43,12 +43,7 @@ async fn main() -> Result<()> {
 
 	let storage =
 		Arc::from(Storage::setup(cfg.clone()).await.unwrap_or_else(|e| {
-			error(
-				"failed to complete database setup",
-				attrs!(
-					ERR_KEY => e,
-				),
-			);
+			error("failed to complete database setup", attrs!( ERR_KEY => e));
 			panic!()
 		}));
 	let _changed_rows = storage

@@ -2,11 +2,12 @@ use std::fmt::{Display, Formatter, Result};
 
 /// Special trait anyone can implement so values are treated differently when
 /// logged vs displayed.
+#[allow(clippy::missing_errors_doc)]
 pub trait LogValuer {
 	fn fmt_logged(&self, f: &mut Formatter<'_>) -> Result;
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct LogValue<T> {
 	inner:      T,
 	display_fn: fn(&T, &mut Formatter<'_>) -> Result,

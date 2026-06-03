@@ -7,7 +7,7 @@ mod discard_handler;
 mod mux_handler;
 mod text_handler;
 
-use self::common_handler::*;
+use self::common_handler::CommonHandler;
 pub use self::discard_handler::*;
 pub use self::mux_handler::*;
 pub use self::text_handler::*;
@@ -31,8 +31,14 @@ pub use self::opt::*;
 /// before forking a copy of the logger.
 /// The same logic applies for `handle` who may want to defer string computation
 /// until the very first time a log is issued (and then keep values cached)
+///
+/// # Errors
+///
+/// Returns an error if the underlying output sink fails to write the log
+/// record.
 pub trait Handler: Send {
 	fn enabled(&self, ctx: &dyn Any, lvl: &dyn Level) -> bool;
+	#[allow(clippy::missing_errors_doc)]
 	fn handle(
 		&mut self,
 		ctx: &dyn Any,

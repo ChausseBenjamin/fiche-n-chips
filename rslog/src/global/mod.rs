@@ -1,9 +1,10 @@
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
-use std::sync::{Mutex, MutexGuard, OnceLock};
+use std::sync::{Mutex, MutexGuard, OnceLock, PoisonError};
 
 use crate::{
-	Attr, Context as Ctx, Handler, Level as Lvl, Logger, Source as Src, TextHandler,
+	Attr, Context as Ctx, Handler, Level as Lvl, Logger, Source as Src,
+	TextHandler,
 };
 
 pub struct DefaultLogger<L>(pub(crate) L);
@@ -11,23 +12,20 @@ pub struct DefaultLogger<L>(pub(crate) L);
 impl<L: Deref<Target = Logger>> Deref for DefaultLogger<L> {
 	type Target = Logger;
 
-	fn deref(&self) -> &Logger {
-		self.0.deref()
-	}
+	fn deref(&self) -> &Logger { self.0.deref() }
 }
 
 impl<L: DerefMut + Deref<Target = Logger>> DerefMut for DefaultLogger<L> {
-	fn deref_mut(&mut self) -> &mut Logger {
-		self.0.deref_mut()
-	}
+	fn deref_mut(&mut self) -> &mut Logger { self.0.deref_mut() }
 }
 
+#[must_use]
 pub fn default() -> DefaultLogger<MutexGuard<'static, Logger>> {
-	DefaultLogger(global().lock().expect("global logger lock poisoned"))
+	DefaultLogger(global().lock().unwrap_or_else(PoisonError::into_inner))
 }
 
 pub fn set_default(logger: Logger) {
-	*global().lock().expect("global logger lock poisoned") = logger;
+	*global().lock().unwrap_or_else(PoisonError::into_inner) = logger;
 }
 
 fn global() -> &'static Mutex<Logger> {
@@ -37,17 +35,15 @@ fn global() -> &'static Mutex<Logger> {
 	})
 }
 
-pub fn handler() -> Box<dyn Handler> {
-	default().handler()
-}
+#[must_use]
+pub fn handler() -> Box<dyn Handler> { default().handler() }
 
 pub fn enabled(ctx: &dyn Any, level: &dyn Lvl) -> bool {
 	default().enabled(ctx, level)
 }
 
-pub fn with(attrs: Vec<Attr>) -> Logger {
-	default().with(attrs)
-}
+#[must_use]
+pub fn with(attrs: Vec<Attr>) -> Logger { default().with(attrs) }
 
 pub fn log_context<C: Ctx + 'static>(
 	ctx: &C,
@@ -58,19 +54,35 @@ pub fn log_context<C: Ctx + 'static>(
 	default().log_context(ctx, level, msg, src_args);
 }
 
-pub fn debug_context<C: Ctx + 'static>(ctx: &C, msg: &str, src_args: (Src, Vec<Attr>)) {
+pub fn debug_context<C: Ctx + 'static>(
+	ctx: &C,
+	msg: &str,
+	src_args: (Src, Vec<Attr>),
+) {
 	default().debug_context(ctx, msg, src_args);
 }
 
-pub fn info_context<C: Ctx + 'static>(ctx: &C, msg: &str, src_args: (Src, Vec<Attr>)) {
+pub fn info_context<C: Ctx + 'static>(
+	ctx: &C,
+	msg: &str,
+	src_args: (Src, Vec<Attr>),
+) {
 	default().info_context(ctx, msg, src_args);
 }
 
-pub fn warn_context<C: Ctx + 'static>(ctx: &C, msg: &str, src_args: (Src, Vec<Attr>)) {
+pub fn warn_context<C: Ctx + 'static>(
+	ctx: &C,
+	msg: &str,
+	src_args: (Src, Vec<Attr>),
+) {
 	default().warn_context(ctx, msg, src_args);
 }
 
-pub fn error_context<C: Ctx + 'static>(ctx: &C, msg: &str, src_args: (Src, Vec<Attr>)) {
+pub fn error_context<C: Ctx + 'static>(
+	ctx: &C,
+	msg: &str,
+	src_args: (Src, Vec<Attr>),
+) {
 	default().error_context(ctx, msg, src_args);
 }
 

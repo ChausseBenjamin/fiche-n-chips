@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::error::Error;
 use std::io::Write;
-use std::sync::Arc;
+use std::sync::{Arc, PoisonError};
 
 use serde_json::{Map, Value};
 
@@ -13,21 +13,25 @@ pub struct JsonHandler<W: Write>(CommonHandler<W>);
 impl<W: Write> JsonHandler<W> {
 	pub fn new(writer: W) -> Self { Self(CommonHandler::new(writer)) }
 
+	#[must_use]
 	pub fn app_name(mut self, name: impl Into<Arc<str>>) -> Self {
 		self.0.app_name = Some(name.into());
 		self
 	}
 
+	#[must_use]
 	pub fn min_level(mut self, level: i8) -> Self {
 		self.0.min_level = level;
 		self
 	}
 
+	#[must_use]
 	pub fn attach_source(mut self, enabled: bool) -> Self {
 		self.0.attach_source = enabled;
 		self
 	}
 
+	#[must_use]
 	pub fn attach_time(mut self, enabled: bool) -> Self {
 		self.0.attach_time = enabled;
 		self
@@ -99,7 +103,8 @@ impl<W: Write + Send + 'static> Handler for JsonHandler<W> {
 			obj.insert(k, v);
 		}
 
-		let mut writer = self.0.writer.lock().unwrap_or_else(|e| e.into_inner());
+		let mut writer =
+			self.0.writer.lock().unwrap_or_else(PoisonError::into_inner);
 		writeln!(writer, "{}", Value::Object(obj))?;
 		Ok(())
 	}
@@ -166,7 +171,11 @@ mod tests {
 		handler.handle(&(), rec).unwrap();
 		let writer = handler.0.writer.lock().unwrap();
 		let output: Value = serde_json::from_slice(&writer).unwrap();
-		assert!(output["time"].is_string(), "time is not a string: {:?}", output["time"]);
+		assert!(
+			output["time"].is_string(),
+			"time is not a string: {:?}",
+			output["time"]
+		);
 		let time_str = output["time"].as_str().unwrap();
 		assert_eq!(time_str.len(), 23, "time string length: {time_str}");
 	}
@@ -195,7 +204,11 @@ mod tests {
 		let writer = handler.0.writer.lock().unwrap();
 		let output: Value = serde_json::from_slice(&writer).unwrap();
 		assert_eq!(output["app_name"], "myapp");
-		assert!(output["time"].is_string(), "time is not a string: {:?}", output["time"]);
+		assert!(
+			output["time"].is_string(),
+			"time is not a string: {:?}",
+			output["time"]
+		);
 	}
 
 	#[test]
@@ -262,7 +275,11 @@ mod tests {
 		assert_eq!(output["msg"], "request");
 		assert_eq!(output["level"], "INFO");
 		assert_eq!(output["app_name"], "myapp");
-		assert!(output["time"].is_string(), "time is not a string: {:?}", output["time"]);
+		assert!(
+			output["time"].is_string(),
+			"time is not a string: {:?}",
+			output["time"]
+		);
 		assert_eq!(output["source"]["module"], "test_module");
 		assert_eq!(output["http"]["method"], "POST");
 	}

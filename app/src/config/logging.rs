@@ -13,9 +13,9 @@ use rslog::{
 
 use crate::util::valid_filepath;
 
-const DEFAULT_LOGFILE: &str = "fiche-n-chips.log";
-
 pub const ERR_KEY: &str = "error_message";
+
+const DEFAULT_LOGFILE: &str = "fiche-n-chips.log";
 
 #[derive(Args)]
 #[clap(next_help_heading = "Logging")]

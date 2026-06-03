@@ -64,7 +64,7 @@ impl<W: Write> CommonHandler<W> {
 			min_level:     INFO.value(),
 			attach_time:   true,
 			attach_source: false,
-			attrs:         Default::default(),
+			attrs:         Vec::default(),
 			writer:        Arc::new(Mutex::new(writer)),
 		}
 	}

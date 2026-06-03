@@ -25,13 +25,8 @@ pub(super) fn handle_entry(req: &HttpRequest, row: RowEntry) -> HttpResponse {
 
 fn handle_redirect(redir: &Redirect) -> HttpResponse {
 	let dest = redir.destination();
-	debug(
-		"serving redirect",
-		attrs!("destination" => dest.to_owned()),
-	);
-	HttpResponse::Found()
-		.insert_header(("Location", dest))
-		.finish()
+	debug("serving redirect", attrs!("destination" => dest.to_owned()));
+	HttpResponse::Found().insert_header(("Location", dest)).finish()
 }
 
 fn handle_paste(req: &HttpRequest, paste: CompressedPaste) -> HttpResponse {
@@ -40,14 +35,16 @@ fn handle_paste(req: &HttpRequest, paste: CompressedPaste) -> HttpResponse {
 	let comp_data = paste.into_content();
 	debug(
 		"serving paste",
-		attrs!("path" => path.clone(), "compressed" => client.accepts_compression()),
+		attrs!(
+			"path" => path.clone(),
+			"compressed" => client.accepts_compression()),
 	);
 	let mut resp = HttpResponse::Ok();
 	if client.accepts_compression() {
 		resp.insert_header(("Content-Encoding", "br"));
 		resp.body(comp_data)
 	} else {
-		match decompress(comp_data) {
+		match decompress(&comp_data) {
 			Ok(v) => resp.body(v),
 			Err(err) => {
 				// TODO: tell the user the paste decompression failed so I may
@@ -55,9 +52,8 @@ fn handle_paste(req: &HttpRequest, paste: CompressedPaste) -> HttpResponse {
 				error(
 					"failed to decompress user data",
 					attrs!(
-									ERR_KEY => err,
-									"path" => path,
-					),
+						ERR_KEY => err,
+						"path" => path),
 				);
 				HttpResponse::InternalServerError().finish()
 			}

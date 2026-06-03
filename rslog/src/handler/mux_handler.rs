@@ -7,6 +7,7 @@ use crate::{Attr, Handler, Level, Record};
 pub struct MuxHandler(Box<[Box<dyn Handler>]>);
 
 impl MuxHandler {
+	#[must_use]
 	pub fn new(handlers: Box<[Box<dyn Handler>]>) -> Self { Self(handlers) }
 }
 
@@ -19,7 +20,7 @@ impl Handler for MuxHandler {
 		rec: Record,
 	) -> Result<(), Box<dyn Error + Send + Sync>> {
 		let mut first_err = None;
-		for h in self.0.iter_mut() {
+		for h in &mut self.0 {
 			if h.enabled(ctx, &*rec.level) {
 				if let Err(e) = h.handle(ctx, rec.clone()) {
 					if first_err.is_none() {

@@ -19,14 +19,14 @@ pub struct SlugGenerator {
 }
 
 impl SlugGenerator {
+	#[allow(
+		clippy::cast_precision_loss,      // SLUG_BASE is a small constant (62)
+		clippy::cast_possible_truncation, // ceil() result is tiny (< 5)
+		clippy::cast_sign_loss            // ceil() always returns non-negative
+	)]
 	pub fn new(slug_len: u8) -> Self {
-		// find the ammount of u64 needed to compute n chars in my SLUG_BASE
-		// bits = n * log2(SLUG_BASE)
-		// nb_u64 = ceil(bits/64)
-		// nb_u64 = ceil(n*log2(SLUG_BASE) / 64)
-		// nb_u64 = ceil(n * (log2(SLUG_BASE)/64))
 		let randint_count =
-			ceil((slug_len as f64) * f64::log2(SLUG_BASE as f64) / 64.0) as usize;
+			ceil(f64::from(slug_len) * f64::log2(SLUG_BASE as f64) / 64.0) as usize;
 		let slug_len: usize = slug_len as usize;
 		Self {
 			randint_count,
@@ -34,6 +34,7 @@ impl SlugGenerator {
 		}
 	}
 
+	#[allow(clippy::cast_possible_truncation)]
 	fn random(&self) -> String {
 		// Maximum ammount of bits needed
 		let mut entropy: Vec<_> = (0..self.randint_count)
@@ -50,14 +51,13 @@ impl SlugGenerator {
 					debug(
 						"slug creation lacked random data, creating more on the spot...",
 						attrs!(
-										"slug_len" => self.slug_len,
-										"randint_count" => self.randint_count,
-						),
+							"slug_len" => self.slug_len,
+							"randint_count" => self.randint_count),
 					);
 					random::<u64>(..)
 				});
 				// Store the entropy as a character in the space
-				let c = SLUG_SPACE[(current as usize) % SLUG_BASE] as char;
+				let c = SLUG_SPACE[(current % SLUG_BASE as u64) as usize] as char;
 				// Remove the data that was just used for the lastest char
 				if let Some(v) = entropy.last_mut() {
 					*v /= SLUG_BASE as u64;
@@ -67,7 +67,7 @@ impl SlugGenerator {
 				// function call by defaulting to 1
 				if entropy.last().copied().unwrap_or(1) == 0 {
 					entropy.pop();
-				};
+				}
 				c
 			})
 			.collect();

@@ -6,6 +6,7 @@ pub struct Source {
 }
 
 impl Source {
+	#[must_use]
 	pub fn new(module: &'static str, file: &'static str, line: u32) -> Self {
 		Self { module, file, line }
 	}

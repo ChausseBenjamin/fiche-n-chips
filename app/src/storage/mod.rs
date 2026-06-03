@@ -43,12 +43,14 @@ impl Storage {
 				"failed to parse provided path",
 				attrs!("input" => db_path.display().to_string()),
 			);
-			Error::SetupErr("db path contains invalid UTF-8".to_string())
+			Error::Setup("db path contains invalid UTF-8".to_string())
 		})?;
 		let db_exists = db_path.exists();
 		info(
 			"opening database",
-			attrs!("path" => path_str.to_owned(), "exists" => db_exists),
+			attrs!(
+				"path" => path_str.to_owned(),
+				"exists" => db_exists),
 		);
 		let db = Builder::new_local(path_str).build().await?;
 		let conn = db.connect()?;
@@ -59,9 +61,7 @@ impl Storage {
 			if let Some(row) = rows.next().await? {
 				let msg: String = row.get(0)?;
 				if msg != "ok" {
-					return Err(Error::SetupErr(format!(
-						"integrity check failed: {msg}"
-					)));
+					return Err(Error::Setup(format!("integrity check failed: {msg}")));
 				}
 				debug("integrity check passed", src!());
 			}
@@ -74,13 +74,17 @@ impl Storage {
 			let current = Self::schema_fingerprint();
 			debug(
 				"schema fingerprint",
-				attrs!("stored" => stored, "current" => current),
+				attrs!(
+					"stored" => stored,
+					"current" => current),
 			);
 
 			if stored != current {
 				warn(
 					"database schema mismatch — backing up and recreating",
-					attrs!("stored" => stored, "current" => current),
+					attrs!(
+            "stored" => stored,
+            "current" => current),
 				);
 				drop(conn);
 				drop(db);
@@ -142,7 +146,9 @@ impl Storage {
 		if paths.is_empty() {
 			error(
 				"no http paths are reserved",
-				attrs!("desc" => "the server should accept/serve stuff but this indicates api endpoints aren't protected and no homepages are being hosted..."),
+				attrs!(
+					"desc" => "the server should accept/serve stuff but this indicates api endpoints aren't protected and no homepages are being hosted...",
+				),
 			);
 			// Return Ok to remain resilient and serve content
 			// Best we can do is log the error...
@@ -186,7 +192,10 @@ impl Storage {
 		Ok(modified)
 	}
 
-	pub async fn shrink_to_fit(&self, max_bytes: u64) -> Result<Vec<DeletedRoute>> {
+	pub async fn shrink_to_fit(
+		&self,
+		max_bytes: u64,
+	) -> Result<Vec<DeletedRoute>> {
 		let mut all_deleted = Vec::new();
 
 		let current_size = self.get_db_size().await?;
@@ -225,24 +234,27 @@ impl Storage {
 
 	async fn get_db_size(&self) -> Result<u64> {
 		let mut rows = self.connection.query("PRAGMA page_count", ()).await?;
-		let row = rows.next().await?.ok_or_else(|| {
-			Error::SetupErr("failed to query page_count".into())
-		})?;
+		let row = rows
+			.next()
+			.await?
+			.ok_or_else(|| Error::Setup("failed to query page_count".into()))?;
 		let page_count: i64 = row.get(0)?;
 
 		let mut rows = self.connection.query("PRAGMA page_size", ()).await?;
-		let row = rows.next().await?.ok_or_else(|| {
-			Error::SetupErr("failed to query page_size".into())
-		})?;
+		let row = rows
+			.next()
+			.await?
+			.ok_or_else(|| Error::Setup("failed to query page_size".into()))?;
 		let page_size: i64 = row.get(0)?;
 
-		Ok(page_count as u64 * page_size as u64)
+		Ok(page_count.unsigned_abs() * page_size.unsigned_abs())
 	}
 
 	pub fn spawn_shrink(self: &Arc<Self>, max_bytes: u64) {
 		let this = Arc::clone(self);
 		tokio::spawn(async move {
 			use rslog::{attrs, debug, error, info, src};
+
 			use crate::config::logging::ERR_KEY;
 			match this.shrink_to_fit(max_bytes).await {
 				Ok(deleted) => {

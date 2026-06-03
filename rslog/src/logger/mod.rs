@@ -10,15 +10,12 @@ use crate::{Handler, Level as Lvl, Record, DEBUG, ERROR, INFO, WARN};
 pub struct Logger(Box<dyn Handler>);
 
 impl<H: Handler + 'static> From<H> for Logger {
-	fn from(handler: H) -> Self {
-		Self(Box::new(handler))
-	}
+	fn from(handler: H) -> Self { Self(Box::new(handler)) }
 }
 
 impl Logger {
-	pub fn new(handler: Box<dyn Handler>) -> Self {
-		Self(handler)
-	}
+	#[must_use]
+	pub fn new(handler: Box<dyn Handler>) -> Self { Self(handler) }
 
 	pub fn handler(&mut self) -> Box<dyn Handler> {
 		// HACK: can't `Copy` a Box<dyn Handler> but calling with_attrs with an
@@ -30,6 +27,7 @@ impl Logger {
 		self.0.enabled(ctx, level)
 	}
 
+	#[must_use]
 	pub fn with(&mut self, attrs: Vec<Attr>) -> Self {
 		Self(self.0.with_attrs(attrs))
 	}
@@ -57,23 +55,48 @@ impl Logger {
 		let _ = self.0.handle(ctx, rec);
 	}
 
-	pub fn debug_context<C: Ctx + 'static>(&mut self, ctx: &C, msg: &str, src_args: (Src, Vec<Attr>)) {
+	pub fn debug_context<C: Ctx + 'static>(
+		&mut self,
+		ctx: &C,
+		msg: &str,
+		src_args: (Src, Vec<Attr>),
+	) {
 		self.log_context(ctx, DEBUG, msg, src_args);
 	}
 
-	pub fn info_context<C: Ctx + 'static>(&mut self, ctx: &C, msg: &str, src_args: (Src, Vec<Attr>)) {
+	pub fn info_context<C: Ctx + 'static>(
+		&mut self,
+		ctx: &C,
+		msg: &str,
+		src_args: (Src, Vec<Attr>),
+	) {
 		self.log_context(ctx, INFO, msg, src_args);
 	}
 
-	pub fn warn_context<C: Ctx + 'static>(&mut self, ctx: &C, msg: &str, src_args: (Src, Vec<Attr>)) {
+	pub fn warn_context<C: Ctx + 'static>(
+		&mut self,
+		ctx: &C,
+		msg: &str,
+		src_args: (Src, Vec<Attr>),
+	) {
 		self.log_context(ctx, WARN, msg, src_args);
 	}
 
-	pub fn error_context<C: Ctx + 'static>(&mut self, ctx: &C, msg: &str, src_args: (Src, Vec<Attr>)) {
+	pub fn error_context<C: Ctx + 'static>(
+		&mut self,
+		ctx: &C,
+		msg: &str,
+		src_args: (Src, Vec<Attr>),
+	) {
 		self.log_context(ctx, ERROR, msg, src_args);
 	}
 
-	pub fn log(&mut self, level: impl Lvl + 'static, msg: &str, src_args: (Src, Vec<Attr>)) {
+	pub fn log(
+		&mut self,
+		level: impl Lvl + 'static,
+		msg: &str,
+		src_args: (Src, Vec<Attr>),
+	) {
 		self.log_context(&Background, level, msg, src_args);
 	}
 

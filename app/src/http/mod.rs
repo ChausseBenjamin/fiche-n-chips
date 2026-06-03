@@ -5,7 +5,7 @@ mod user; // Issued by users
 
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use actix_web::http::Method;
@@ -90,7 +90,9 @@ impl Server {
 
 		debug(
 			"dispatching request",
-			attrs!("method" => req.method().to_string(), "path" => path.display().to_string()),
+			attrs!(
+				"method" => req.method().to_string(),
+				"path" => path.display().to_string()),
 		);
 
 		match (req.method(), self.reserved.get(&path)) {
@@ -114,7 +116,7 @@ impl Server {
 					if let RateLimitStatus::Denied { limit, retry_after } = self
 						.rate_limiter
 						.lock()
-						.unwrap_or_else(std::sync::PoisonError::into_inner)
+						.unwrap_or_else(PoisonError::into_inner)
 						.check_and_increment(discrete)
 					{
 						let client = Client::from(&req);
@@ -123,7 +125,12 @@ impl Server {
 							ansi_resp,
 							"You've reached the limit ({}).\nPlease try again in {}.\n{}",
 							ui::string(limit, IDENT),
-							ui::string(humantime::format_duration(Duration::from_secs(retry_after.as_secs())), EMPHASIS),
+							ui::string(
+								humantime::format_duration(Duration::from_secs(
+									retry_after.as_secs()
+								)),
+								EMPHASIS
+							),
 							sorry(),
 						));
 					}

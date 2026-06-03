@@ -59,6 +59,7 @@ impl PartialEq for AttrLeaf {
 }
 
 impl Attr {
+	#[must_use]
 	pub fn group(key: Arc<str>, attrs: Arc<[Self]>) -> Self {
 		Attr::Grp(AttrGroup { key, attrs })
 	}

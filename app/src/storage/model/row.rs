@@ -21,9 +21,7 @@ impl TryFrom<i64> for RouteKind {
 			1 => RouteKind::Redirect,
 			2 => RouteKind::Paste,
 			v => {
-				return Err(Self::Error::ParseErr(format!(
-					"{v} isn't a valid route kind"
-				)))
+				return Err(Self::Error::Parse(format!("{v} isn't a valid route kind")))
 			}
 		})
 	}
@@ -70,7 +68,7 @@ impl TryFrom<RouteRow> for RowEntry {
 						destination: value.content.unwrap_or_default(),
 					})?,
 					value.created.ok_or_else(|| {
-						Error::ParseErr("missing created_on for redirect".into())
+						Error::Parse("missing created_on for redirect".into())
 					})?,
 				)
 			}
@@ -81,9 +79,9 @@ impl TryFrom<RouteRow> for RowEntry {
 					hash:    value.hash.unwrap_or_default().cast_unsigned(),
 					content: value.content.unwrap_or_default(),
 				},
-				value.created.ok_or_else(|| {
-					Error::ParseErr("missing created_on for paste".into())
-				})?,
+				value
+					.created
+					.ok_or_else(|| Error::Parse("missing created_on for paste".into()))?,
 			),
 		})
 	}

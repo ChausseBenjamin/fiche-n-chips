@@ -59,7 +59,7 @@ impl Statements {
 		hash: u64,
 	) -> Result<Vec<PasteRecord>, Error> {
 		let mut cmd = self.0.get_slugs_by_hash.clone();
-		let mut rows = cmd.query([hash as i64]).await?;
+		let mut rows = cmd.query([hash.cast_signed()]).await?;
 		let mut results: Vec<PasteRecord> = Vec::new();
 		while let Some(row) = rows.next().await? {
 			results.push(PasteRecord {
@@ -82,7 +82,7 @@ impl Statements {
 		range: Duration,
 	) -> Result<Vec<DeletedRoute>, Error> {
 		let mut cmd = self.0.del_expired.clone();
-		let mut rows = cmd.query([range.as_secs() as i64]).await?;
+		let mut rows = cmd.query([range.as_secs().cast_signed()]).await?;
 		let mut results: Vec<DeletedRoute> = Vec::new();
 		while let Some(row) = rows.next().await? {
 			results.push(DeletedRoute {
@@ -112,7 +112,7 @@ impl Statements {
 		let id = Value::from(route.id().to_string());
 		let kind = Value::from(route.kind() as u8);
 		let hash = Value::from(route.hash());
-		let content = Value::from(route.content().map(|c| c.to_vec()));
+		let content = Value::from(route.content().map(<[u8]>::to_vec));
 
 		let mut cmd = self.0.insert_route.clone();
 		let row = cmd.query_row([id, kind, hash, content]).await?;

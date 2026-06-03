@@ -32,7 +32,6 @@ dev = "build"
 # ── Check / Test / Fmt ──
 chk = "check --workspace"
 tst = "test --workspace"
-fmt = "fmt --all"
 
 # ── Clippy ──
 clippy-all = "clippy --workspace --all-targets --all-features"

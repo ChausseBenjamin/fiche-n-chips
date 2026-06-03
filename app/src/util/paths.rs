@@ -75,17 +75,14 @@ pub fn normalize_http(path: &Path) -> PathBuf {
 	}
 
 	// Get the file name (last component)
-	let file_name = match path.file_name() {
-		Some(name) => name,
-		None => {
-			// No file component (e.g., root "/"), just strip trailing slashes
-			let s = path.to_string_lossy();
-			return if s.len() <= 1 {
-				PathBuf::from("/")
-			} else {
-				PathBuf::from(s.trim_end_matches('/'))
-			};
-		}
+	let Some(file_name) = path.file_name() else {
+		// No file component (e.g., root "/"), just strip trailing slashes
+		let s = path.to_string_lossy();
+		return if s.len() <= 1 {
+			PathBuf::from("/")
+		} else {
+			PathBuf::from(s.trim_end_matches('/'))
+		};
 	};
 
 	// Get the stem (filename without extension)

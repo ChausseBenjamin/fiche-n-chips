@@ -49,9 +49,7 @@ pub async fn api_post(
 			// TODO: log an error internally
 			error(
 				"user reached a supposedly unreachable api endpoint",
-				attrs!(
-					"path" => endpoint.to_string_lossy().to_string(),
-				),
+				attrs!("path" => endpoint.to_string_lossy().to_string()),
 			);
 			resp.body(ui::format!(
 				ansi_resp,
@@ -76,9 +74,7 @@ async fn handle_shorten(
 		Err(e) => {
 			debug(
 				"failed to parse user request for a short url",
-				attrs!(
-					ERR_KEY => e,
-				),
+				attrs!(ERR_KEY => e),
 			);
 			return HttpResponse::BadRequest().body(ui::format!(
 				ansi_resp,
@@ -129,9 +125,7 @@ async fn handle_shorten(
 		Err(e) => {
 			debug(
 				"failed to convert shorten request to a database-ready format",
-				attrs!(
-					ERR_KEY => e,
-				),
+				attrs!(ERR_KEY => e),
 			);
 			return HttpResponse::InternalServerError().body(ui::format!(
 				ansi_resp,
@@ -153,9 +147,7 @@ async fn handle_shorten(
 		Err(e) => {
 			error(
 				"failed to insert properly generated short-url into the db",
-				attrs!(
-					ERR_KEY => e
-				),
+				attrs!(ERR_KEY => e),
 			);
 			HttpResponse::InternalServerError().body(ui::format!(ansi_resp,
 				"An internal failure occured while adding your shortened url to the database.\n{}",

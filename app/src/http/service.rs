@@ -16,7 +16,9 @@ pub(super) fn handle_static(
 ) -> HttpResponse {
 	debug(
 		"serving static file",
-		attrs!("path" => endpoint.path().display().to_string(), "mime" => endpoint.mime().to_owned()),
+		attrs!(
+			"path" => endpoint.path().display().to_string(),
+			"mime" => endpoint.mime().to_owned()),
 	);
 	let mut resp = HttpResponse::Ok();
 	resp.insert_header(("Content-Type", endpoint.mime()));
@@ -28,7 +30,7 @@ pub(super) fn handle_static(
 				resp.insert_header(("Content-Encoding", "br"));
 				cow.clone()
 			} else {
-				match decompress(cow.to_vec()) {
+				match decompress(cow) {
 					Ok(s) => Cow::Owned(s.into_bytes()),
 					Err(err) => {
 						error(

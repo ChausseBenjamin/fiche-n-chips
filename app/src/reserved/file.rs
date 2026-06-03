@@ -1,8 +1,7 @@
 use std::borrow::Cow;
-use std::io;
 use std::path::{Path, PathBuf};
 
-use crate::util::{decompress, normalize_http};
+use crate::util::normalize_http;
 
 macro_rules! embed {
 	($path:literal, $variant:path) => {
@@ -77,15 +76,4 @@ struct WebFileInner<'a> {
 pub enum FileContents<'a> {
 	Raw(Cow<'a, [u8]>),
 	Brotli(Cow<'a, [u8]>),
-}
-
-impl FileContents<'_> {
-	pub fn uncompressed(&self) -> Result<Cow<'_, [u8]>, io::Error> {
-		Ok(match self {
-			FileContents::Raw(v) => Cow::Borrowed(v.as_ref()),
-			FileContents::Brotli(v) => {
-				Cow::Owned(decompress(v.to_vec())?.into_bytes())
-			}
-		})
-	}
 }

@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::error::Error;
 use std::io::Write;
-use std::sync::Arc;
+use std::sync::{Arc, PoisonError};
 
 use super::CommonHandler;
 use crate::{group, Attr, Handler, Level, Record};
@@ -11,27 +11,31 @@ pub struct TextHandler<W: Write>(CommonHandler<W>);
 impl<W: Write> TextHandler<W> {
 	pub fn new(writer: W) -> Self { Self(CommonHandler::new(writer)) }
 
+	#[must_use]
 	pub fn app_name(mut self, name: impl Into<Arc<str>>) -> Self {
 		self.0.app_name = Some(name.into());
 		self
 	}
 
+	#[must_use]
 	pub fn min_level(mut self, level: i8) -> Self {
 		self.0.min_level = level;
 		self
 	}
 
+	#[must_use]
 	pub fn attach_source(mut self, enabled: bool) -> Self {
 		self.0.attach_source = enabled;
 		self
 	}
 
+	#[must_use]
 	pub fn attach_time(mut self, enabled: bool) -> Self {
 		self.0.attach_time = enabled;
 		self
 	}
 
-	fn str_attrs(attrs: Vec<Attr>, prefix: Option<Arc<str>>) -> Vec<String> {
+	fn str_attrs(attrs: &[Attr], prefix: Option<Arc<str>>) -> Vec<String> {
 		let flatlist: Vec<String> = attrs
 			.iter()
 			.flat_map(|a| match a {
@@ -39,12 +43,12 @@ impl<W: Write> TextHandler<W> {
 					vec![format!("{}=\"{}\"", leaf.key, leaf.value).to_string()]
 				}
 				Attr::Grp(group) => {
-					Self::str_attrs(group.attrs.to_vec(), Some(group.key.clone()))
+					Self::str_attrs(&group.attrs, Some(group.key.clone()))
 				}
 			})
 			.collect();
 		if let Some(p) = prefix {
-			flatlist.iter().map(|a| format!("{}.{}", p, a).to_string()).collect()
+			flatlist.iter().map(|a| format!("{p}.{a}").to_string()).collect()
 		} else {
 			flatlist
 		}
@@ -70,7 +74,7 @@ impl<W: Write + Send + 'static> Handler for TextHandler<W> {
 				"line" => rec.src.line,
 			));
 		}
-		let rhs: String = Self::str_attrs(attrs, None).join(", ");
+		let rhs: String = Self::str_attrs(&attrs, None).join(", ");
 		let time = crate::util::format_time(rec.time);
 		let lhs: String = match (self.0.app_name.clone(), self.0.attach_time) {
 			(None, false) => format!("{} {}", rec.level, rec.msg),
@@ -80,8 +84,9 @@ impl<W: Write + Send + 'static> Handler for TextHandler<W> {
 				format!("{} {}| {}: {}", rec.level, time, name, rec.msg)
 			}
 		};
-		let mut writer = self.0.writer.lock().unwrap_or_else(|e| e.into_inner());
-		writeln!(writer, "{}: {}", lhs, rhs)?;
+		let mut writer =
+			self.0.writer.lock().unwrap_or_else(PoisonError::into_inner);
+		writeln!(writer, "{lhs}: {rhs}")?;
 		Ok(())
 	}
 
@@ -336,27 +341,27 @@ mod tests {
 	#[test]
 	fn str_attrs_flat() {
 		let attrs = vec![attr!("a", 1), attr!("b", "two")];
-		let result = TextHandler::<Vec<u8>>::str_attrs(attrs, None);
+		let result = TextHandler::<Vec<u8>>::str_attrs(&attrs, None);
 		assert_eq!(result, vec!["a=\"1\"", "b=\"two\""]);
 	}
 
 	#[test]
 	fn str_attrs_with_prefix() {
 		let attrs = vec![attr!("x", 10)];
-		let result = TextHandler::<Vec<u8>>::str_attrs(attrs, Some("root".into()));
+		let result = TextHandler::<Vec<u8>>::str_attrs(&attrs, Some("root".into()));
 		assert_eq!(result, vec!["root.x=\"10\""]);
 	}
 
 	#[test]
 	fn str_attrs_nested_group() {
 		let attrs = vec![group!("outer", "inner" => "value")];
-		let result = TextHandler::<Vec<u8>>::str_attrs(attrs, None);
+		let result = TextHandler::<Vec<u8>>::str_attrs(&attrs, None);
 		assert_eq!(result, vec!["outer.inner=\"value\""]);
 	}
 
 	#[test]
 	fn str_attrs_empty() {
-		let result = TextHandler::<Vec<u8>>::str_attrs(vec![], None);
+		let result = TextHandler::<Vec<u8>>::str_attrs(&[], None);
 		assert!(result.is_empty());
 	}
 
@@ -368,7 +373,7 @@ mod tests {
 				"e" => "2",
 			),
 		)];
-		let result = TextHandler::<Vec<u8>>::str_attrs(attrs, None);
+		let result = TextHandler::<Vec<u8>>::str_attrs(&attrs, None);
 		assert_eq!(result, vec!["a.b=\"1\"", "a.d.e=\"2\""]);
 	}
 }

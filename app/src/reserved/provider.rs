@@ -65,8 +65,10 @@ impl ReservedPathProvider {
 					if path_count > CONSIDERABLE_PATH_COUNT {
 						warn(
 							"path count exceeds what seems reasonable. proceed if this is intended...",
-							attrs!("count" => path_count, "limit" => CONSIDERABLE_PATH_COUNT),
-						);
+							attrs!(
+                "count" => path_count,
+                "limit" => CONSIDERABLE_PATH_COUNT),
+            );
 					}
 
 					let should_compress = matches!(
@@ -90,8 +92,10 @@ impl ReservedPathProvider {
 						if file_size > CONSIDERABLE_PATH_SIZE {
 							warn(
 								"file size in the html dir exceeds what seems reasonable. proceed if this is intended...",
-								attrs!("path" => path.display().to_string(), "size" => file_size),
-							);
+								attrs!(
+                  "path" => path.display().to_string(),
+                  "size" => file_size),
+              );
 						}
 						let mut out = Vec::new();
 						{
@@ -114,8 +118,10 @@ impl ReservedPathProvider {
 		if total_size > CONSIDERABLE_TOTAL_SIZE {
 			warn(
 				"total size of the html dir exceeds what seems, reasonable. proceed if this is intended...",
-				attrs!("size" => total_size, "html_root" => format!("{}", root.display())),
-			);
+				attrs!(
+          "size" => total_size,
+          "html_root" => format!("{}", root.display())),
+      );
 		}
 
 		if !has_index {

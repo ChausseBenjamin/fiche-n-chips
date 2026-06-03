@@ -23,8 +23,7 @@ impl Cleaner {
 			"cleaner initialization",
 			attrs!(
 				"cleanup_interval" => format_duration(self.cfg.management.cleanup_interval),
-				"retention" => format_duration(self.cfg.management.retention),
-			),
+				"retention" => format_duration(self.cfg.management.retention)),
 		);
 		let mut interval = time::interval(self.cfg.management.cleanup_interval);
 
@@ -36,7 +35,9 @@ impl Cleaner {
 			}
 			match self.db.queries.del_expired(self.cfg.management.retention).await {
 				Ok(v) => {
-					if !v.is_empty() {
+					if v.is_empty() {
+						debug("no expired entries to clean", src!());
+					} else {
 						let now = SystemTime::now();
 						let routes: String = v
 							.iter()
@@ -57,11 +58,8 @@ impl Cleaner {
 							attrs!(
 								"routes" => routes,
 								"oldest" => format_duration(now.duration_since(*oldest).unwrap_or_default()),
-								"youngest" => format_duration(now.duration_since(*youngest).unwrap_or_default()),
-							),
+								"youngest" => format_duration(now.duration_since(*youngest).unwrap_or_default())),
 						);
-					} else {
-						debug("no expired entries to clean", src!());
 					}
 				}
 				Err(e) => {
@@ -76,13 +74,13 @@ impl Cleaner {
 
 			match self.db.shrink_to_fit(self.cfg.management.db_size.get()).await {
 				Ok(v) => {
-					if !v.is_empty() {
+					if v.is_empty() {
+						debug("db is within size limit", src!());
+					} else {
 						info(
 							"freed space by deleting old entries",
 							attrs!("count" => v.len()),
 						);
-					} else {
-						debug("db is within size limit", src!());
 					}
 				}
 				Err(e) => {

@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 
 mod error;
 
@@ -71,8 +71,11 @@ impl Pastebin {
 						std::net::IpAddr::V4(v4) => self.anonimizer.cloak(&v4.octets()),
 						std::net::IpAddr::V6(v6) => self.anonimizer.cloak(&v6.octets()),
 					};
-					if let RateLimitStatus::Denied { limit, retry_after } =
-						self.rate_limiter.lock().unwrap_or_else(std::sync::PoisonError::into_inner).check_and_increment(discrete)
+					let status = self.rate_limiter
+						.lock()
+						.unwrap_or_else(PoisonError::into_inner)
+						.check_and_increment(discrete);
+					if let RateLimitStatus::Denied { limit, retry_after } = status
 					{
 						let msg = ui::format!(true,
 							"You've reached the limit ({}).\nPlease try again in {}.\n{}",
@@ -134,7 +137,7 @@ impl Pastebin {
 						}
 					});
 				}
-				_ = shutdown.cancelled() => {
+				() = shutdown.cancelled() => {
 					info("pastebin server shutting down", src!());
 					break;
 				}
@@ -149,7 +152,7 @@ impl Pastebin {
 	) -> Result<Option<String>> {
 		let hash_matches = db.queries.get_slugs_by_hash(paste.hash()).await?;
 		for p in hash_matches {
-			let decompressed = decompress(p.content)?;
+			let decompressed = decompress(&p.content)?;
 			if paste.content() == decompressed {
 				return Ok(Some(p.slug));
 			}

@@ -1,4 +1,4 @@
-use std::fmt::{self, Write};
+use std::fmt::{self};
 
 const ESC_START: &str = "\x1b[";
 const ESC_END: &str = "\x1b[m";
@@ -76,9 +76,12 @@ pub struct UiString {
 }
 
 impl UiString {
+	#[cfg(test)]
 	pub fn raw(&self) -> &str { &self.inner }
 
+	#[cfg(test)]
 	pub fn styled(&self) -> String {
+		use std::fmt::Write;
 		let mut out = String::new();
 		if !self.styles.is_empty() {
 			let _ = write!(out, "{}", seq(&self.styles));
@@ -99,7 +102,7 @@ impl fmt::Display for UiString {
 	}
 }
 
-trait PlainFormat {
+pub trait PlainFormat {
 	fn fmt_plain(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 }
 
