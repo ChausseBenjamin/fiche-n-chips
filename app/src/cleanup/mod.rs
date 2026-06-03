@@ -6,7 +6,7 @@ use rslog::{attrs, debug, error, info, src};
 use tokio::time;
 use tokio_util::sync::CancellationToken;
 
-use crate::config::logging::ERR_KEY;
+use crate::config::logging::{CLEANUP_INTERVAL_KEY, COUNT_KEY, ERR_KEY, OLDEST_KEY, RETENTION_KEY, ROUTES_KEY, YOUNGEST_KEY};
 use crate::config::Config;
 use crate::storage::Storage;
 
@@ -22,8 +22,8 @@ impl Cleaner {
 		debug(
 			"cleaner initialization",
 			attrs!(
-				"cleanup_interval" => format_duration(self.cfg.management.cleanup_interval),
-				"retention" => format_duration(self.cfg.management.retention)),
+				CLEANUP_INTERVAL_KEY => format_duration(self.cfg.management.cleanup_interval),
+				RETENTION_KEY => format_duration(self.cfg.management.retention)),
 		);
 		let mut interval = time::interval(self.cfg.management.cleanup_interval);
 
@@ -56,9 +56,9 @@ impl Cleaner {
 						info(
 							"cleaned up expired entries",
 							attrs!(
-								"routes" => routes,
-								"oldest" => format_duration(now.duration_since(*oldest).unwrap_or_default()),
-								"youngest" => format_duration(now.duration_since(*youngest).unwrap_or_default())),
+								ROUTES_KEY => routes,
+								OLDEST_KEY => format_duration(now.duration_since(*oldest).unwrap_or_default()),
+								YOUNGEST_KEY => format_duration(now.duration_since(*youngest).unwrap_or_default())),
 						);
 					}
 				}
@@ -79,7 +79,7 @@ impl Cleaner {
 					} else {
 						info(
 							"freed space by deleting old entries",
-							attrs!("count" => v.len()),
+							attrs!(COUNT_KEY => v.len()),
 						);
 					}
 				}

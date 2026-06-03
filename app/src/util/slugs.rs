@@ -2,6 +2,7 @@ use core::f64::math::ceil;
 use std::char;
 use std::random::random;
 
+use crate::config::logging::{RANDINT_COUNT_KEY, SLUG_KEY, SLUG_LEN_KEY};
 use rslog::{attrs, debug};
 
 use crate::storage::{self, Storage};
@@ -51,8 +52,8 @@ impl SlugGenerator {
 					debug(
 						"slug creation lacked random data, creating more on the spot...",
 						attrs!(
-							"slug_len" => self.slug_len,
-							"randint_count" => self.randint_count),
+							SLUG_LEN_KEY => self.slug_len,
+							RANDINT_COUNT_KEY => self.randint_count),
 					);
 					random::<u64>(..)
 				});
@@ -82,7 +83,7 @@ impl SlugGenerator {
 		while db.queries.slug_exists(&output).await? {
 			debug(
 				"collision while generating a slug name",
-				attrs!( "slug" => output),
+				attrs!( SLUG_KEY => output),
 			);
 			output = self.random();
 		}

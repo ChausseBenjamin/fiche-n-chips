@@ -5,7 +5,7 @@ use actix_web::{HttpRequest, HttpResponse};
 use rslog::{attrs, error};
 
 use super::super::Client;
-use crate::config::logging::ERR_KEY;
+use crate::config::logging::{ERR_KEY, SLUG_KEY};
 use crate::config::Config;
 use crate::http::client::ResponseFmt as RespFmt;
 use crate::storage::model::{RowEntry as Row, Storable};
@@ -47,8 +47,8 @@ pub async fn api_delete(
 			error(
 				"failed to delete element from database",
 				attrs!(
-				"path" => id.clone(),
-				ERR_KEY => err),
+				  SLUG_KEY => id.clone(),
+				  ERR_KEY => err),
 			);
 			let mut resp = HttpResponse::InternalServerError();
 			return resp.body(ui::format!(ansi_resp,

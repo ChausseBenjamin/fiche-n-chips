@@ -2,7 +2,7 @@ use actix_web::{HttpRequest, HttpResponse};
 use rslog::{attrs, debug, error, src};
 
 use super::client::Client;
-use crate::config::logging::ERR_KEY;
+use crate::config::logging::{COMPRESSED_KEY, DEST_KEY, ERR_KEY, PATH_KEY, SLUG_KEY};
 use crate::storage::model::{CompressedPaste, Redirect, RowEntry};
 use crate::util::decompress;
 
@@ -11,7 +11,7 @@ pub(super) fn handle_entry(req: &HttpRequest, row: RowEntry) -> HttpResponse {
 		RowEntry::Reserved(res) => {
 			error(
 				"unexpected query to a reserved page",
-				attrs!("path" => res ),
+				attrs!(PATH_KEY => res ),
 			);
 			// TODO: tell the user it's a db sync issue so he may contact me with more
 			// specifics if needed.
@@ -25,7 +25,7 @@ pub(super) fn handle_entry(req: &HttpRequest, row: RowEntry) -> HttpResponse {
 
 fn handle_redirect(redir: &Redirect) -> HttpResponse {
 	let dest = redir.destination();
-	debug("serving redirect", attrs!("destination" => dest.to_owned()));
+	debug("serving redirect", attrs!(DEST_KEY => dest.to_owned()));
 	HttpResponse::Found().insert_header(("Location", dest)).finish()
 }
 
@@ -36,8 +36,8 @@ fn handle_paste(req: &HttpRequest, paste: CompressedPaste) -> HttpResponse {
 	debug(
 		"serving paste",
 		attrs!(
-			"path" => path.clone(),
-			"compressed" => client.accepts_compression()),
+			SLUG_KEY => path.clone(),
+			COMPRESSED_KEY => client.accepts_compression()),
 	);
 	let mut resp = HttpResponse::Ok();
 	if client.accepts_compression() {
@@ -51,9 +51,9 @@ fn handle_paste(req: &HttpRequest, paste: CompressedPaste) -> HttpResponse {
 				// investigate if contacted.
 				error(
 					"failed to decompress user data",
-					attrs!(
-						ERR_KEY => err,
-						"path" => path),
+				attrs!(
+					ERR_KEY => err,
+					SLUG_KEY => path),
 				);
 				HttpResponse::InternalServerError().finish()
 			}

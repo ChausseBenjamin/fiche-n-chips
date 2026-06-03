@@ -6,7 +6,7 @@ use rslog::{attrs, debug, error};
 use serde::{Deserialize, Serialize};
 
 use super::super::Client;
-use crate::config::logging::ERR_KEY;
+use crate::config::logging::{ERR_KEY, PATH_KEY};
 use crate::config::Config;
 use crate::http::client::ResponseFmt as RespFmt;
 use crate::storage::model::{RedirectInput, Storable};
@@ -49,7 +49,7 @@ pub async fn api_post(
 			// TODO: log an error internally
 			error(
 				"user reached a supposedly unreachable api endpoint",
-				attrs!("path" => endpoint.to_string_lossy().to_string()),
+				attrs!(PATH_KEY => endpoint.to_string_lossy().to_string()),
 			);
 			resp.body(ui::format!(
 				ansi_resp,

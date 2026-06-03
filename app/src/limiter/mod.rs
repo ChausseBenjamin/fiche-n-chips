@@ -4,6 +4,9 @@ use std::time::{Duration, SystemTime};
 use rslog::{attrs, warn};
 
 use crate::anonymizer::DiscreteId;
+use crate::config::logging::{
+	DISCRETE_ID_KEY, LIMIT_KEY, RETRY_AFTER_SECS_KEY,
+};
 
 struct RateLimit {
 	count: u64,
@@ -47,9 +50,9 @@ impl RateLimiter {
 				warn(
 					"rate limit exceeded",
 					attrs!(
-							"discrete_id" => id,
-							"limit" => self.max_requests,
-							"retry_after_secs" => entry.reset.duration_since(now).unwrap_or(Duration::ZERO).as_secs()),
+						DISCRETE_ID_KEY => id,
+						LIMIT_KEY => self.max_requests,
+						RETRY_AFTER_SECS_KEY => entry.reset.duration_since(now).unwrap_or(Duration::ZERO).as_secs()),
 				);
 				RateLimitStatus::Denied {
 					limit:       self.max_requests,

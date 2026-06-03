@@ -6,14 +6,46 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use clap::{Args, ValueEnum};
+pub use log_key::*;
 use rslog::{
 	DiscardHandler, JsonHandler, Level, Logger, TextHandler, DEBUG, ERROR, INFO,
 	WARN,
 };
 
 use crate::util::valid_filepath;
+#[rustfmt::skip]
+pub mod log_key {
+  type LogKey = &'static str;
 
-pub const ERR_KEY: &str = "error_message";
+  pub const ADDR_KEY:             LogKey = "address";
+  pub const BACKUP_KEY:           LogKey = "backup";
+  pub const CLEANUP_INTERVAL_KEY: LogKey = "cleanup_interval";
+  pub const COMPRESSED_KEY:       LogKey = "compressed";
+  pub const COUNT_KEY:            LogKey = "count";
+  pub const CURRENT_KEY:          LogKey = "current";
+  pub const DESC_KEY:             LogKey = "desc";
+  pub const DEST_KEY:             LogKey = "destination";
+  pub const DISCRETE_ID_KEY:      LogKey = "discrete_id";
+  pub const ERR_KEY:              LogKey = "error_message";
+  pub const EXISTS_KEY:           LogKey = "exists";
+  pub const HTML_ROOT_KEY:        LogKey = "html_root";
+  pub const LIMIT_KEY:            LogKey = "limit";
+  pub const METHOD_KEY:           LogKey = "method";
+  pub const MIME_KEY:             LogKey = "mime";
+  pub const NAME_KEY:             LogKey = "name";
+  pub const OLDEST_KEY:           LogKey = "oldest";
+  pub const PATH_KEY:             LogKey = "path";
+  pub const RANDINT_COUNT_KEY:    LogKey = "randint_count";
+  pub const RETENTION_KEY:        LogKey = "retention";
+  pub const RETRY_AFTER_SECS_KEY: LogKey = "retry_after_secs";
+  pub const ROUTES_KEY:           LogKey = "routes";
+  pub const SIZE_KEY:             LogKey = "size";
+  pub const SLUG_KEY:             LogKey = "slug";
+  pub const SLUG_LEN_KEY:         LogKey = "slug_len";
+  pub const STORED_KEY:           LogKey = "stored";
+  pub const VALUE_KEY:            LogKey = "value";
+  pub const YOUNGEST_KEY:         LogKey = "youngest";
+}
 
 const DEFAULT_LOGFILE: &str = "fiche-n-chips.log";
 

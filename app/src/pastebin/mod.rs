@@ -13,7 +13,7 @@ use tokio::time::{timeout, Duration};
 use tokio_util::sync::CancellationToken;
 
 use crate::anonymizer::Anonimizer;
-use crate::config::logging::ERR_KEY;
+use crate::config::logging::{ADDR_KEY, ERR_KEY, SLUG_KEY};
 use crate::config::Config;
 use crate::limiter::{RateLimitStatus, RateLimiter};
 use crate::storage::model::PasteInput;
@@ -57,7 +57,7 @@ impl Pastebin {
 			self.cfg.server.listen_addr, self.cfg.server.paste_port,
 		);
 		let listener = TcpListener::bind(addr.clone()).await?;
-		info("tcp listener started", attrs!( "address" => addr,));
+		info("tcp listener started", attrs!( ADDR_KEY => addr,));
 
 		#[allow(clippy::cast_possible_truncation)]
 		let max_buffer = self.cfg.pastebin.max_buffer.get() as usize;
@@ -109,7 +109,7 @@ impl Pastebin {
 								let msg =
 									Some("It apears this has already been uploaded at some point.\nHere is the url from the original upload.\n");
 								Self::return_url(writer, &cfg, slug.clone(), msg).await?;
-								debug("reused existing paste", attrs!("slug" => slug));
+								debug("reused existing paste", attrs!(SLUG_KEY => slug));
 								return Ok(());
 							}
 
@@ -126,7 +126,7 @@ impl Pastebin {
 							let _created = db.queries.insert(&compressed).await?;
 							db.spawn_shrink(cfg.management.db_size.get());
 							Self::return_url(writer, &cfg, slug.clone(), msg).await?;
-							debug("created new paste", attrs!("slug" => slug));
+							debug("created new paste", attrs!(SLUG_KEY => slug));
 
 							Ok(())
 						}

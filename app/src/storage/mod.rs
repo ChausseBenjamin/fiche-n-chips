@@ -12,6 +12,7 @@ use rslog::{attrs, debug, error, info, src, warn};
 use statements::Statements;
 use turso::{Builder, Connection, Value};
 
+use crate::config::logging::{BACKUP_KEY, COUNT_KEY, CURRENT_KEY, DESC_KEY, EXISTS_KEY, ERR_KEY, NAME_KEY, PATH_KEY, STORED_KEY, VALUE_KEY};
 use crate::config::Config;
 use crate::storage::pragma::{PragmaCfg, PRAGMA_CONSTRAINTS};
 use crate::util::{from_unix_timestamp, valid_filepath};
@@ -41,7 +42,7 @@ impl Storage {
 		let path_str = db_path.to_str().ok_or_else(|| {
 			error(
 				"failed to parse provided path",
-				attrs!("input" => db_path.display().to_string()),
+				attrs!(PATH_KEY => db_path.display().to_string()),
 			);
 			Error::Setup("db path contains invalid UTF-8".to_string())
 		})?;
@@ -49,8 +50,8 @@ impl Storage {
 		info(
 			"opening database",
 			attrs!(
-				"path" => path_str.to_owned(),
-				"exists" => db_exists),
+				PATH_KEY => path_str.to_owned(),
+				EXISTS_KEY => db_exists),
 		);
 		let db = Builder::new_local(path_str).build().await?;
 		let conn = db.connect()?;
@@ -75,16 +76,16 @@ impl Storage {
 			debug(
 				"schema fingerprint",
 				attrs!(
-					"stored" => stored,
-					"current" => current),
+					STORED_KEY => stored,
+					CURRENT_KEY => current),
 			);
 
 			if stored != current {
 				warn(
 					"database schema mismatch — backing up and recreating",
 					attrs!(
-            "stored" => stored,
-            "current" => current),
+            STORED_KEY => stored,
+            CURRENT_KEY => current),
 				);
 				drop(conn);
 				drop(db);
@@ -98,7 +99,7 @@ impl Storage {
 				));
 				info(
 					"database backed up",
-					attrs!("backup" => backup.display().to_string()),
+					attrs!(BACKUP_KEY => backup.display().to_string()),
 				);
 				std::fs::rename(&db_path, &backup)?;
 				info("retrying database setup", src!());
@@ -116,7 +117,7 @@ impl Storage {
 			.chain([PragmaCfg::mem_cache(cfg.management.db_cache)].iter())
 		{
 			conn.pragma_update(p.name, p.val).await?;
-			debug("applied pragma", attrs!("name" => p.name, "value" => p.val));
+			debug("applied pragma", attrs!(NAME_KEY => p.name, VALUE_KEY => p.val));
 		}
 
 		// FINAL TOUCHES:
@@ -147,7 +148,7 @@ impl Storage {
 			error(
 				"no http paths are reserved",
 				attrs!(
-					"desc" => "the server should accept/serve stuff but this indicates api endpoints aren't protected and no homepages are being hosted...",
+					DESC_KEY => "the server should accept/serve stuff but this indicates api endpoints aren't protected and no homepages are being hosted...",
 				),
 			);
 			// Return Ok to remain resilient and serve content
@@ -253,9 +254,6 @@ impl Storage {
 	pub fn spawn_shrink(self: &Arc<Self>, max_bytes: u64) {
 		let this = Arc::clone(self);
 		tokio::spawn(async move {
-			use rslog::{attrs, debug, error, info, src};
-
-			use crate::config::logging::ERR_KEY;
 			match this.shrink_to_fit(max_bytes).await {
 				Ok(deleted) => {
 					if deleted.is_empty() {
@@ -263,7 +261,7 @@ impl Storage {
 					} else {
 						info(
 							"freed space by deleting old entries after insert",
-							attrs!("count" => deleted.len()),
+							attrs!(COUNT_KEY => deleted.len()),
 						);
 					}
 				}

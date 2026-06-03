@@ -3,50 +3,51 @@ use std::fmt::{self};
 const ESC_START: &str = "\x1b[";
 const ESC_END: &str = "\x1b[m";
 
+pub use ansi::*;
 #[rustfmt::skip]
 #[allow(dead_code)]
 pub mod ansi {
-	pub const RESET: &str = "0";
+  type AnsiCode = &'static str;
 
-	pub const BOLD:              &str = "1";
-	pub const BOLD_DEL:          &str = "21";
-	pub const FAINT:             &str = "2";
-	pub const FAINT_DEL:         &str = "22";
-	pub const STRIKETHROUGH:     &str = "9";
-	pub const STRIKETHROUGH_DEL: &str = "29";
-	pub const ITALIC:            &str = "3";
-	pub const ITALIC_DEL:        &str = "23";
-	pub const UNDERLINE:         &str = "4";
-	pub const UNDERLINE_DEL:     &str = "24";
-	pub const SLOW_BLINK:        &str = "5";
-	pub const BLINK_DEL:         &str = "25";
-	pub const RAPID_BLINK:       &str = "6";
-	pub const REVERSE:           &str = "7";
-	pub const REVERSE_DEL:       &str = "27";
-	pub const CONCEAL:           &str = "8";
-	pub const CONCEAL_DEL:       &str = "28";
+	pub const RESET: AnsiCode = "0";
 
-	pub const BLACK_FG:    &str = "30";
-	pub const BLACK_BG:    &str = "40";
-	pub const RED_FG:      &str = "31";
-	pub const RED_BG:      &str = "41";
-	pub const GREEN_FG:    &str = "32";
-	pub const GREEN_BG:    &str = "42";
-	pub const YELLOW_FG:   &str = "33";
-	pub const YELLOW_BG:   &str = "43";
-	pub const BLUE_FG:     &str = "34";
-	pub const BLUE_BG:     &str = "44";
-	pub const MAGENTA_FG:  &str = "35";
-	pub const MAGENTA_BG:  &str = "45";
-	pub const CYAN_FG:     &str = "36";
-	pub const CYAN_BG:     &str = "46";
-	pub const WHITE_FG:    &str = "37";
-	pub const WHITE_BG:    &str = "47";
-	pub const EXTENDED_FG: &str = "38";
-	pub const DEFAULT_FG:  &str = "39";
+	pub const BOLD:              AnsiCode = "1";
+	pub const BOLD_DEL:          AnsiCode = "21";
+	pub const FAINT:             AnsiCode = "2";
+	pub const FAINT_DEL:         AnsiCode = "22";
+	pub const STRIKETHROUGH:     AnsiCode = "9";
+	pub const STRIKETHROUGH_DEL: AnsiCode = "29";
+	pub const ITALIC:            AnsiCode = "3";
+	pub const ITALIC_DEL:        AnsiCode = "23";
+	pub const UNDERLINE:         AnsiCode = "4";
+	pub const UNDERLINE_DEL:     AnsiCode = "24";
+	pub const SLOW_BLINK:        AnsiCode = "5";
+	pub const BLINK_DEL:         AnsiCode = "25";
+	pub const RAPID_BLINK:       AnsiCode = "6";
+	pub const REVERSE:           AnsiCode = "7";
+	pub const REVERSE_DEL:       AnsiCode = "27";
+	pub const CONCEAL:           AnsiCode = "8";
+	pub const CONCEAL_DEL:       AnsiCode = "28";
+
+	pub const BLACK_FG:    AnsiCode = "30";
+	pub const BLACK_BG:    AnsiCode = "40";
+	pub const RED_FG:      AnsiCode = "31";
+	pub const RED_BG:      AnsiCode = "41";
+	pub const GREEN_FG:    AnsiCode = "32";
+	pub const GREEN_BG:    AnsiCode = "42";
+	pub const YELLOW_FG:   AnsiCode = "33";
+	pub const YELLOW_BG:   AnsiCode = "43";
+	pub const BLUE_FG:     AnsiCode = "34";
+	pub const BLUE_BG:     AnsiCode = "44";
+	pub const MAGENTA_FG:  AnsiCode = "35";
+	pub const MAGENTA_BG:  AnsiCode = "45";
+	pub const CYAN_FG:     AnsiCode = "36";
+	pub const CYAN_BG:     AnsiCode = "46";
+	pub const WHITE_FG:    AnsiCode = "37";
+	pub const WHITE_BG:    AnsiCode = "47";
+	pub const EXTENDED_FG: AnsiCode = "38";
+	pub const DEFAULT_FG:  AnsiCode = "39";
 }
-
-pub use ansi::*;
 
 fn seq(attrs: &[&str]) -> String {
 	if attrs.is_empty() {

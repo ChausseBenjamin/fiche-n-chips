@@ -7,6 +7,7 @@ use rslog::{attrs, warn};
 
 use super::file::{embedded_files, WebFile};
 use super::ReservedPath;
+use crate::config::logging::{COUNT_KEY, HTML_ROOT_KEY, LIMIT_KEY, PATH_KEY, SIZE_KEY};
 use crate::config::Config;
 use crate::reserved::api::api_paths;
 use crate::util::normalize_http;
@@ -66,8 +67,8 @@ impl ReservedPathProvider {
 						warn(
 							"path count exceeds what seems reasonable. proceed if this is intended...",
 							attrs!(
-                "count" => path_count,
-                "limit" => CONSIDERABLE_PATH_COUNT),
+                COUNT_KEY => path_count,
+                LIMIT_KEY => CONSIDERABLE_PATH_COUNT),
             );
 					}
 
@@ -93,8 +94,8 @@ impl ReservedPathProvider {
 							warn(
 								"file size in the html dir exceeds what seems reasonable. proceed if this is intended...",
 								attrs!(
-                  "path" => path.display().to_string(),
-                  "size" => file_size),
+                  PATH_KEY => path.display().to_string(),
+                  SIZE_KEY => file_size),
               );
 						}
 						let mut out = Vec::new();
@@ -119,22 +120,22 @@ impl ReservedPathProvider {
 			warn(
 				"total size of the html dir exceeds what seems, reasonable. proceed if this is intended...",
 				attrs!(
-          "size" => total_size,
-          "html_root" => format!("{}", root.display())),
+          SIZE_KEY => total_size,
+          HTML_ROOT_KEY => format!("{}", root.display())),
       );
 		}
 
 		if !has_index {
 			warn(
 				"no index.html found in the html dir. the server will still run but will not have a homepage to serve on \"/\"",
-				attrs!("html_root" => format!("{}", root.display())),
+				attrs!(HTML_ROOT_KEY => format!("{}", root.display())),
 			);
 		}
 
 		if !has_404 {
 			warn(
 				"no 404.html found in the html dir. the server will still run but will not serve custom not-found pages",
-				attrs!("html_root" => format!("{}", root.display())),
+				attrs!(HTML_ROOT_KEY => format!("{}", root.display())),
 			);
 		}
 

@@ -12,6 +12,7 @@ use actix_web::http::Method;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer};
 use api::{api_delete, api_post};
 use client::ResponseFmt as RespFmt;
+use crate::config::logging::{METHOD_KEY, PATH_KEY};
 use rslog::{attrs, debug};
 use service::{handle_404, handle_static};
 use tokio_util::sync::CancellationToken;
@@ -90,16 +91,16 @@ impl Server {
 
 		debug(
 			"dispatching request",
-			attrs!(
-				"method" => req.method().to_string(),
-				"path" => path.display().to_string()),
+		attrs!(
+			METHOD_KEY => req.method().to_string(),
+			PATH_KEY => path.display().to_string()),
 		);
 
 		match (req.method(), self.reserved.get(&path)) {
 			(&Method::GET, Some(ResPath::File(file))) => {
 				debug(
 					"matched reserved file",
-					attrs!("path" => path.display().to_string()),
+					attrs!(PATH_KEY => path.display().to_string()),
 				);
 				handle_static(&req, file)
 			}
@@ -157,7 +158,7 @@ impl Server {
 
 				debug(
 					"user tried to reach a non-existent page",
-					attrs!("path" => format!("{}", path.display())),
+					attrs!(PATH_KEY => format!("{}", path.display())),
 				);
 				handle_404(&req, self.get_404(), slug_path.as_path())
 			}
@@ -168,7 +169,7 @@ impl Server {
 
 				debug(
 					"user tried to delete a non-existent page",
-					attrs!("path" => format!("{}", path.display())),
+					attrs!(PATH_KEY => format!("{}", path.display())),
 				);
 				handle_404(&req, self.get_404(), slug_path.as_path())
 			}

@@ -5,7 +5,7 @@ use actix_web::{HttpRequest, HttpResponse};
 use rslog::{attrs, debug, error};
 
 use super::client::{Client, ResponseFmt as RespFmt};
-use crate::config::logging::ERR_KEY;
+use crate::config::logging::{ERR_KEY, MIME_KEY, PATH_KEY};
 use crate::reserved::{FileContents, WebFile};
 use crate::ui::{self, UiString};
 use crate::util::{decompress, sorry, IDENT};
@@ -17,8 +17,8 @@ pub(super) fn handle_static(
 	debug(
 		"serving static file",
 		attrs!(
-			"path" => endpoint.path().display().to_string(),
-			"mime" => endpoint.mime().to_owned()),
+			PATH_KEY => endpoint.path().display().to_string(),
+			MIME_KEY => endpoint.mime().to_owned()),
 	);
 	let mut resp = HttpResponse::Ok();
 	resp.insert_header(("Content-Type", endpoint.mime()));
@@ -36,7 +36,7 @@ pub(super) fn handle_static(
 						error(
 							"static file decompression failed",
 							attrs!(
-                "path" => format!("{}",endpoint.path().display()),
+                PATH_KEY => format!("{}",endpoint.path().display()),
                 ERR_KEY => err),
 						);
 						let mut resp = HttpResponse::InternalServerError();
