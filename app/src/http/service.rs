@@ -22,6 +22,7 @@ pub(super) fn handle_static(
 	);
 	let mut resp = HttpResponse::Ok();
 	resp.insert_header(("Content-Type", endpoint.mime()));
+	resp.insert_header(("X-Content-Type-Options", "nosniff"));
 	let client = Client::from(req);
 	let content: Cow<'_, [u8]> = match endpoint.content() {
 		FileContents::Raw(cow) => cow.clone(),

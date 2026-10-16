@@ -25,6 +25,14 @@ fn mime_for_extension(path: &Path) -> &'static str {
 		Some("txt") => "text/plain; charset=utf-8",
 		Some("xml") => "text/xml",
 		Some("woff2") => "font/woff2",
+		Some("json") => "text/javascript; charset=utf8",
+		Some("map") => "application/json",
+		Some("wasm") => "application/wasm",
+		Some("woff") => "font/woff",
+		Some("png") => "image/png",
+		Some("webp") => "image/webp",
+		Some("jpg | jpeg") => "image/jpeg",
+		Some("js | mjs") => "text/javascript; charset=utf-8",
 		_ => "application/octet-stream",
 	}
 }
