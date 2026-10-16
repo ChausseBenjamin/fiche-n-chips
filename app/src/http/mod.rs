@@ -12,17 +12,20 @@ use actix_web::http::Method;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer};
 use api::{api_delete, api_post};
 use client::ResponseFmt as RespFmt;
-use crate::config::logging::{METHOD_KEY, PATH_KEY};
 use rslog::{attrs, debug};
 use service::{handle_404, handle_static};
 use tokio_util::sync::CancellationToken;
 use user::handle_entry;
 
 use crate::anonymizer::Anonimizer;
+use crate::config::logging::{METHOD_KEY, PATH_KEY};
 use crate::config::Config;
+use crate::http::api::api_healthcheck;
 use crate::http::client::Client;
 use crate::limiter::{RateLimitStatus, RateLimiter};
-use crate::reserved::{ReservedPath as ResPath, ReservedPathProvider, WebFile};
+use crate::reserved::{
+	ReservedPath as ResPath, ReservedPathProvider, WebFile, HEALTHCHECK_PATH,
+};
 use crate::storage::model::RowEntry;
 use crate::storage::{self, Storage};
 use crate::ui;
@@ -89,9 +92,13 @@ impl Server {
 		let path = normalize_http(Path::new(req.uri().path()));
 		let slug_path = path.strip_prefix("/").unwrap_or(&path).to_path_buf();
 
+		if path.as_path() == Path::new(HEALTHCHECK_PATH) {
+			// calling early helps mitigate noise in logs
+			return api_healthcheck(&req).await;
+		}
 		debug(
 			"dispatching request",
-		attrs!(
+			attrs!(
 			METHOD_KEY => req.method().to_string(),
 			PATH_KEY => path.display().to_string()),
 		);
@@ -139,7 +146,7 @@ impl Server {
 
 				api_post(
 					&req,
-					path.clone(),
+					path,
 					body,
 					self.slugs.clone(),
 					self.db.clone(),

@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 use std::sync::Arc;
 
 use actix_web::{web, HttpRequest, HttpResponse};
@@ -30,7 +30,7 @@ pub struct ShortenReq {
 
 pub async fn api_post(
 	req: &HttpRequest,
-	endpoint: PathBuf,
+	endpoint: &Path,
 	body: web::Bytes,
 	slugs: Arc<SlugGenerator>,
 	db: Arc<Storage>,
@@ -46,7 +46,6 @@ pub async fn api_post(
 		"/api/shorten" => handle_shorten(body, slugs, db, cfg, ansi_resp).await,
 		_ => {
 			let mut resp = HttpResponse::InternalServerError();
-			// TODO: log an error internally
 			error(
 				"user reached a supposedly unreachable api endpoint",
 				attrs!(PATH_KEY => endpoint.to_string_lossy().to_string()),
