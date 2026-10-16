@@ -20,10 +20,23 @@ pub const INFO: RSlogLevel = RSlogLevel(0);
 pub const WARN: RSlogLevel = RSlogLevel(4);
 pub const ERROR: RSlogLevel = RSlogLevel(8);
 
+impl RSlogLevel {
+	#[must_use]
+	pub fn new(level: i8) -> Self { Self(level) }
+}
+
 impl Sub for RSlogLevel {
 	type Output = Self;
 
 	fn sub(self, rhs: Self) -> Self::Output { RSlogLevel(self.0 - rhs.0) }
+}
+
+impl Sub<i8> for RSlogLevel {
+	type Output = Self;
+
+	fn sub(self, rhs: i8) -> Self::Output {
+		RSlogLevel(self.0.saturating_sub(rhs))
+	}
 }
 
 impl Display for RSlogLevel {
@@ -45,6 +58,10 @@ impl Display for RSlogLevel {
 
 impl From<RSlogLevel> for i8 {
 	fn from(value: RSlogLevel) -> Self { value.0 }
+}
+
+impl From<i8> for RSlogLevel {
+	fn from(value: i8) -> Self { Self::new(value) }
 }
 
 impl Level for RSlogLevel {
