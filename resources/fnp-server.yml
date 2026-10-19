@@ -1,0 +1,11 @@
+title: 'fiche-n-chips {{ if eq .state "startup" }}started{{ else }}shut down{{ end }}'
+
+message: |-
+  {{ if eq .state "startup" }}
+  The fiche-n-chips server is starting up. Alerts should now be issued again.
+  {{ else }}
+  The fiche-n-chips server is shutting down. The service WILL NOT WORK and notices
+  for pastes & short-urls will no longer get issued until it is turned back on.
+  {{ end }}
+
+priority: '{{ if eq .state "startup" }}default{{ else }}high{{ end }}'

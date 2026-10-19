@@ -5,7 +5,7 @@ use std::time::Duration;
 use clap::{Args, Parser};
 use logging::LoggingCfg;
 
-use crate::util::StorageSize;
+use crate::util::{Secret, StorageSize};
 
 #[derive(Parser)]
 #[command(version, about="A fiche-like pastebin with extra snacks", long_about = None)]
@@ -29,6 +29,9 @@ pub struct Config {
 	/// Formatting and miscellaneous informations related to runtime logs
 	#[clap(flatten)]
 	pub logging:    LoggingCfg,
+	/// Optional Ntfy.sh server configuration
+	#[clap(flatten)]
+	pub ntfy:       NtfyCfg,
 }
 
 #[derive(Args)]
@@ -95,20 +98,6 @@ pub struct ManagementCfg {
 	/// Graceful shutdown timeout before forced termination
 	#[arg(long, env = "SHUTDOWN_TIMEOUT", default_value = "10s", value_parser = parse_duration)]
 	pub shutdown_timeout:  Duration,
-	/// A planned feature is to issue notifications using ntfy.sh about
-	/// various events. Ex:
-	/// - warning 1month before expiry
-	/// - redirect has expired
-	/// - paste/redirect was prematurely deleted (ex: lack of storage)
-	///
-	/// Setting this to `https://ntfy.sh` (or any hosted instance)
-	/// will enable these notification subscription endpoints once implemented
-	#[arg(long, env = "NTFY_SERVER")]
-	ntfy_server:           Option<Box<str>>,
-	/// url path prefix used for every notification subscription path when
-	/// issuing calls to a ntfy instance
-	#[arg(long, env = "NTFY_PREFIX", default_value = "fiche-n-chips-")]
-	ntfy_prefix:           Option<Box<str>>,
 }
 
 #[derive(Args)]
@@ -120,6 +109,34 @@ pub struct PastebinCfg {
 	/// Per-read timeout for paste uploads
 	#[arg(long, env = "PASTE_READ_TIMEOUT", default_value = "1s", value_parser = parse_duration)]
 	pub read_timeout: Duration,
+}
+
+#[derive(Args)]
+#[clap(next_help_heading = "Ntfy Server (optional)")]
+pub struct NtfyCfg {
+	/// Set this to issue alerts via a self-hosed ntfy.sh server
+	/// for various events. Ex:
+	/// - warnings at: 1month, 1week, 1day, & 1hour before expiry
+	/// - paste/redirect was prematurely deleted (ex: missing storage, API req.)
+	/// - redirect has expired
+	///
+	/// Issuing notifications is a best-effort and may fail under the certain
+	/// circumstances:
+	/// - Server is offline while an expiry warning bracket is reached
+	/// - length of <optional_prefix>+slug surpasses the 64 character ntfy
+	///   imposes (mostly for redirects)
+	#[arg(long, env = "NTFY_SERVER")]
+	pub ntfy_url: Option<Box<str>>,
+	/// It is recommended to have the ntfy instance as read-only by defaut with
+	/// read-write permission provisioned to this server using a Bearer Token.
+	#[arg(long, env = "NTFY_API_KEY")]
+	pub api_key:  Option<Secret<String>>,
+	/// If using a single ntfy server instance for multiple self-hosted services,
+	/// you may optionally set a prefix on all topics.
+	/// Ex: sending an alert concerning slug `A2c4` while the prefix is set to
+	/// `fnp-` will be done at `your_ntfy_server.com/fnp-A2c4`.
+	#[arg(long, env = "NTFY_TOPIC_PREFIX")]
+	pub prefix:   Option<Box<str>>,
 }
 
 #[derive(Args)]
