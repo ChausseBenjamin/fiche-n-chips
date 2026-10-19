@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 mod error;
 
 use std::io;
+use std::net::IpAddr;
 
 pub use error::Result;
 use rslog::{attrs, debug, error, info, src};
@@ -68,8 +69,8 @@ impl Pastebin {
 					let (mut sock, addr) = result?;
 
 					let discrete = match addr.ip().to_canonical() {
-						std::net::IpAddr::V4(v4) => self.anonimizer.cloak(&v4.octets()),
-						std::net::IpAddr::V6(v6) => self.anonimizer.cloak(&v6.octets()),
+						IpAddr::V4(v4) => self.anonimizer.cloak(&v4.octets()),
+						IpAddr::V6(v6) => self.anonimizer.cloak(&v6.octets()),
 					};
 					let status = self.rate_limiter
 						.lock()

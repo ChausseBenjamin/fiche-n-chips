@@ -15,8 +15,8 @@ pub enum ReservedPath {
 impl ReservedPath {
 	pub fn path(&self) -> &Path {
 		match self {
-			ReservedPath::File(f) => f.path(),
-			ReservedPath::Api(p) => p,
+			Self::File(f) => f.path(),
+			Self::Api(p) => p,
 		}
 	}
 }
