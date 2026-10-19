@@ -6,8 +6,11 @@
   <title>1yr.ca - pastebin &amp; url shortener</title>
   <meta name="description" content="1yr.ca - Terminal-based pastebin and URL shortener hosted in Canada. Storage up to 1 year.">
   <link rel="preload" href="/misc/jetbrainsmono-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="/main.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-  <noscript><link rel="stylesheet" href="/main.css"></noscript>
+  <!-- main.css is the shared base CSS. It is inlined here at build time
+       (see `data-build-inline` in app/build.rs) so each page ships as one
+       self-contained document and the critical CSS can never paint late.
+       The href keeps this file renderable when served straight from disk. -->
+  <link rel="stylesheet" href="main.css" data-build-inline>
   <style>
     @font-face {
       font-family: 'JetBrains Mono';
