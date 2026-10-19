@@ -38,6 +38,12 @@ async fn main() -> Result<()> {
 	let logger: Logger = TryFrom::try_from(&cfg.logging)?;
 	rslog::set_default(logger);
 	info("starting server", src!());
+	if rustls::crypto::ring::default_provider()
+		.install_default()
+		.is_err()
+	{
+		warn("rustls CryptoProvider was already installed", src!());
+	}
 	let reserved = ReservedPathProvider::new(&cfg);
 	let slugs = Arc::from(SlugGenerator::new(cfg.management.slug_length));
 	let anonimizer = Arc::from(Anonimizer::new(&cfg.management.seed_path)?);
