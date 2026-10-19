@@ -18,19 +18,19 @@ impl<W: Write> TextHandler<W> {
 	}
 
 	#[must_use]
-	pub fn min_level(mut self, level: i8) -> Self {
+	pub const fn min_level(mut self, level: i8) -> Self {
 		self.0.min_level = level;
 		self
 	}
 
 	#[must_use]
-	pub fn attach_source(mut self, enabled: bool) -> Self {
+	pub const fn attach_source(mut self, enabled: bool) -> Self {
 		self.0.attach_source = enabled;
 		self
 	}
 
 	#[must_use]
-	pub fn attach_time(mut self, enabled: bool) -> Self {
+	pub const fn attach_time(mut self, enabled: bool) -> Self {
 		self.0.attach_time = enabled;
 		self
 	}
@@ -40,7 +40,7 @@ impl<W: Write> TextHandler<W> {
 			.iter()
 			.flat_map(|a| match a {
 				Attr::Obj(leaf) => {
-					vec![format!("{}=\"{}\"", leaf.key, leaf.value).to_string()]
+					vec![format!("{}=\"{}\"", leaf.key, leaf.value)]
 				}
 				Attr::Grp(group) => {
 					Self::str_attrs(&group.attrs, Some(group.key.clone()))
@@ -48,7 +48,7 @@ impl<W: Write> TextHandler<W> {
 			})
 			.collect();
 		if let Some(p) = prefix {
-			flatlist.iter().map(|a| format!("{p}.{a}").to_string()).collect()
+			flatlist.iter().map(|a| format!("{p}.{a}")).collect()
 		} else {
 			flatlist
 		}
@@ -87,6 +87,7 @@ impl<W: Write + Send + 'static> Handler for TextHandler<W> {
 		let mut writer =
 			self.0.writer.lock().unwrap_or_else(PoisonError::into_inner);
 		writeln!(writer, "{lhs}: {rhs}")?;
+		drop(writer);
 		Ok(())
 	}
 
