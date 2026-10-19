@@ -2,11 +2,12 @@ title: '{{ if eq .kind "redirect" }}URL Redirect{{ else }}Paste{{ end }} deleted
 
 message: |-
   "{{ .slug }}" {{ if eq .kind "redirect" }}no longer points to the currently configured URL{{ else }}has had its contents deleted{{ end }}.
+  {{- if eq .kind "redirect" }}
 
-  {{ if eq .kind "redirect" }}
-    It was manually deleted within the allowed time window, so it cannot be restored; you may recreate the short URL at any time.
-  {{ else }}
-    It was manually deleted within the allowed time window, so its contents cannot be recovered.
-  {{ end }}
+  It was manually deleted within the allowed time window, so it cannot be restored; you may recreate the short URL at any time.
+  {{- else }}
+
+  It was manually deleted within the allowed time window, so its contents cannot be recovered.
+  {{- end }}
 
 priority: "high"
