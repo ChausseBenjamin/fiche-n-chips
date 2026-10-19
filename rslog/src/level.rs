@@ -23,7 +23,7 @@ pub const ERROR: RSlogLevel = RSlogLevel(8);
 impl Sub for RSlogLevel {
 	type Output = Self;
 
-	fn sub(self, rhs: Self) -> Self::Output { RSlogLevel(self.0 - rhs.0) }
+	fn sub(self, rhs: Self) -> Self::Output { Self(self.0 - rhs.0) }
 }
 
 impl Display for RSlogLevel {
