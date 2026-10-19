@@ -1,15 +1,15 @@
 title: '{{ if eq .kind "redirect" }}URL Redirect{{ else }}Paste{{ end }} expiring in {{ .bracket }}'
 
 message: |-
-  "{{ .slug }}" will '{{ if eq .kind "redirect" }} no longer point to the currently configured URL {{ else }} have its contents deleted {{ end }} in {{ .bracket }}'.
+  {{ if eq .kind "redirect" -}}
+  "{{ .slug }}" will no longer point to the currently configured URL in {{ .bracket }}.
 
-  {{ if eq .kind "redirect" }}
-    Once it has expired, you may recreate it.
-    If you intend on using this short URL soon (in QR codes, emails, etc...), you may want to
-    generate an alternative url in the meantime.
-  {{ else }}
-    If you fear its content may be important, head over to https://1yr.ca/{{.slug}} to copy/download it.
-  {{ end }}
+  Once it has expired, you may recreate it. If you intend on using this short URL soon (in QR codes, emails, etc...), you may want to generate an alternative url in the meantime.
+  {{- else -}}
+  `{{ .slug }}` will be deleted in {{ .bracket }}.
+  If its content is important, make a backup before it's too late by visiting
+  https://1yr.ca/{{.slug}}
+  {{- end }}
 
 priority: "{{ .pri }}"
 click: '{{ if eq .kind "paste" }}https://1yr.ca/{{.slug}}{{ end }}'
