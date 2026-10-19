@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
-use actix_web::http::Method;
+use actix_web::http::{Method, StatusCode};
 use actix_web::{App, HttpRequest, HttpResponse, HttpServer, web};
 use api::{api_delete, api_post};
 use client::ResponseFmt as RespFmt;
@@ -91,7 +91,7 @@ impl Server {
 
 		debug(
 			"dispatching request",
-		attrs!(
+			attrs!(
 			METHOD_KEY => req.method().to_string(),
 			PATH_KEY => path.display().to_string()),
 		);
@@ -114,26 +114,27 @@ impl Server {
 						std::net::IpAddr::V4(v4) => self.anonimizer.cloak(&v4.octets()),
 						std::net::IpAddr::V6(v6) => self.anonimizer.cloak(&v6.octets()),
 					};
-					if let RateLimitStatus::Denied { limit, retry_after } = self
+					let status = self
 						.rate_limiter
 						.lock()
 						.unwrap_or_else(PoisonError::into_inner)
-						.check_and_increment(discrete)
-					{
-						let client = Client::from(&req);
-						let ansi_resp = matches!(client.prefered_format(), RespFmt::Ansi);
-						return HttpResponse::TooManyRequests().body(ui::format!(
-							ansi_resp,
-							"You've reached the limit ({}).\nPlease try again in {}.\n{}",
-							ui::string(limit, IDENT),
-							ui::string(
-								humantime::format_duration(Duration::from_secs(
-									retry_after.as_secs()
-								)),
-								EMPHASIS
-							),
-							sorry(),
-						));
+						.check_and_increment(discrete);
+					let rejection: Option<(StatusCode, Duration)> = match &status {
+						RateLimitStatus::Allowed => None,
+						RateLimitStatus::Denied {
+							limit: _,
+							retry_after,
+						} => Some((StatusCode::TOO_MANY_REQUESTS, *retry_after)),
+						RateLimitStatus::Overload => {
+							Some((StatusCode::SERVICE_UNAVAILABLE, Duration::from_mins(5)))
+						}
+					};
+					if let Some(failure) = rejection {
+						let ansi_resp =
+							matches!(Client::from(&req).prefered_format(), RespFmt::Ansi,);
+						return HttpResponse::build(failure.0)
+							.insert_header(("Retry-After", failure.1.as_secs()))
+							.body(ui::format!(ansi_resp, "{}\n{}", status, sorry()));
 					}
 				}
 

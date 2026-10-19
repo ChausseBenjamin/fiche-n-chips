@@ -21,6 +21,7 @@ pub mod log_key {
   pub const BACKUP_KEY:           LogKey = "backup";
   pub const CLEANUP_INTERVAL_KEY: LogKey = "cleanup_interval";
   pub const COMPRESSED_KEY:       LogKey = "compressed";
+  pub const CONCURRENT:           LogKey = "concurrent";
   pub const COUNT_KEY:            LogKey = "count";
   pub const CURRENT_KEY:          LogKey = "current";
   pub const DESC_KEY:             LogKey = "desc";
