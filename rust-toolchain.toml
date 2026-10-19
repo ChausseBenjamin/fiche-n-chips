@@ -8,4 +8,4 @@ channel = "nightly-2026-05-17"
 
 # Keep these installed for contributors and CI.
 # `clippy` is a rustup component (Clippy book: installation/usage chapters).
-components = ["clippy", "rustfmt"]
+components = ["clippy", "rustfmt", "rustc-codegen-cranelift-preview"]
