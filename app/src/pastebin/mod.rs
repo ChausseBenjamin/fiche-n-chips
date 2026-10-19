@@ -20,7 +20,7 @@ use crate::limiter::{RateLimitStatus, RateLimiter};
 use crate::storage::model::PasteInput;
 use crate::storage::Storage;
 use crate::ui;
-use crate::util::{decompress, sorry, SlugGenerator, EMPHASIS, IDENT};
+use crate::util::{decompress, sorry, SlugGenerator};
 
 //                  data    over-the-limit
 pub struct RawInput(String, bool);
@@ -76,23 +76,12 @@ impl Pastebin {
 						.lock()
 						.unwrap_or_else(PoisonError::into_inner)
 						.check_and_increment(discrete);
-					if let RateLimitStatus::Denied { limit, retry_after } = status
-					{
-						let msg = ui::format!(true,
-							"You've reached the limit ({}).\nPlease try again in {}.\n{}",
-							ui::string(limit, IDENT),
-							ui::string(humantime::format_duration(Duration::from_secs(retry_after.as_secs())), EMPHASIS),
-							sorry(),
-						);
-						if let Err(e) = tokio::io::AsyncWriteExt::write_all(
-							&mut sock,
-							msg.as_bytes(),
-						)
-						.await
-						{
-							error("failed to send rate limit response", attrs!(ERR_KEY => e));
-						}
-						continue;
+					if !matches!(status, RateLimitStatus::Allowed) {
+							let msg = ui::format!(true, "{}\n{}", status, sorry());
+							if let Err(e) = sock.write_all(msg.as_bytes()).await {
+									error("failed to send rate limit response", attrs!(ERR_KEY => e));
+							}
+							continue;
 					}
 
 					let db = self.db.clone();

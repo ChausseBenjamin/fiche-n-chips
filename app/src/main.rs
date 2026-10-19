@@ -53,7 +53,11 @@ async fn main() -> Result<()> {
 		)
 		.await;
 
-	let cleaner = Arc::from(Cleaner::new(cfg.clone(), storage.clone()));
+	let cleaner = Arc::from(Cleaner::new(
+		cfg.clone(),
+		storage.clone(),
+		rate_limiter.clone(),
+	));
 
 	let shutdown = CancellationToken::new();
 	let shutdown_timeout = cfg.management.shutdown_timeout;
