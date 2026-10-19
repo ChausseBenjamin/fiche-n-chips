@@ -20,19 +20,19 @@ impl<W: Write> JsonHandler<W> {
 	}
 
 	#[must_use]
-	pub fn min_level(mut self, level: i8) -> Self {
+	pub const fn min_level(mut self, level: i8) -> Self {
 		self.0.min_level = level;
 		self
 	}
 
 	#[must_use]
-	pub fn attach_source(mut self, enabled: bool) -> Self {
+	pub const fn attach_source(mut self, enabled: bool) -> Self {
 		self.0.attach_source = enabled;
 		self
 	}
 
 	#[must_use]
-	pub fn attach_time(mut self, enabled: bool) -> Self {
+	pub const fn attach_time(mut self, enabled: bool) -> Self {
 		self.0.attach_time = enabled;
 		self
 	}
@@ -106,6 +106,7 @@ impl<W: Write + Send + 'static> Handler for JsonHandler<W> {
 		let mut writer =
 			self.0.writer.lock().unwrap_or_else(PoisonError::into_inner);
 		writeln!(writer, "{}", Value::Object(obj))?;
+		drop(writer);
 		Ok(())
 	}
 

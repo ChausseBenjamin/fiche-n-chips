@@ -5,10 +5,13 @@ use std::path::{Path, PathBuf};
 use brotli::CompressorWriter;
 use rslog::{attrs, warn};
 
-use super::file::{embedded_files, WebFile};
 use super::ReservedPath;
-use crate::config::logging::{COUNT_KEY, HTML_ROOT_KEY, LIMIT_KEY, PATH_KEY, SIZE_KEY};
+use super::file::{WebFile, embedded_files};
+use crate::alerting;
 use crate::config::Config;
+use crate::config::logging::{
+	COUNT_KEY, HTML_ROOT_KEY, LIMIT_KEY, PATH_KEY, SIZE_KEY,
+};
 use crate::reserved::api::api_paths;
 use crate::util::normalize_http;
 
@@ -36,7 +39,11 @@ impl ReservedPathProvider {
 					})
 					.collect(),
 			};
-
+		if cfg.ntfy.ntfy_url.as_deref().is_some_and(|s| !s.is_empty()) {
+			for path in alerting::reserved_paths() {
+				files.insert(path.to_path_buf(), ReservedPath::Alerting(path));
+			}
+		}
 		for api in api_paths() {
 			let k = api.path().to_path_buf();
 			files.insert(k, api);
@@ -69,7 +76,7 @@ impl ReservedPathProvider {
 							attrs!(
                 COUNT_KEY => path_count,
                 LIMIT_KEY => CONSIDERABLE_PATH_COUNT),
-            );
+						);
 					}
 
 					let should_compress = matches!(
@@ -96,7 +103,7 @@ impl ReservedPathProvider {
 								attrs!(
                   PATH_KEY => path.display().to_string(),
                   SIZE_KEY => file_size),
-              );
+							);
 						}
 						let mut out = Vec::new();
 						{
@@ -122,7 +129,7 @@ impl ReservedPathProvider {
 				attrs!(
           SIZE_KEY => total_size,
           HTML_ROOT_KEY => format!("{}", root.display())),
-      );
+			);
 		}
 
 		if !has_index {

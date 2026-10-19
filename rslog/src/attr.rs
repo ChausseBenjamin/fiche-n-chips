@@ -60,12 +60,12 @@ impl PartialEq for AttrLeaf {
 
 impl Attr {
 	#[must_use]
-	pub fn group(key: Arc<str>, attrs: Arc<[Self]>) -> Self {
-		Attr::Grp(AttrGroup { key, attrs })
+	pub const fn group(key: Arc<str>, attrs: Arc<[Self]>) -> Self {
+		Self::Grp(AttrGroup { key, attrs })
 	}
 
 	pub fn object(key: Arc<str>, value: Arc<dyn Display + Send + Sync>) -> Self {
-		Attr::Obj(AttrLeaf { key, value })
+		Self::Obj(AttrLeaf { key, value })
 	}
 }
 

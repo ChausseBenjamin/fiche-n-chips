@@ -2,16 +2,17 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use actix_web::{HttpRequest, HttpResponse};
-use rslog::{attrs, error};
+use rslog::{attrs, error, warn};
 
 use super::super::Client;
-use crate::config::logging::{ERR_KEY, SLUG_KEY};
+use crate::alerting::{DeletionRequest, MsgEmitter};
 use crate::config::Config;
+use crate::config::logging::{ERR_KEY, SLUG_KEY};
 use crate::http::client::ResponseFmt as RespFmt;
-use crate::storage::model::{RowEntry as Row, Storable};
 use crate::storage::Storage;
+use crate::storage::model::{RowEntry as Row, Storable};
 use crate::ui;
-use crate::util::{sorry, success, CONTACT, EMPHASIS, IDENT};
+use crate::util::{CONTACT, EMPHASIS, IDENT, sorry, success};
 
 pub async fn api_delete(
 	req: &HttpRequest,
@@ -43,21 +44,54 @@ pub async fn api_delete(
 
 	let elapsed = now.duration_since(created).unwrap_or(Duration::ZERO);
 	if elapsed < max_delay {
-		if let Err(err) = db.queries.del_from_path(id.clone()).await {
-			error(
-				"failed to delete element from database",
-				attrs!(
+		let entry = match db.queries.del_from_path(id.clone()).await {
+			Err(err) => {
+				error(
+					"failed to delete element from database",
+					attrs!(
 				  SLUG_KEY => id.clone(),
 				  ERR_KEY => err),
-			);
-			let mut resp = HttpResponse::InternalServerError();
-			return resp.body(ui::format!(ansi_resp,
+				);
+				let mut resp = HttpResponse::InternalServerError();
+				return resp.body(ui::format!(ansi_resp,
         "An error occured while attempting to delete `{}`.\nIf you still wish to delete this, please contact <{}> about the issue so he may delete it manually.\n{}",
         ui::string(id, IDENT),
         ui::string(maintainer_email, CONTACT),
         sorry(),
       ));
+			}
+			Ok(v) => v,
+		};
+
+		// Manual deletions are quite rare
+		// Creating emmitters+Clients here to keeps the code simple
+		match (
+			MsgEmitter::try_from(&cfg.ntfy),
+			DeletionRequest::try_from(&entry),
+		) {
+			(Ok(emitter), Ok(msg)) => {
+				if let Err(e) = emitter.emit(msg).await {
+					warn(
+						"failed to issue a manual deletion alert",
+						attrs!(
+										ERR_KEY => e,
+										SLUG_KEY => id.clone(),
+						),
+					)
+				}
+			}
+			(Err(_), _) => (
+        // alerting::Error::Unset is ok, it's a runtime configuration
+      ),
+			(_, Err(e)) => error(
+				"failed to parse slug type to issue an alert",
+				attrs!(
+								ERR_KEY => e,
+								SLUG_KEY => id.clone(),
+				),
+			),
 		}
+
 		let mut resp = HttpResponse::Ok();
 		return resp.body(ui::format!(
 			ansi_resp,

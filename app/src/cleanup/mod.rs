@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, PoisonError};
 use std::time::SystemTime;
 
 use humantime::format_duration;
@@ -6,17 +6,28 @@ use rslog::{attrs, debug, error, info, src};
 use tokio::time;
 use tokio_util::sync::CancellationToken;
 
-use crate::config::logging::{CLEANUP_INTERVAL_KEY, COUNT_KEY, ERR_KEY, OLDEST_KEY, RETENTION_KEY, ROUTES_KEY, YOUNGEST_KEY};
+use crate::config::logging::{
+	CLEANUP_INTERVAL_KEY, COUNT_KEY, ERR_KEY, OLDEST_KEY, RETENTION_KEY,
+	ROUTES_KEY, YOUNGEST_KEY,
+};
 use crate::config::Config;
+use crate::limiter::RateLimiter;
 use crate::storage::Storage;
 
 pub struct Cleaner {
-	cfg: Arc<Config>,
-	db:  Arc<Storage>,
+	cfg:     Arc<Config>,
+	db:      Arc<Storage>,
+	limiter: Arc<Mutex<RateLimiter>>,
 }
 
 impl Cleaner {
-	pub fn new(cfg: Arc<Config>, db: Arc<Storage>) -> Self { Self { cfg, db } }
+	pub fn new(
+		cfg: Arc<Config>,
+		db: Arc<Storage>,
+		limiter: Arc<Mutex<RateLimiter>>,
+	) -> Self {
+		Self { cfg, db, limiter }
+	}
 
 	pub async fn autoclean(self: Arc<Self>, shutdown: CancellationToken) {
 		debug(
@@ -33,6 +44,7 @@ impl Cleaner {
 				() = shutdown.cancelled() => break,
 				_ = interval.tick() => {},
 			}
+			self.limiter.lock().unwrap_or_else(PoisonError::into_inner).cleanup();
 			match self.db.queries.del_expired(self.cfg.management.retention).await {
 				Ok(v) => {
 					if v.is_empty() {

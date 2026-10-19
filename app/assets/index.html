@@ -3,11 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>1yr.ca - pastebin & url shortener</title>
+  <title>1yr.ca - pastebin &amp; url shortener</title>
   <meta name="description" content="1yr.ca - Terminal-based pastebin and URL shortener hosted in Canada. Storage up to 1 year.">
   <link rel="preload" href="/misc/jetbrainsmono-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="/main.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-  <noscript><link rel="stylesheet" href="/main.css"></noscript>
+  <!-- main.css is the shared base CSS. It is inlined here at build time
+       (see `data-build-inline` in app/build.rs) so each page ships as one
+       self-contained document and the critical CSS can never paint late.
+       The href keeps this file renderable when served straight from disk. -->
+  <link rel="stylesheet" href="main.css" data-build-inline>
   <style>
     @font-face {
       font-family: 'JetBrains Mono';
@@ -64,8 +67,23 @@
       color: var(--red);
     }
 
+    .tab-label.alerts-tab-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .tab-label.alerts-tab-label::before {
+      content: none;
+    }
+
+    .tab-label.alerts-tab-label .icon-svg {
+      color: var(--red);
+    }
+
     #tab-pastebin:checked ~ .tabs .tab-label[for="tab-pastebin"],
-    #tab-shortener:checked ~ .tabs .tab-label[for="tab-shortener"] {
+    #tab-shortener:checked ~ .tabs .tab-label[for="tab-shortener"],
+    #tab-alerts:checked ~ .tabs .tab-label[for="tab-alerts"] {
       color: var(--red-bright);
       background-color: var(--bg);
       border-bottom: 1px solid var(--bg);
@@ -76,7 +94,8 @@
     }
 
     #tab-pastebin:checked ~ main .tab-content.pastebin-content,
-    #tab-shortener:checked ~ main .tab-content.shortener-content {
+    #tab-shortener:checked ~ main .tab-content.shortener-content,
+    #tab-alerts:checked ~ main .tab-content.alerts-content {
       display: block;
     }
 
@@ -163,6 +182,16 @@
       color: var(--yellow);
     }
 
+    code.example::before {
+      content: "";
+    }
+
+    code.example .icon-svg {
+      color: var(--red);
+      vertical-align: -0.15em;
+      margin-right: 0.5rem;
+    }
+
     .inline-code {
       display: inline;
       padding: 0.2rem 0.4rem;
@@ -217,6 +246,42 @@
     }
 
     .feature-text span {
+      color: var(--fg-muted);
+      font-size: 0.85rem;
+    }
+
+    .alert-sample {
+      background-color: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--red);
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+
+    .alert-from {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--fg-muted);
+      font-size: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .alert-from .icon-svg {
+      color: var(--red);
+      width: 0.9rem;
+      height: 0.9rem;
+      min-width: 0.9rem;
+      min-height: 0.9rem;
+    }
+
+    .alert-title {
+      color: var(--fg);
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .alert-body {
       color: var(--fg-muted);
       font-size: 0.85rem;
     }
@@ -551,10 +616,12 @@
 
     <input type="radio" name="tabs" id="tab-pastebin" class="tab-radio" checked>
     <input type="radio" name="tabs" id="tab-shortener" class="tab-radio">
+    <input type="radio" name="tabs" id="tab-alerts" class="tab-radio">
 
     <div class="tabs">
       <label for="tab-pastebin" class="tab-label">pastebin</label>
       <label for="tab-shortener" class="tab-label">shortener</label>
+      <label for="tab-alerts" class="tab-label alerts-tab-label"><svg class="icon-svg"><use href="/misc/icons.svg#bell"/></svg>alerts</label>
     </div>
 
     <main>
@@ -637,6 +704,13 @@
               </div>
             </div>
             <div class="feature">
+              <svg class="icon-svg"><use href="/misc/icons.svg#license"/></svg>
+              <div class="feature-text">
+                <strong>Open Source</strong>
+                <span>1yr.ca uses <a href="https://codeberg.org/ChausseBenjamin/fiche-n-chips">fiche-n-chips</a>. Inspect the code, even host your own version.</span>
+              </div>
+            </div>
+            <div class="feature">
               <svg class="icon-svg"><use href="/misc/icons.svg#location_on"/></svg>
               <div class="feature-text">
                 <strong>Hosted in Canada</strong>
@@ -647,7 +721,7 @@
               <svg class="icon-svg"><use href="/misc/icons.svg#terminal"/></svg>
               <div class="feature-text">
                 <strong>Terminal Native</strong>
-                <span>No browser required. Pipe, paste, share &mdash; all from your shell.</span>
+                <span>No browser required. Pipe, paste, share. All from your shell.</span>
               </div>
             </div>
 
@@ -764,6 +838,13 @@
               </div>
             </div>
             <div class="feature">
+              <svg class="icon-svg"><use href="/misc/icons.svg#license"/></svg>
+              <div class="feature-text">
+                <strong>Open Source</strong>
+                <span>1yr.ca uses <a href="https://codeberg.org/ChausseBenjamin/fiche-n-chips">fiche-n-chips</a>. Inspect the code, even host your own version.</span>
+              </div>
+            </div>
+            <div class="feature">
               <svg class="icon-svg"><use href="/misc/icons.svg#location_on"/></svg>
               <div class="feature-text">
                 <strong>Hosted in Canada</strong>
@@ -790,6 +871,45 @@
 
         </section>
       </div>
+
+      <!-- ALERTS TAB -->
+      <div class="tab-content alerts-content">
+        <section>
+          <h2 id="alerts-usage">usage</h2>
+
+          <p>Subscribe to a paste or short url at <a href="https://alerts.1yr.ca">alerts.1yr.ca</a> to be told before it is deleted.</p>
+
+          <h3 id="alerts-subscribing">subscribing</h3>
+
+          <p>Alerts are delivered through <a href="https://ntfy.sh">ntfy</a>,
+					a beautifully simple notification server.</p>
+
+          <ul>
+            <li>Install ntfy</li>
+            <li>Add <code class="inline-code">alerts.1yr.ca</code> as the server</li>
+            <li>Subscribe to the slug you want to follow</li>
+          </ul>
+
+          <h3 id="alerts-examples">examples</h3>
+
+          <p>Your paste:</p>
+          <code class="example"><svg class="icon-svg"><use href="/misc/icons.svg#paper"/></svg>https://1yr.ca/x7kq</code>
+
+          <p>Its alerts:</p>
+          <code class="example"><svg class="icon-svg"><use href="/misc/icons.svg#bell"/></svg>https://alerts.1yr.ca/x7kq</code>
+
+          <p>Four warnings go out before expiry &mdash; at one month, one week, one day, and one hour &mdash; and one more if the slug is deleted early:</p>
+
+          <div class="alert-sample">
+            <div class="alert-from"><svg class="icon-svg"><use href="/misc/icons.svg#language"/></svg>alerts.1yr.ca &middot; x7kq</div>
+            <div class="alert-title">Paste expiring in 1 week</div>
+            <div class="alert-body">`x7kq` will be deleted in 1 week.<br>If its content is important, make a backup before it's too late by visiting<br>https://1yr.ca/x7kq</div>
+          </div>
+
+          <p class="footnote">*Alerts are best-effort: a reminder may be skipped if the server is offline when it comes due.</p>
+        </section>
+      </div>
+
 			<!-- TODO: Add a section to thank termbin.com and fiche
 				Also explain what is different about fiche-n-chips:
 				- Rust (btw)
@@ -808,11 +928,11 @@
 
       <div class="contact-line">
         <svg class="icon-svg"><use href="/misc/icons.svg#mail"/></svg>
-        <span><a href="mailto:benjamin@chausse.xyz">benjamin [at] chausse.xyz</a></span>
+        <span><a href="mailto:benjamin@chausse.dev">benjamin [at] chausse.dev</a></span>
       </div>
       <div class="contact-line">
         <svg class="icon-svg"><use href="/misc/icons.svg#language"/></svg>
-        <span><a href="https://chausse.dev">chausse.xyz</a></span>
+        <span><a href="https://chausse.dev">chausse.dev</a></span>
       </div>
 
       <h3 id="policy">acceptable use policy</h3>
@@ -820,7 +940,7 @@
       <ul>
         <li>Do not post illegal content, personal information, or credentials</li>
         <li>Respect intellectual property rights</li>
-        <li>IP addresses may be logged for security purposes</li>
+        <li>Anonymized IP addresses may be logged for security purposes</li>
         <li>Abuse may result in rate limiting</li>
         <li>Violations may result in a permanent ban</li>
         <li>Service owner is not liable for user-posted content</li>
@@ -839,7 +959,7 @@
     function routeHash() {
       var h = location.hash.slice(1);
       if (!h) return;
-      var r = document.getElementById(h.startsWith('paste-') ? 'tab-pastebin' : h.startsWith('short-') ? 'tab-shortener' : null);
+      var r = document.getElementById(h.startsWith('paste-') ? 'tab-pastebin' : h.startsWith('short-') ? 'tab-shortener' : h.startsWith('alerts-') ? 'tab-alerts' : null);
       if (r) r.checked = true;
       var e = document.getElementById(h);
       if (e) setTimeout(function() { e.scrollIntoView(); }, 50);

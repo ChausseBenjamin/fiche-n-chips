@@ -179,12 +179,18 @@ misc/run-dev.sh
 
 MPL-2.0
 
+Again, a special thanks to the authors of [fiche][1] for the original idea and
+for releasing their code under the MIT License for all to use (and in my case,
+draw inspiration from).
+
 [^1]: By default, the binary serves the html files for [1yr.ca][4] which are
       embedded inside of it. I **highly** recommend you change this by providing
       a custom `HTML_DIR`...
 
-[0]: https://example.com
 [1]: https://github.com/solusipse/fiche
 [2]: https://github.com/mozilla/sccache
 [3]: https://github.com/rui314/mold
 [4]: https://1yr.ca
+[5]: todo:traefik
+[6]: todo:caddy
+[7]: todo:nginx

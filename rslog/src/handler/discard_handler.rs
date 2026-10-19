@@ -18,10 +18,10 @@ impl Handler for DiscardHandler {
 	}
 
 	fn with_attrs(&mut self, _attrs: Vec<Attr>) -> Box<dyn Handler> {
-		Box::new(DiscardHandler)
+		Box::new(Self)
 	}
 
 	fn with_group(&mut self, _name: Arc<str>) -> Box<dyn Handler> {
-		Box::new(DiscardHandler)
+		Box::new(Self)
 	}
 }

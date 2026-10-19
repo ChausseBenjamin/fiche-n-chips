@@ -2,7 +2,7 @@ use std::time::SystemTime;
 
 const MONTH_DAYS: [u32; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
-pub(crate) fn format_time(time: SystemTime) -> String {
+pub fn format_time(time: SystemTime) -> String {
 	let duration =
 		time.duration_since(SystemTime::UNIX_EPOCH).unwrap_or_default();
 	let total_secs = duration.as_secs();
@@ -21,7 +21,9 @@ pub(crate) fn format_time(time: SystemTime) -> String {
 	)
 }
 
-fn is_leap_year(y: i64) -> bool { (y % 4 == 0 && y % 100 != 0) || y % 400 == 0 }
+const fn is_leap_year(y: i64) -> bool {
+	(y % 4 == 0 && y % 100 != 0) || y % 400 == 0
+}
 
 fn days_to_date(days: u64) -> (i64, u32, i64) {
 	let mut y = 1970i64;

@@ -8,8 +8,8 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
-use actix_web::http::Method;
-use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer};
+use actix_web::http::{Method, StatusCode};
+use actix_web::{App, HttpRequest, HttpResponse, HttpServer, web};
 use api::{api_delete, api_post};
 use client::ResponseFmt as RespFmt;
 use rslog::{attrs, debug};
@@ -18,18 +18,18 @@ use tokio_util::sync::CancellationToken;
 use user::handle_entry;
 
 use crate::anonymizer::Anonimizer;
-use crate::config::logging::{METHOD_KEY, PATH_KEY};
 use crate::config::Config;
+use crate::config::logging::{METHOD_KEY, PATH_KEY};
 use crate::http::api::api_healthcheck;
 use crate::http::client::Client;
 use crate::limiter::{RateLimitStatus, RateLimiter};
 use crate::reserved::{
-	ReservedPath as ResPath, ReservedPathProvider, WebFile, HEALTHCHECK_PATH,
+	HEALTHCHECK_PATH, ReservedPath as ResPath, ReservedPathProvider, WebFile,
 };
 use crate::storage::model::RowEntry;
 use crate::storage::{self, Storage};
 use crate::ui;
-use crate::util::{normalize_http, sorry, SlugGenerator, EMPHASIS, IDENT};
+use crate::util::{EMPHASIS, IDENT, SlugGenerator, normalize_http, sorry};
 
 const NOT_FOUND_PATH: &str = "/404";
 
@@ -121,26 +121,27 @@ impl Server {
 						std::net::IpAddr::V4(v4) => self.anonimizer.cloak(&v4.octets()),
 						std::net::IpAddr::V6(v6) => self.anonimizer.cloak(&v6.octets()),
 					};
-					if let RateLimitStatus::Denied { limit, retry_after } = self
+					let status = self
 						.rate_limiter
 						.lock()
 						.unwrap_or_else(PoisonError::into_inner)
-						.check_and_increment(discrete)
-					{
-						let client = Client::from(&req);
-						let ansi_resp = matches!(client.prefered_format(), RespFmt::Ansi);
-						return HttpResponse::TooManyRequests().body(ui::format!(
-							ansi_resp,
-							"You've reached the limit ({}).\nPlease try again in {}.\n{}",
-							ui::string(limit, IDENT),
-							ui::string(
-								humantime::format_duration(Duration::from_secs(
-									retry_after.as_secs()
-								)),
-								EMPHASIS
-							),
-							sorry(),
-						));
+						.check_and_increment(discrete);
+					let rejection: Option<(StatusCode, Duration)> = match &status {
+						RateLimitStatus::Allowed => None,
+						RateLimitStatus::Denied {
+							limit: _,
+							retry_after,
+						} => Some((StatusCode::TOO_MANY_REQUESTS, *retry_after)),
+						RateLimitStatus::Overload => {
+							Some((StatusCode::SERVICE_UNAVAILABLE, Duration::from_mins(5)))
+						}
+					};
+					if let Some(failure) = rejection {
+						let ansi_resp =
+							matches!(Client::from(&req).prefered_format(), RespFmt::Ansi,);
+						return HttpResponse::build(failure.0)
+							.insert_header(("Retry-After", failure.1.as_secs()))
+							.body(ui::format!(ansi_resp, "{}\n{}", status, sorry()));
 					}
 				}
 
@@ -157,6 +158,16 @@ impl Server {
 			(_, Some(ResPath::Api(_))) => HttpResponse::MethodNotAllowed()
 				.insert_header(("Allow", "POST"))
 				.finish(),
+
+			(_, Some(ResPath::Alerting(p))) => {
+				debug(
+					"request hit a path reserved by ntfy",
+					attrs!(
+					PATH_KEY => p.display().to_string(),
+					),
+				);
+				handle_404(&req, self.get_404(), slug_path.as_path())
+			}
 
 			(&Method::GET, None) => {
 				if let Ok(p) = Self::get_row(self.db.clone(), slug_path.clone()).await {
@@ -206,6 +217,7 @@ impl Server {
 		self.reserved.get(Path::new(NOT_FOUND_PATH)).and_then(|r| match r {
 			ResPath::File(f) => Some(f),
 			ResPath::Api(_) => None,
+			ResPath::Alerting(_) => None,
 		})
 	}
 }

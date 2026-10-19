@@ -29,22 +29,19 @@ impl Handler for MuxHandler {
 				}
 			}
 		}
-		match first_err {
-			Some(e) => Err(e),
-			None => Ok(()),
-		}
+		first_err.map_or_else(|| Ok(()), Err)
 	}
 
 	fn with_attrs(&mut self, attrs: Vec<Attr>) -> Box<dyn Handler> {
 		let children: Vec<Box<dyn Handler>> =
 			self.0.iter_mut().map(|h| h.with_attrs(attrs.clone())).collect();
-		Box::new(MuxHandler(children.into_boxed_slice()))
+		Box::new(Self(children.into_boxed_slice()))
 	}
 
 	fn with_group(&mut self, name: Arc<str>) -> Box<dyn Handler> {
 		let children: Vec<Box<dyn Handler>> =
 			self.0.iter_mut().map(|h| h.with_group(name.clone())).collect();
-		Box::new(MuxHandler(children.into_boxed_slice()))
+		Box::new(Self(children.into_boxed_slice()))
 	}
 }
 

@@ -53,13 +53,13 @@ RUN find app/src rslog/src app/build.rs -type f -exec touch {} +
 RUN RUSTC_WRAPPER="" cargo build --release --target x86_64-unknown-linux-musl && \
     cp target/x86_64-unknown-linux-musl/release/fiche-n-chips /app
 
-# Sanity check: verify the binary produces help output
-RUN /app --help 2>&1 | grep -q "Usage:" || (echo "ERROR: built binary is broken! Help output missing."; exit 1)
-
-# Strip unnecessary exception-handling sections.
+# Strip unnecessary exception-handling sections
 # With panic=abort the eh_frame tables are dead weight (~600KB).
 RUN objcopy --remove-section=.eh_frame --remove-section=.eh_frame_hdr /app /app.stripped && \
     mv /app.stripped /app
+
+# Sanity check: verify the binary produces help output
+RUN /app --help 2>&1 | grep -q "Usage:" || (echo "ERROR: built binary is broken! Help output missing."; exit 1)
 
 # ----------------------------------------
 # Stage 2: Minimal scratch image

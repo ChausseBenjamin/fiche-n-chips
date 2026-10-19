@@ -1,0 +1,9 @@
+#!/bin/sh
+
+if command -v mold >/dev/null 2>&1; then
+	if cc "$@" -fuse-ld=mold; then
+		exit 0
+	fi
+fi
+
+exec cc "$@"
