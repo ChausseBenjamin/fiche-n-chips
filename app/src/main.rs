@@ -14,9 +14,10 @@ use std::io::Result;
 use std::sync::{Arc, Mutex};
 
 use clap::Parser;
-use config::logging::ERR_KEY;
 use config::Config;
-use rslog::{attrs, error, info, src, warn, Logger};
+use config::logging::ERR_KEY;
+use rslog::{Logger, attrs, error, info, src, warn};
+use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 
 use crate::anonymizer::Anonimizer;
@@ -103,7 +104,7 @@ async fn main() -> Result<()> {
 			shutdown.cancel();
 			tokio::select! {
 				_ = &mut http_fut => {},
-				() = tokio::time::sleep(shutdown_timeout) => {
+				() = sleep(shutdown_timeout) => {
 					warn("http server shutdown timeout exceeded, forcing shutdown", src!());
 				}
 			}
@@ -112,7 +113,7 @@ async fn main() -> Result<()> {
 			shutdown.cancel();
 			tokio::select! {
 				_ = &mut pb_fut => {},
-				() = tokio::time::sleep(shutdown_timeout) => {
+				() = sleep(shutdown_timeout) => {
 					warn("pastebin server shutdown timeout exceeded, forcing shutdown", src!());
 				}
 			}

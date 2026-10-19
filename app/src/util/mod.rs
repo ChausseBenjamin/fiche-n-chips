@@ -11,7 +11,7 @@ pub use size::*;
 pub use slugs::*;
 
 use crate::ui::{
-	self, UiString, BLUE_FG, BOLD, GREEN_FG, RED_FG, UNDERLINE, YELLOW_FG,
+	self, BLUE_FG, BOLD, GREEN_FG, RED_FG, UNDERLINE, UiString, YELLOW_FG,
 };
 
 pub const IDENT: &[&str] = &[BOLD, YELLOW_FG];

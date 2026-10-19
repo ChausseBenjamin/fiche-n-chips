@@ -9,10 +9,9 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use actix_web::http::Method;
-use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer};
+use actix_web::{App, HttpRequest, HttpResponse, HttpServer, web};
 use api::{api_delete, api_post};
 use client::ResponseFmt as RespFmt;
-use crate::config::logging::{METHOD_KEY, PATH_KEY};
 use rslog::{attrs, debug};
 use service::{handle_404, handle_static};
 use tokio_util::sync::CancellationToken;
@@ -20,13 +19,14 @@ use user::handle_entry;
 
 use crate::anonymizer::Anonimizer;
 use crate::config::Config;
+use crate::config::logging::{METHOD_KEY, PATH_KEY};
 use crate::http::client::Client;
 use crate::limiter::{RateLimitStatus, RateLimiter};
 use crate::reserved::{ReservedPath as ResPath, ReservedPathProvider, WebFile};
 use crate::storage::model::RowEntry;
 use crate::storage::{self, Storage};
 use crate::ui;
-use crate::util::{normalize_http, sorry, SlugGenerator, EMPHASIS, IDENT};
+use crate::util::{EMPHASIS, IDENT, SlugGenerator, normalize_http, sorry};
 
 const NOT_FOUND_PATH: &str = "/404";
 
