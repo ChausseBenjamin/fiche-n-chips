@@ -7,20 +7,23 @@ mod statements;
 
 use const_format::formatcp;
 pub use error::{Error, Result};
-use model::{DeletedRoute, Reserved, RouteKind, Storable};
+use model::{ExpiringRoute, Reserved, RouteKind, Storable};
 use rslog::{attrs, debug, error, info, src, warn};
 use statements::Statements;
 use turso::{Builder, Connection, Value};
 
-use crate::config::logging::{BACKUP_KEY, COUNT_KEY, CURRENT_KEY, DESC_KEY, EXISTS_KEY, ERR_KEY, NAME_KEY, PATH_KEY, STORED_KEY, VALUE_KEY};
 use crate::config::Config;
-use crate::storage::pragma::{PragmaCfg, PRAGMA_CONSTRAINTS};
+use crate::config::logging::{
+	BACKUP_KEY, COUNT_KEY, CURRENT_KEY, DESC_KEY, ERR_KEY, EXISTS_KEY, NAME_KEY,
+	PATH_KEY, STORED_KEY, VALUE_KEY,
+};
+use crate::storage::pragma::{PRAGMA_CONSTRAINTS, PragmaCfg};
 use crate::util::{from_unix_timestamp, valid_filepath};
 
 // Used if the user provides a path/dir but no filename
 pub const DEFAULT_DB_NAME: &str = "store.db";
 
-static DB_SCHEMA: &str = include_str!("schema.sql");
+static DB_SCHEMA: &str = include_str!("sql/00-schema.sql");
 
 const DEL_MISSING_RESERVED: &str = formatcp!(
 	"DELETE FROM routes WHERE kind = {} AND ID NOT IN",
@@ -117,7 +120,10 @@ impl Storage {
 			.chain([PragmaCfg::mem_cache(cfg.management.db_cache)].iter())
 		{
 			conn.pragma_update(p.name, p.val).await?;
-			debug("applied pragma", attrs!(NAME_KEY => p.name, VALUE_KEY => p.val));
+			debug(
+				"applied pragma",
+				attrs!(NAME_KEY => p.name, VALUE_KEY => p.val),
+			);
 		}
 
 		// FINAL TOUCHES:
@@ -148,7 +154,7 @@ impl Storage {
 			error(
 				"no http paths are reserved",
 				attrs!(
-					DESC_KEY => "the server should accept/serve stuff but this indicates api endpoints aren't protected and no homepages are being hosted...",
+					DESC_KEY => "the server should accept/serve stuff but getting this error indicates api endpoints aren't protected and no homepages are being hosted...",
 				),
 			);
 			// Return Ok to remain resilient and serve content
@@ -196,7 +202,7 @@ impl Storage {
 	pub async fn shrink_to_fit(
 		&self,
 		max_bytes: u64,
-	) -> Result<Vec<DeletedRoute>> {
+	) -> Result<Vec<ExpiringRoute>> {
 		let mut all_deleted = Vec::new();
 
 		let current_size = self.get_db_size().await?;
@@ -208,16 +214,20 @@ impl Storage {
 		let tx = conn.transaction().await?;
 
 		loop {
-			let mut rows = tx.query(
-				"DELETE FROM routes WHERE kind != 0 ORDER BY created_on ASC LIMIT 10 RETURNING id, created_on",
-				(),
-			).await?;
+			let mut rows = tx
+				.query(
+					"DELETE FROM routes WHERE kind != 0 ORDER BY created_on ASC LIMIT 10 \
+           RETURNING id, kind, created_on",
+					(),
+				)
+				.await?;
 
 			let mut batch = Vec::new();
 			while let Some(row) = rows.next().await? {
-				batch.push(DeletedRoute {
+				batch.push(ExpiringRoute {
 					id:      row.get(0)?,
-					created: from_unix_timestamp(row.get::<i64>(1)?),
+					kind:    (row.get::<i64>(1)?).try_into()?,
+					created: from_unix_timestamp(row.get::<i64>(2)?),
 				});
 			}
 

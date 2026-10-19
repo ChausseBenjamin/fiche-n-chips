@@ -21,7 +21,9 @@ impl TryFrom<i64> for RouteKind {
 			1 => RouteKind::Redirect,
 			2 => RouteKind::Paste,
 			v => {
-				return Err(Self::Error::Parse(format!("{v} isn't a valid route kind")))
+				return Err(Self::Error::Parse(format!(
+					"{v} isn't a valid route kind"
+				)));
 			}
 		})
 	}
@@ -35,8 +37,10 @@ pub struct RouteRow {
 	pub created: Option<SystemTime>,
 }
 
-pub struct DeletedRoute {
+pub type DeletedRoute = ExpiringRoute;
+pub struct ExpiringRoute {
 	pub id:      String,
+	pub kind:    RouteKind,
 	pub created: SystemTime,
 }
 

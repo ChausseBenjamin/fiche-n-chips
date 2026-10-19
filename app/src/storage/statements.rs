@@ -3,46 +3,46 @@ use std::time::{Duration, SystemTime};
 use turso::{Connection, Statement, Value};
 
 use super::error::Error;
-use super::model::{DeletedRoute, PasteRecord, RouteRow, RowEntry, Storable};
+use super::model::{
+	DeletedRoute, ExpiringRoute, PasteRecord, RouteRow, RowEntry, Storable,
+};
 use crate::util::from_unix_timestamp;
 
-pub struct Statements(InnerStatements);
-
-struct InnerStatements {
-	del_expired:       Statement,
-	del_from_path:     Statement,
-	get_from_path:     Statement,
-	get_slugs_by_hash: Statement,
-	insert_route:      Statement,
-	slug_exists:       Statement,
+pub struct Statements {
+	del_expired:         Statement,
+	del_from_path:       Statement,
+	get_from_path:       Statement,
+	get_slugs_by_hash:   Statement,
+	insert_route:        Statement,
+	slug_exists:         Statement,
 }
 
 impl Statements {
 	pub async fn setup(conn: &Connection) -> Result<Self, Error> {
-		Ok(Self( InnerStatements{
-      del_expired: conn.prepare_cached(
-        "DELETE FROM routes WHERE kind != 0 AND created_on < CAST(strftime('%s', 'now') AS INTEGER) - ? RETURNING id, created_on"
-        ).await?,
-			del_from_path: conn.prepare_cached(
-        "DELETE FROM routes WHERE id = ? RETURNING id, created_on"
-        ).await?,
-			get_from_path: conn.prepare_cached(
-        "SELECT id, kind, hash, content, created_on FROM routes WHERE id = ?"
-        ).await?,
-			get_slugs_by_hash: conn.prepare_cached(
-        "SELECT id, content FROM routes WHERE hash = ?"
-        ).await?,
-			insert_route: conn.prepare_cached(
-        "INSERT INTO routes (id, kind, hash, content) VALUES (?, ?, ?, ?) RETURNING created_on"
-        ).await?,
-			slug_exists: conn.prepare_cached(
-        "SELECT EXISTS(SELECT 1 FROM routes WHERE id = ?)"
-        ).await?,
-		}))
+		Ok(Self {
+			del_expired:         conn
+				.prepare_cached(include_str!("sql/del_expired.sql"))
+				.await?,
+			del_from_path:       conn
+				.prepare_cached(include_str!("sql/del_from_path.sql"))
+				.await?,
+			get_from_path:       conn
+				.prepare_cached(include_str!("sql/get_from_path.sql"))
+				.await?,
+			get_slugs_by_hash:   conn
+				.prepare_cached(include_str!("sql/get_slugs_by_hash.sql"))
+				.await?,
+			insert_route:        conn
+				.prepare_cached(include_str!("sql/insert_route.sql"))
+				.await?,
+			slug_exists:         conn
+				.prepare_cached(include_str!("sql/slug_exists.sql"))
+				.await?,
+		})
 	}
 
 	pub async fn get_from_path(&self, path: String) -> Result<RowEntry, Error> {
-		let mut cmd = self.0.get_from_path.clone();
+		let mut cmd = self.get_from_path.clone();
 		let row = cmd.query_row([path]).await?;
 		RouteRow {
 			id:      row.get(0)?,
@@ -58,7 +58,7 @@ impl Statements {
 		&self,
 		hash: u64,
 	) -> Result<Vec<PasteRecord>, Error> {
-		let mut cmd = self.0.get_slugs_by_hash.clone();
+		let mut cmd = self.get_slugs_by_hash.clone();
 		let mut rows = cmd.query([hash.cast_signed()]).await?;
 		let mut results: Vec<PasteRecord> = Vec::new();
 		while let Some(row) = rows.next().await? {
@@ -71,7 +71,7 @@ impl Statements {
 	}
 
 	pub async fn slug_exists(&self, path: &str) -> Result<bool, Error> {
-		let mut cmd = self.0.slug_exists.clone();
+		let mut cmd = self.slug_exists.clone();
 		let row = cmd.query_row([path]).await?;
 		let exists = row.get::<i64>(0)?;
 		Ok(exists == 1)
@@ -80,14 +80,15 @@ impl Statements {
 	pub async fn del_expired(
 		&self,
 		range: Duration,
-	) -> Result<Vec<DeletedRoute>, Error> {
-		let mut cmd = self.0.del_expired.clone();
+	) -> Result<Vec<ExpiringRoute>, Error> {
+		let mut cmd = self.del_expired.clone();
 		let mut rows = cmd.query([range.as_secs().cast_signed()]).await?;
-		let mut results: Vec<DeletedRoute> = Vec::new();
+		let mut results: Vec<ExpiringRoute> = Vec::new();
 		while let Some(row) = rows.next().await? {
-			results.push(DeletedRoute {
+			results.push(ExpiringRoute {
 				id:      row.get(0)?,
-				created: from_unix_timestamp(row.get::<i64>(1)?),
+				kind:    (row.get::<i64>(1)?).try_into()?,
+				created: from_unix_timestamp(row.get::<i64>(2)?),
 			});
 		}
 		Ok(results)
@@ -97,11 +98,12 @@ impl Statements {
 		&self,
 		path: String,
 	) -> Result<DeletedRoute, Error> {
-		let mut cmd = self.0.del_from_path.clone();
+		let mut cmd = self.del_from_path.clone();
 		let row = cmd.query_row([path]).await?;
-		Ok(DeletedRoute {
+		Ok(ExpiringRoute {
 			id:      row.get(0)?,
-			created: from_unix_timestamp(row.get::<i64>(1)?),
+			kind:    (row.get::<i64>(1)?).try_into()?,
+			created: from_unix_timestamp(row.get::<i64>(2)?),
 		})
 	}
 
@@ -114,7 +116,7 @@ impl Statements {
 		let hash = Value::from(route.hash());
 		let content = Value::from(route.content().map(<[u8]>::to_vec));
 
-		let mut cmd = self.0.insert_route.clone();
+		let mut cmd = self.insert_route.clone();
 		let row = cmd.query_row([id, kind, hash, content]).await?;
 		let created_unix: i64 = row.get(0)?;
 		Ok(from_unix_timestamp(created_unix))
