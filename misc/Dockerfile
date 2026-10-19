@@ -26,6 +26,7 @@ COPY app/Cargo.toml app/build.rs ./app/
 COPY app/assets ./app/assets/
 COPY rslog/Cargo.toml ./rslog/
 COPY .cargo/ ./.cargo/
+COPY tools/ ./tools/
 
 # ── Layer 2: Dummy sources to pre-build all dependencies ──
 # Use an empty build.rs so cargo registers the build script and creates an
