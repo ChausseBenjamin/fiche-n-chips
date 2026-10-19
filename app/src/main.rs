@@ -1,4 +1,6 @@
 #![feature(random, core_float_math)]
+#![feature(duration_constructors)]
+mod alerting;
 mod anonymizer;
 mod cleanup;
 mod config;
@@ -11,6 +13,7 @@ mod ui;
 mod util;
 
 use std::io::Result;
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
 use clap::Parser;
@@ -19,6 +22,7 @@ use config::Config;
 use rslog::{attrs, error, info, src, warn, Logger};
 use tokio_util::sync::CancellationToken;
 
+use crate::alerting::{AlertScheduler, MsgEmitter};
 use crate::anonymizer::Anonimizer;
 use crate::cleanup::Cleaner;
 use crate::limiter::RateLimiter;
@@ -56,6 +60,27 @@ async fn main() -> Result<()> {
 
 	let shutdown = CancellationToken::new();
 	let shutdown_timeout = cfg.management.shutdown_timeout;
+
+	let (sched_cfg, sched_db, sched_shutdown) =
+		(cfg.clone(), storage.clone(), shutdown.clone());
+	std::thread::spawn(move || {
+		let emitter = match MsgEmitter::try_from(&sched_cfg.ntfy) {
+			Ok(e) => Rc::new(e),
+			Err(e) => {
+				info(
+					"alert scheduler disabled",
+					attrs!(
+					ERR_KEY => e,
+					),
+				);
+				return;
+			}
+		};
+		let scheduler = AlertScheduler::new(emitter, sched_db, &sched_cfg);
+		let rt = actix_rt::Runtime::new()
+			.expect("failed to build alert scheduler runtime");
+		rt.block_on(scheduler.run(sched_shutdown));
+	});
 
 	let sig = shutdown.clone();
 	tokio::spawn(async move {

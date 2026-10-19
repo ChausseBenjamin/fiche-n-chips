@@ -17,6 +17,8 @@ humantime = "2.3.0"
 tokio = {version = "1.0.1", features = ["rt-multi-thread", "macros", "net", "io-util", "time", "signal"]}
 tokio-util = { version = "0.7", features = ["rt"] }
 actix-web = { version = "4", default-features = false, features = ["macros"] }
+actix-rt = { version = "2", features = ["signal"] }
+awc = { version = "3", default-features = false, features = ["rustls-0_23-webpki-roots"] }
 
 # Specialized tools (specific to this project)
 turso = { version = "0.6.0", default-features = false }   # sqlite database

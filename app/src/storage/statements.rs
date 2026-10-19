@@ -6,11 +6,12 @@ use super::error::Error;
 use super::model::{
 	DeletedRoute, ExpiringRoute, PasteRecord, RouteRow, RowEntry, Storable,
 };
-use crate::util::from_unix_timestamp;
+use crate::util::{from_unix_timestamp, unix_secs_ceil, unix_secs_floor};
 
 pub struct Statements {
 	del_expired:         Statement,
 	del_from_path:       Statement,
+	get_created_between: Statement,
 	get_from_path:       Statement,
 	get_slugs_by_hash:   Statement,
 	insert_route:        Statement,
@@ -25,6 +26,9 @@ impl Statements {
 				.await?,
 			del_from_path:       conn
 				.prepare_cached(include_str!("sql/del_from_path.sql"))
+				.await?,
+			get_created_between: conn
+				.prepare_cached(include_str!("sql/get_created_between.sql"))
 				.await?,
 			get_from_path:       conn
 				.prepare_cached(include_str!("sql/get_from_path.sql"))
@@ -65,6 +69,25 @@ impl Statements {
 			results.push(PasteRecord {
 				slug:    row.get(0)?,
 				content: (row.get::<Option<Vec<u8>>>(1)?).unwrap_or_default(),
+			});
+		}
+		Ok(results)
+	}
+
+	pub async fn get_created_between(
+		&self,
+		from: SystemTime,
+		until: SystemTime,
+	) -> Result<Vec<ExpiringRoute>, Error> {
+		let mut cmd = self.get_created_between.clone();
+		let mut rows =
+			cmd.query([unix_secs_ceil(from), unix_secs_floor(until)]).await?;
+		let mut results: Vec<ExpiringRoute> = Vec::new();
+		while let Some(row) = rows.next().await? {
+			results.push(ExpiringRoute {
+				id:      row.get(0)?,
+				kind:    (row.get::<i64>(1)?).try_into()?,
+				created: from_unix_timestamp(row.get::<i64>(2)?),
 			});
 		}
 		Ok(results)

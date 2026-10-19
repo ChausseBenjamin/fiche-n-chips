@@ -10,13 +10,14 @@ pub use provider::ReservedPathProvider;
 pub enum ReservedPath {
 	File(WebFile<'static>),
 	Api(PathBuf),
+	Alerting(PathBuf),
 }
 
 impl ReservedPath {
 	pub fn path(&self) -> &Path {
 		match self {
 			ReservedPath::File(f) => f.path(),
-			ReservedPath::Api(p) => p,
+			ReservedPath::Api(p) | ReservedPath::Alerting(p) => p,
 		}
 	}
 }

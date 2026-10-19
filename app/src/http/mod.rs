@@ -151,6 +151,16 @@ impl Server {
 				.insert_header(("Allow", "POST"))
 				.finish(),
 
+			(_, Some(ResPath::Alerting(p))) => {
+				debug(
+					"request hit a path reserved by ntfy",
+					attrs!(
+					PATH_KEY => p.display().to_string(),
+					),
+				);
+				handle_404(&req, self.get_404(), slug_path.as_path())
+			}
+
 			(&Method::GET, None) => {
 				if let Ok(p) = Self::get_row(self.db.clone(), slug_path.clone()).await {
 					return handle_entry(&req, p);
@@ -199,6 +209,7 @@ impl Server {
 		self.reserved.get(Path::new(NOT_FOUND_PATH)).and_then(|r| match r {
 			ResPath::File(f) => Some(f),
 			ResPath::Api(_) => None,
+			ResPath::Alerting(_) => None,
 		})
 	}
 }
