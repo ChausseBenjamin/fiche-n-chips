@@ -7,11 +7,8 @@ FROM rust:slim-bookworm AS build
 #   gcc       - C compiler needed by simsimd crate's build script (for musl target)
 #   clang     - Rust linker (per .cargo/config.toml)
 #   mold      - Fast linker (per .cargo/config.toml)
-#   upx       - Binary compression
-RUN echo "deb http://deb.debian.org/debian bookworm-backports main" >> /etc/apt/sources.list && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends -t bookworm-backports \
-      upx-ucl \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
       gcc \
       clang \
       mold && \
@@ -56,14 +53,10 @@ RUN find app/src rslog/src app/build.rs -type f -exec touch {} +
 RUN RUSTC_WRAPPER="" cargo build --release --target x86_64-unknown-linux-musl && \
     cp target/x86_64-unknown-linux-musl/release/fiche-n-chips /app
 
-# Strip unnecessary exception-handling sections first.
+# Strip unnecessary exception-handling sections
 # With panic=abort the eh_frame tables are dead weight (~600KB).
-# This must run before UPX because UPX-compressed binaries have no sections.
 RUN objcopy --remove-section=.eh_frame --remove-section=.eh_frame_hdr /app /app.stripped && \
     mv /app.stripped /app
-
-# Compress the binary with UPX level 7
-RUN upx -7 /app
 
 # Sanity check: verify the binary produces help output
 RUN /app --help 2>&1 | grep -q "Usage:" || (echo "ERROR: built binary is broken! Help output missing."; exit 1)

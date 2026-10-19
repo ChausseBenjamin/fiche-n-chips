@@ -1,39 +1,28 @@
-# ── Global build settings (applied to all targets unless overridden) ──
-[build]
-rustc-wrapper = "/usr/bin/sccache"
-rustflags = ["-Z", "threads=8"]
+# ── Unstable features ──
+[unstable]
+codegen-backend = true
 
-# ── Native gnu builds: mold linker ──
-[target.x86_64-unknown-linux-gnu]
-linker = "clang"
-rustflags = ["-C", "link-arg=-fuse-ld=mold"]
-
-# ── Fallback for other linux targets (uses clang + mold) ──
-[target.'cfg(target_os = "linux")']
-linker = "clang"
-rustflags = ["-C", "link-arg=-fuse-ld=mold"]
-
-# ── Musl static builds: clang linker, static CRT ──
-[target.x86_64-unknown-linux-musl]
-linker = "clang"
-rustflags = ["-C", "target-feature=+crt-static"]
+# ── Dev builds: Cranelift backend for much faster codegen ──
+# Requires the `rustc-codegen-cranelift-preview` component (see rust-toolchain.toml).
+[profile.dev]
+codegen-backend = "cranelift"
 
 # ── Environment variables ──
 [env]
-# simsimd crate build script needs a C compiler for musl target
-CC_x86_64_unknown_linux_musl = "gcc"
+CC_x86_64_unknown_linux_musl = { value = "tools/ccpicker", relative = true }
+
+[target.'cfg(all(target_os = "linux", target_env = "gnu"))']
+rustflags = ["-Z", "threads=12"]
+linker = "tools/linkerpicker"
+
+[target.x86_64-unknown-linux-musl]
+linker = "clang"
+rustflags = ["-Z", "threads=12", "-C", "target-feature=+crt-static"]
 
 [alias]
-# ── Build aliases ──
 musl = "build --release --target x86_64-unknown-linux-musl"
 rel = "build --release"
 dev = "build"
 
-# ── Check / Test / Fmt ──
 chk = "check --workspace"
 tst = "test --workspace"
-
-# ── Clippy ──
-clippy-all = "clippy --workspace --all-targets --all-features"
-clippy-ci = "clippy --workspace --all-targets --all-features"
-clippy-ci-strict-correctness = "clippy --workspace --all-targets --all-features -- -D clippy::correctness"
