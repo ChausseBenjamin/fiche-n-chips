@@ -1,0 +1,23 @@
+[project]
+name = "misc"
+version = "0.1.0"
+authors = [
+    { name = "Benjamin Chausse", email = "benjamin@chausse.dev" }
+]
+requires-python = ">=3.15"
+dependencies = [
+    "pillow==13.0.0",
+    "playwright==1.64.0",
+]
+
+[project.scripts]
+make_assets = "branding.make_assets:main"
+serve = "dev.serve:main"
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = ["branding", "dev"]
+module-root = ""
