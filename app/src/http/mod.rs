@@ -109,7 +109,7 @@ impl Server {
 					"matched reserved file",
 					attrs!(PATH_KEY => path.display().to_string()),
 				);
-				handle_static(&req, file)
+				handle_static(&req, file, false)
 			}
 			(_, Some(ResPath::File(_))) => HttpResponse::MethodNotAllowed()
 				.insert_header(("Allow", "GET"))
