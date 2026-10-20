@@ -31,8 +31,8 @@ fn mime_for_extension(path: &Path) -> &'static str {
 		Some("woff") => "font/woff",
 		Some("png") => "image/png",
 		Some("webp") => "image/webp",
-		Some("jpg | jpeg") => "image/jpeg",
-		Some("js | mjs") => "text/javascript; charset=utf-8",
+		Some("jpg" | "jpeg") => "image/jpeg",
+		Some("js" | "mjs") => "text/javascript; charset=utf-8",
 		_ => "application/octet-stream",
 	}
 }
