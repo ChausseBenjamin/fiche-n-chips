@@ -26,6 +26,7 @@ fn mime_for_extension(path: &Path) -> &'static str {
 		Some("xml") => "text/xml",
 		Some("woff2") => "font/woff2",
 		Some("json") => "text/javascript; charset=utf8",
+		Some("webmanifest") => "application/manifest+json",
 		Some("map") => "application/json",
 		Some("wasm") => "application/wasm",
 		Some("woff") => "font/woff",
@@ -41,13 +42,19 @@ fn mime_for_extension(path: &Path) -> &'static str {
 pub fn embedded_files() -> Vec<WebFile<'static>> {
   vec![
     embed!("/404.html",                       FileContents::Brotli),
-    embed!("/favicon.ico",                    FileContents::Raw),
+    embed!("/favicon.svg",                    FileContents::Brotli),
     embed!("/index.html",                     FileContents::Brotli),
     embed!("/main.css",                       FileContents::Brotli),
+    embed!("/misc/icons.svg",                 FileContents::Brotli),
     embed!("/robots.txt",                     FileContents::Raw),
     embed!("/sitemap.xml",                    FileContents::Raw),
-    embed!("/misc/icons.svg",                 FileContents::Brotli),
     embed!("/misc/jetbrainsmono-latin.woff2", FileContents::Raw),
+    embed!("/apple-touch-icon.png",           FileContents::Raw),
+    embed!("/icon-192.png",                   FileContents::Raw),
+    embed!("/icon-512.png",                   FileContents::Raw),
+    embed!("/icon-maskable-512.png",          FileContents::Raw),
+    embed!("/og-image.png",                   FileContents::Raw),
+    embed!("/site.webmanifest",               FileContents::Raw),
   ]
 }
 
