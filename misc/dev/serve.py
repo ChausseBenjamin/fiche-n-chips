@@ -21,7 +21,7 @@ def find_out_dir():
         sys.exit(1)
     return str(max(candidates, key=os.path.getmtime))
 
-DIR = sys.argv[1] if len(sys.argv) > 1 else find_out_dir()
+DIR = None
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -35,8 +35,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         _, ext = os.path.splitext(path)
         return MIME.get(ext) or super().guess_type(path)
 
-host = os.environ.get("HOST", "localhost")
-port = int(os.environ.get("PORT", 8080))
-httpd = http.server.HTTPServer((host, port), Handler)
-print(f"Serving {os.path.abspath(DIR)} at http://{host}:{port}")
-httpd.serve_forever()
+def main():
+    global DIR
+    DIR = sys.argv[1] if len(sys.argv) > 1 else find_out_dir()
+
+    host = os.environ.get("HOST", "localhost")
+    port = int(os.environ.get("PORT", 8080))
+    httpd = http.server.HTTPServer((host, port), Handler)
+    print(f"Serving {os.path.abspath(DIR)} at http://{host}:{port}")
+    httpd.serve_forever()
+
+
+if __name__ == "__main__":
+    main()
