@@ -133,9 +133,9 @@ async fn handle_shorten(
 			));
 		}
 	};
-	db.spawn_shrink(cfg.management.db_size.get());
 	match db.queries.insert(&redirect).await {
 		Ok(_) => {
+			db.spawn_shrink(cfg.management.db_size.get());
 			HttpResponse::Ok().body(ui::format!(ansi_resp,
 				"Successfully created a short url for the requested target, {}\nYou may use the url below:\n{}/{}\n",
 				success(),
