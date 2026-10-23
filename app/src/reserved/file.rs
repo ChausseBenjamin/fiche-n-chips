@@ -50,8 +50,6 @@ pub fn embedded_files() -> Vec<WebFile<'static>> {
     embed!("/sitemap.xml",                    FileContents::Raw),
     embed!("/misc/jetbrainsmono-latin.woff2", FileContents::Raw),
     embed!("/apple-touch-icon.png",           FileContents::Raw),
-    embed!("/icon-192.png",                   FileContents::Raw),
-    embed!("/icon-512.png",                   FileContents::Raw),
     embed!("/icon-maskable-512.png",          FileContents::Raw),
     embed!("/og-image.png",                   FileContents::Raw),
     embed!("/site.webmanifest",               FileContents::Raw),
