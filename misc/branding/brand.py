@@ -28,7 +28,13 @@ BRAND = {
         "width": 1200,
         "height": 600,
         "grid": {"size": 48, "alpha": 0.032},
-        "glow": {"width": 720, "height": 520, "x": "76%", "y": "47%", "alpha": 0.2},
+        "glow": {
+            "width": 720,
+            "height": 520,
+            "x": "76%",
+            "y": "47%",
+            "alpha": 0.2,
+        },
         "wordmark": {"lead": "1yr", "rest": ".ca"},
         "tagline": "terminal pastebin & url shortener — hosted in canada",
         "prompt": "$",
@@ -49,8 +55,6 @@ BRAND = {
         },
         "outputs": [
             {"file": "apple-touch-icon.png", "size": 180},
-            {"file": "icon-192.png", "size": 192},
-            {"file": "icon-512.png", "size": 512},
             {"file": "icon-maskable-512.png", "size": 512},
         ],
     },
