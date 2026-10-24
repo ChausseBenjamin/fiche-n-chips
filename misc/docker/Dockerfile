@@ -23,7 +23,6 @@ WORKDIR /build
 # Everything that rarely changes: manifests, build script, assets.
 COPY rust-toolchain.toml Cargo.toml Cargo.lock ./
 COPY app/Cargo.toml app/build.rs ./app/
-COPY app/assets ./app/assets/
 COPY rslog/Cargo.toml ./rslog/
 COPY .cargo/ ./.cargo/
 COPY tools/ ./tools/
@@ -44,8 +43,9 @@ RUN mkdir -p app/src rslog/src && \
 # fingerprint, causing cargo to skip recompilation.  Remove the dummy sources
 # first, then COPY, then touch everything so cargo sees the changes.
 RUN rm -rf app/src rslog/src
-COPY app/src ./app/src
 COPY rslog/src ./rslog/src
+COPY app/src ./app/src
+COPY app/assets ./app/assets/
 # Restore the real build.rs (overwrites the empty one from the dummy step)
 COPY app/build.rs ./app/build.rs
 RUN find app/src rslog/src app/build.rs -type f -exec touch {} +
