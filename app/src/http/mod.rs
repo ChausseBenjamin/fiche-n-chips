@@ -20,9 +20,12 @@ use user::handle_entry;
 use crate::anonymizer::Anonimizer;
 use crate::config::Config;
 use crate::config::logging::{METHOD_KEY, PATH_KEY};
+use crate::http::api::api_healthcheck;
 use crate::http::client::Client;
 use crate::limiter::{RateLimitStatus, RateLimiter};
-use crate::reserved::{ReservedPath as ResPath, ReservedPathProvider, WebFile};
+use crate::reserved::{
+	HEALTHCHECK_PATH, ReservedPath as ResPath, ReservedPathProvider, WebFile,
+};
 use crate::storage::model::RowEntry;
 use crate::storage::{self, Storage};
 use crate::ui;
@@ -89,6 +92,10 @@ impl Server {
 		let path = normalize_http(Path::new(req.uri().path()));
 		let slug_path = path.strip_prefix("/").unwrap_or(&path).to_path_buf();
 
+		if path.as_path() == Path::new(HEALTHCHECK_PATH) {
+			// calling early helps mitigate noise in logs
+			return api_healthcheck(&req).await;
+		}
 		debug(
 			"dispatching request",
 			attrs!(
@@ -102,7 +109,7 @@ impl Server {
 					"matched reserved file",
 					attrs!(PATH_KEY => path.display().to_string()),
 				);
-				handle_static(&req, file)
+				handle_static(&req, file, false)
 			}
 			(_, Some(ResPath::File(_))) => HttpResponse::MethodNotAllowed()
 				.insert_header(("Allow", "GET"))
@@ -140,7 +147,7 @@ impl Server {
 
 				api_post(
 					&req,
-					path.clone(),
+					path,
 					body,
 					self.slugs.clone(),
 					self.db.clone(),

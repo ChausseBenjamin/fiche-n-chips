@@ -2,7 +2,9 @@ use actix_web::{HttpRequest, HttpResponse};
 use rslog::{attrs, debug, error, src};
 
 use super::client::Client;
-use crate::config::logging::{COMPRESSED_KEY, DEST_KEY, ERR_KEY, PATH_KEY, SLUG_KEY};
+use crate::config::logging::{
+	COMPRESSED_KEY, DEST_KEY, ERR_KEY, PATH_KEY, SLUG_KEY,
+};
 use crate::storage::model::{CompressedPaste, Redirect, RowEntry};
 use crate::util::decompress;
 
@@ -40,6 +42,8 @@ fn handle_paste(req: &HttpRequest, paste: CompressedPaste) -> HttpResponse {
 			COMPRESSED_KEY => client.accepts_compression()),
 	);
 	let mut resp = HttpResponse::Ok();
+	resp.insert_header(("Content-Type", "text/plain; charset=utf-8"));
+	resp.insert_header(("X-Content-Type-Options", "nosniff"));
 	if client.accepts_compression() {
 		resp.insert_header(("Content-Encoding", "br"));
 		resp.body(comp_data)
@@ -51,7 +55,7 @@ fn handle_paste(req: &HttpRequest, paste: CompressedPaste) -> HttpResponse {
 				// investigate if contacted.
 				error(
 					"failed to decompress user data",
-				attrs!(
+					attrs!(
 					ERR_KEY => err,
 					SLUG_KEY => path),
 				);

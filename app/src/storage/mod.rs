@@ -5,12 +5,11 @@ pub mod model;
 mod pragma;
 mod statements;
 
-use const_format::formatcp;
 pub use error::{Error, Result};
-use model::{ExpiringRoute, Reserved, RouteKind, Storable};
+use model::{ExpiringRoute, Reserved};
 use rslog::{attrs, debug, error, info, src, warn};
 use statements::Statements;
-use turso::{Builder, Connection, Value};
+use turso::{Builder, Connection};
 
 use crate::config::Config;
 use crate::config::logging::{
@@ -18,24 +17,17 @@ use crate::config::logging::{
 	PATH_KEY, STORED_KEY, VALUE_KEY,
 };
 use crate::storage::pragma::{PRAGMA_CONSTRAINTS, PragmaCfg};
-use crate::util::{from_unix_timestamp, valid_filepath};
+use crate::util::valid_filepath;
 
 // Used if the user provides a path/dir but no filename
 pub const DEFAULT_DB_NAME: &str = "store.db";
 
 static DB_SCHEMA: &str = include_str!("sql/00-schema.sql");
 
-const DEL_MISSING_RESERVED: &str = formatcp!(
-	"DELETE FROM routes WHERE kind = {} AND ID NOT IN",
-	RouteKind::Reserved as u8
-);
-
-const INSERT_ROUTES_SAFE: &str =
-	"INSERT OR IGNORE INTO routes (id, kind, hash, content) VALUES";
-
 pub struct Storage {
 	connection:  Connection,
 	pub queries: Statements,
+	shrink_lock: tokio::sync::Mutex<()>,
 }
 
 impl Storage {
@@ -56,7 +48,8 @@ impl Storage {
 				PATH_KEY => path_str.to_owned(),
 				EXISTS_KEY => db_exists),
 		);
-		let db = Builder::new_local(path_str).build().await?;
+		let db =
+			Builder::new_local(path_str).experimental_vacuum(true).build().await?;
 		let conn = db.connect()?;
 
 		if db_exists {
@@ -134,6 +127,7 @@ impl Storage {
 		Ok(Self {
 			connection: conn,
 			queries,
+			shrink_lock: tokio::sync::Mutex::new(()),
 		})
 	}
 
@@ -162,51 +156,21 @@ impl Storage {
 			return Ok(0);
 		}
 
-		let mut conn = self.connection.clone();
-		let tx = conn.transaction().await?;
-		let mut modified = 0;
-
-		let safe_insert_cmd = format!(
-			"{} {}",
-			INSERT_ROUTES_SAFE,
-			vec!["(?, ?, ?, ?)"; paths.len()].join(", ")
-		);
-		let safe_insert_args = paths
-			.iter()
-			.flat_map(|p| {
-				vec![
-					Value::from(p.id().to_string()),
-					Value::from(p.kind() as u8),
-					Value::from(p.hash()),
-					Value::from(p.content()),
-				]
-			})
-			.collect::<Vec<Value>>();
-		modified += tx.execute(safe_insert_cmd, safe_insert_args).await?;
-
-		let del_cmd = format!(
-			"{} ({})",
-			DEL_MISSING_RESERVED,
-			vec!["?"; paths.len()].join(", ")
-		);
-		let del_args = paths
-			.iter()
-			.map(|p| Value::from(p.id().to_string()))
-			.collect::<Vec<Value>>();
-		modified += tx.execute(del_cmd, del_args).await?;
-
-		tx.commit().await?;
-		Ok(modified)
+		self.queries.sync_reserved(&paths).await
 	}
 
 	pub async fn shrink_to_fit(
 		&self,
 		max_bytes: u64,
 	) -> Result<Vec<ExpiringRoute>> {
+		// Inserts spawn a shrink each time, so several of these can overlap.
+		// Without serializing them, each one observes the same over-budget
+		// state and deletes its own tranche.
+		let _guard = self.shrink_lock.lock().await;
+
 		let mut all_deleted = Vec::new();
 
-		let current_size = self.get_db_size().await?;
-		if current_size <= max_bytes {
+		if self.queries.db_size().await?.live() <= max_bytes {
 			return Ok(all_deleted);
 		}
 
@@ -214,51 +178,34 @@ impl Storage {
 		let tx = conn.transaction().await?;
 
 		loop {
-			let mut rows = tx
-				.query(
-					"DELETE FROM routes WHERE kind != 0 ORDER BY created_on ASC LIMIT 10 \
-           RETURNING id, kind, created_on",
-					(),
-				)
-				.await?;
-
-			let mut batch = Vec::new();
-			while let Some(row) = rows.next().await? {
-				batch.push(ExpiringRoute {
-					id:      row.get(0)?,
-					kind:    (row.get::<i64>(1)?).try_into()?,
-					created: from_unix_timestamp(row.get::<i64>(2)?),
-				});
-			}
-
+			let batch = self.queries.delete_oldest_batch().await?;
 			if batch.is_empty() {
 				break;
 			}
-
 			all_deleted.extend(batch);
+
+			// Stop as soon as we are back under the cap instead of draining
+			// every redirect and paste.
+			if self.queries.db_size().await?.live() <= max_bytes {
+				break;
+			}
 		}
 
 		tx.commit().await?;
 
+		// Deletes free pages but leave `page_count` unchanged, so the file on
+		// disk stays large until vacuumed. The deletes are already committed,
+		// so failing here should not be reported as a failed shrink.
+		if self.queries.db_size().await?.physical() > max_bytes {
+			if let Err(e) = self.queries.vacuum().await {
+				warn(
+					"failed to reclaim disk space after shrinking database",
+					attrs!(ERR_KEY => e),
+				);
+			}
+		}
+
 		Ok(all_deleted)
-	}
-
-	async fn get_db_size(&self) -> Result<u64> {
-		let mut rows = self.connection.query("PRAGMA page_count", ()).await?;
-		let row = rows
-			.next()
-			.await?
-			.ok_or_else(|| Error::Setup("failed to query page_count".into()))?;
-		let page_count: i64 = row.get(0)?;
-
-		let mut rows = self.connection.query("PRAGMA page_size", ()).await?;
-		let row = rows
-			.next()
-			.await?
-			.ok_or_else(|| Error::Setup("failed to query page_size".into()))?;
-		let page_size: i64 = row.get(0)?;
-
-		Ok(page_count.unsigned_abs() * page_size.unsigned_abs())
 	}
 
 	pub fn spawn_shrink(self: &Arc<Self>, max_bytes: u64) {
