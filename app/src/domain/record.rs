@@ -1,11 +1,14 @@
 use std::borrow::Cow;
 use std::time::SystemTime;
 
+use bytes::Bytes;
+
 use super::{AsPlainRef, Brotli, Checksum, Plain, Result, RouteKind, Slug};
 
-pub type StoredRecord = Record<Brotli, Existing>;
+pub type RecordPending = Record<Brotli, Novel>;
+pub type RecordStored = Record<Brotli, Existing>;
 
-pub struct New;
+pub struct Novel(Option<Checksum>);
 pub struct Existing(pub SystemTime);
 pub struct Record<E, S> {
 	pub slug:    Slug,
@@ -18,15 +21,33 @@ pub enum Entry<E> {
 	Served(Content<E>),
 }
 
-pub enum Content<E> {
+pub type ContentPlain = Content<Plain>;
+pub type ContentPacked = Content<Brotli>;
+pub(super) enum Content<E> {
 	Paste(E),
 	Redirect(E),
 }
-impl<E: AsPlainRef> Content<E> {
-	pub fn raw_ref(&self) -> Result<Cow<'_, [u8]>> {
+impl ContentPlain {
+	pub fn redirect(bytes: Bytes) -> Self { Self::Redirect(Plain(bytes)) }
+
+	pub fn paste(bytes: Bytes) -> Self { Self::Paste(Plain(bytes)) }
+
+	pub(super) fn compress(self) -> Result<ContentPacked> {
+		use Content::{Paste, Redirect};
+		Ok(match self {
+			Self::Paste(plain) => Paste(plain.compress()?),
+			Self::Redirect(plain) => Redirect(plain.compress()?),
+		})
+	}
+
+	pub(super) fn bytes(&self) -> Bytes {
 		match self {
-			Self::Paste(blob) => blob.as_plain_ref(),
-			Self::Redirect(redir) => redir.as_plain_ref(),
+			Self::Paste(v) | Self::Redirect(v) => v.0,
 		}
 	}
+}
+impl ContentPacked {
+	pub fn from_stored_paste(bytes: Bytes) -> Self { Self(Brotli(bytes)) }
+
+	pub fn from_stored_redir(bytes: Bytes) -> Self { Self(Brotli(bytes)) }
 }

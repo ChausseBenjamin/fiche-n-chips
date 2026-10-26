@@ -6,8 +6,8 @@ use sqlx::{FromRow, Type};
 use super::super::{Error, Result};
 use super::SystemTimeExt;
 use crate::domain::{
-	Brief, Brotli, Checksum, Content, Entry, Existing, Record, RouteKind, Slug,
-	StoredRecord,
+	Brief, Brotli, Checksum, Content, ContentPacked, Entry, Novel, Record,
+	RecordStored, RouteKind, Slug,
 };
 
 /// Decouples storage implementation from the [RouteKind] domain object
@@ -36,20 +36,20 @@ pub struct Route {
 	pub content: Option<Box<[u8]>>,
 	pub created: SystemTimeExt,
 }
-impl TryFrom<Route> for StoredRecord {
+impl TryFrom<Route> for RecordStored {
 	type Error = Error;
 
 	fn try_from(r: Route) -> Result<Self> {
 		use RowKind as RK;
 		let slug = Slug::from_validated(r.id);
-		let created = Existing(r.created.into());
+		let created = Novel(r.created.into());
 		let entry = match (r.kind, r.content) {
 			(RK::Reserved, _) => Entry::Reserved,
-			(RK::Redirect, Some(content)) => {
-				Entry::Served(Content::Redirect(Brotli(Bytes::from(content))))
+			(RK::Redirect, Some(data)) => {
+				Entry::Served(ContentPacked::from_stored_redir(Bytes::from(data)))
 			}
-			(RK::Paste, Some(content)) => {
-				Entry::Served(Content::Paste(Brotli(Bytes::from(content))))
+			(RK::Paste, Some(data)) => {
+				Entry::Served(ContentPacked::from_stored_paste(Bytes::from(data)))
 			}
 			(RK::Redirect, None) | (RK::Paste, None) => {
 				return Err(Error::Formatting(format!(

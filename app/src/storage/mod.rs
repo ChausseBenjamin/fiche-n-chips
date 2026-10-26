@@ -3,15 +3,15 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use bytes::Bytes;
-use sqlx::query_as;
 use sqlx::sqlite::SqliteAutoVacuum::Incremental;
 use sqlx::sqlite::SqliteJournalMode::Wal;
 use sqlx::sqlite::SqliteSynchronous::Normal;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
+use sqlx::{query_as, query_scalar};
 use xxhash_rust::xxh3::xxh3_64_with_seed;
 
 use crate::config::Config;
-use crate::domain::{Brief, Brotli, Existing, Record, StoredRecord};
+use crate::domain::{Brief, Novel, Record, RecordStored, Slug, UploadPending};
 
 mod error;
 mod primitives;
@@ -41,6 +41,28 @@ impl Storage {
 		Ok(Self { cfg, db })
 	}
 
+	pub async fn potential_duplicates(
+		&self,
+		upload: &UploadPending,
+	) -> Result<Vec<RecordStored>> {
+		let plain = upload.content();
+		let hash = xxh3_64_with_seed(&plain, 0).cast_signed();
+		query_as!(Route, r#"SELECT
+          id AS "id!: _", kind AS "kind!: _", content AS "content?: _", created AS "created!: _"
+          FROM routes WHERE hash = ?"#,
+          hash,
+        ).fetch_all(&self.db)
+        .await?.into_iter().map(RecordStored::try_from).collect()
+	}
+
+	pub async fn get(&self, id: Slug) -> Result<RecordStored> {
+		Ok(query_as!(Route,r#"SELECT
+          id AS "id!: _", kind AS "kind!: _", content AS "content?: _", created AS "created!: _"
+          FROM routes WHERE id = ?"#, id.as_str())
+          .fetch_one(&self.db)
+          .await?.map(RecordStored::try_from))
+	}
+
 	pub async fn get_brief(&self, slug: &Path) -> Result<Brief> {
 		let id = slug.to_string_lossy();
 		let meta = query_as!(
@@ -55,20 +77,33 @@ impl Storage {
 		Ok(meta.into())
 	}
 
-	pub async fn get_possible_duplicates(
-		&self,
-		plain: Bytes,
-	) -> Result<Vec<StoredRecord>> {
-		let hash = xxh3_64_with_seed(&plain, 0).cast_signed();
-		query_as!(Route, r#"SELECT
-          id AS "id!: _", kind AS "kind!: _", content AS "content?: _", created AS "created!: _"
-          FROM routes WHERE hash = ?"#,
-          hash,
-        ).fetch_all(&self.db)
-        .await?.into_iter().map(StoredRecord::try_from).collect()
+	pub async fn exists(&self, id: Slug) -> Result<bool> {
+		Ok(
+			query_scalar!(
+				r#"SELECT EXISTS(SELECT 1 FROM routes WHERE id = ?) AS "exists!: bool" "#,
+				id.as_str()
+			)
+			.fetch_one(&self.db)
+			.await?,
+		)
 	}
 
-	pub async fn del_expired(&self) {
+	pub async fn delete(&self, brief: Brief) -> Result<Brief> {
+		let id = brief.slug.as_str();
+		Ok(
+			query_as!(
+				Meta,
+				r#" DELETE FROM routes WHERE id = ? RETURNING
+      id AS "id!: _", kind AS "kind!: _", created AS "created!: _" "#,
+				id
+			)
+			.fetch_one(&self.db)
+			.await?
+			.map(Brief::from),
+		)
+	}
+
+	pub async fn purge_expired(&self) -> Result<Vec<Brief>> {
 		let retention = self.cfg.mgmt.retention.as_secs().cast_signed();
 		query_as!(
 			Meta,
@@ -83,20 +118,5 @@ impl Storage {
 		.into_iter()
 		.map(Brief::from)
 		.collect()
-	}
-
-	pub async fn del_record(&self, brief: Brief) -> Result<Brief> {
-		let id = brief.slug.as_str();
-		Ok(
-			query_as!(
-				Meta,
-				r#" DELETE FROM routes WHERE id = ? RETURNING
-      id AS "id!: _", kind AS "kind!: _", created AS "created!: _" "#,
-				id
-			)
-			.fetch_one(&self.db)
-			.await?
-			.map(Brief::from),
-		)
 	}
 }
