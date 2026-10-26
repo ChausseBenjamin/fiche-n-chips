@@ -1,7 +1,9 @@
 use std::borrow::Cow;
 
 use bytes::Bytes;
+use xxhash_rust::xxh3::xxh3_64_with_seed as hash;
 
+use super::{Error, Result};
 use crate::util::{compress, decompress};
 
 pub trait AsPlainRef {
@@ -22,7 +24,7 @@ impl AsPlainRef for Plain {
 	}
 }
 
-pub struct Brotli(Bytes);
+pub struct Brotli(pub Bytes);
 impl TryFrom<&Plain> for Brotli {
 	type Error = Error;
 

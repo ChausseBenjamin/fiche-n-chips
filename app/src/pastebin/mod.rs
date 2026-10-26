@@ -8,19 +8,19 @@ use std::net::IpAddr;
 pub use error::Result;
 use rslog::{attrs, debug, error, info, src};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpListener;
-use tokio::time::{timeout, Duration};
+use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
+use tokio::time::{Duration, timeout};
 use tokio_util::sync::CancellationToken;
 
 use crate::anonymizer::Anonimizer;
-use crate::config::logging::{ADDR_KEY, ERR_KEY, SLUG_KEY};
 use crate::config::Config;
+use crate::config::logging::{ADDR_KEY, ERR_KEY, SLUG_KEY};
 use crate::limiter::{RateLimitStatus, RateLimiter};
-use crate::storage::model::PasteInput;
 use crate::storage::Storage;
+use crate::storage::model::PasteInput;
 use crate::ui;
-use crate::util::{decompress, sorry, SlugGenerator};
+use crate::util::{SlugGenerator, decompress, sorry};
 
 //                  data    over-the-limit
 pub struct RawInput(String, bool);
@@ -114,7 +114,7 @@ impl Pastebin {
 							let slug = slugs.gen_unique(&db).await?;
 							let compressed = paste.try_into_compressed_paste(slug.clone())?;
 							let _created = db.queries.insert(&compressed).await?;
-							db.spawn_shrink(cfg.management.db_size.get());
+							db.spawn_shrink(cfg.mgmt.db_size.get());
 							Self::return_url(writer, &cfg, slug.clone(), msg).await?;
 							debug("created new paste", attrs!(SLUG_KEY => slug));
 

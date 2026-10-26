@@ -6,11 +6,11 @@ use rslog::{attrs, debug, error, info, src};
 use tokio::time;
 use tokio_util::sync::CancellationToken;
 
+use crate::config::Config;
 use crate::config::logging::{
 	CLEANUP_INTERVAL_KEY, COUNT_KEY, ERR_KEY, OLDEST_KEY, RETENTION_KEY,
 	ROUTES_KEY, YOUNGEST_KEY,
 };
-use crate::config::Config;
 use crate::limiter::RateLimiter;
 use crate::storage::Storage;
 
@@ -33,10 +33,10 @@ impl Cleaner {
 		debug(
 			"cleaner initialization",
 			attrs!(
-				CLEANUP_INTERVAL_KEY => format_duration(self.cfg.management.cleanup_interval),
-				RETENTION_KEY => format_duration(self.cfg.management.retention)),
+				CLEANUP_INTERVAL_KEY => format_duration(self.cfg.mgmt.cleanup_interval),
+				RETENTION_KEY => format_duration(self.cfg.mgmt.retention)),
 		);
-		let mut interval = time::interval(self.cfg.management.cleanup_interval);
+		let mut interval = time::interval(self.cfg.mgmt.cleanup_interval);
 
 		loop {
 			tokio::select! {
@@ -45,7 +45,7 @@ impl Cleaner {
 				_ = interval.tick() => {},
 			}
 			self.limiter.lock().unwrap_or_else(PoisonError::into_inner).cleanup();
-			match self.db.queries.del_expired(self.cfg.management.retention).await {
+			match self.db.queries.del_expired(self.cfg.mgmt.retention).await {
 				Ok(v) => {
 					if v.is_empty() {
 						debug("no expired entries to clean", src!());
@@ -84,7 +84,7 @@ impl Cleaner {
 				}
 			}
 
-			match self.db.shrink_to_fit(self.cfg.management.db_size.get()).await {
+			match self.db.shrink_to_fit(self.cfg.mgmt.db_size.get()).await {
 				Ok(v) => {
 					if v.is_empty() {
 						debug("db is within size limit", src!());

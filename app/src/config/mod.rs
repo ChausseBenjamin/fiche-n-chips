@@ -13,25 +13,25 @@ pub struct Config {
 	/// Confirations related to networking and communication with the outside
 	/// world
 	#[clap(flatten)]
-	pub server:     ServerCfg,
+	pub server:   ServerCfg,
 	/// Settings exclusive to the management of pastebins
 	/// (creation/deletion/etc...)
 	#[clap(flatten)]
-	pub pastebin:   PastebinCfg,
+	pub pastebin: PastebinCfg,
 	/// Settings exclusive to the management of redirect urls
 	/// (creation/deletion/etc...)
 	#[clap(flatten)]
-	pub redirect:   RedirectCfg,
+	pub redirect: RedirectCfg,
 	/// Configurations that are either internal or relate to multiple areas at
 	/// once (ex: redirect+pastebin)
 	#[clap(flatten)]
-	pub management: ManagementCfg,
+	pub mgmt:     ManagementCfg,
 	/// Formatting and miscellaneous informations related to runtime logs
 	#[clap(flatten)]
-	pub logging:    LoggingCfg,
+	pub logging:  LoggingCfg,
 	/// Optional Ntfy.sh server configuration
 	#[clap(flatten)]
-	pub ntfy:       NtfyCfg,
+	pub ntfy:     NtfyCfg,
 }
 
 #[derive(Args)]

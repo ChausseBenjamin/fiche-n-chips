@@ -25,7 +25,7 @@ pub async fn api_delete(
 		RespFmt::Plain | RespFmt::Html => false,
 	};
 	let now = SystemTime::now();
-	let max_delay = cfg.management.deletion_window;
+	let max_delay = cfg.mgmt.deletion_window;
 	let maintainer_email = cfg.server.maintainer_email.clone();
 
 	let (id, created): (String, SystemTime) = match endpoint {

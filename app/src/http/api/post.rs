@@ -1,18 +1,18 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use rslog::{attrs, debug, error};
 use serde::{Deserialize, Serialize};
 
 use super::super::Client;
-use crate::config::logging::{ERR_KEY, PATH_KEY};
 use crate::config::Config;
+use crate::config::logging::{ERR_KEY, PATH_KEY};
 use crate::http::client::ResponseFmt as RespFmt;
-use crate::storage::model::{RedirectInput, Storable};
 use crate::storage::Storage;
+use crate::storage::model::{RedirectInput, Storable};
 use crate::ui;
-use crate::util::{sorry, success, SlugGenerator, CONTACT, IDENT};
+use crate::util::{CONTACT, IDENT, SlugGenerator, sorry, success};
 
 fn short_req_demo() -> ui::UiString {
 	ui::string(
@@ -135,7 +135,7 @@ async fn handle_shorten(
 	};
 	match db.queries.insert(&redirect).await {
 		Ok(_) => {
-			db.spawn_shrink(cfg.management.db_size.get());
+			db.spawn_shrink(cfg.mgmt.db_size.get());
 			HttpResponse::Ok().body(ui::format!(ansi_resp,
 				"Successfully created a short url for the requested target, {}\nYou may use the url below:\n{}/{}\n",
 				success(),

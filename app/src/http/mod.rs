@@ -67,7 +67,7 @@ impl Server {
 	) -> io::Result<()> {
 		let addr = self.cfg.server.listen_addr.clone();
 		let port = self.cfg.server.http_port;
-		let timeout = self.cfg.management.shutdown_timeout;
+		let timeout = self.cfg.mgmt.shutdown_timeout;
 		HttpServer::new(move || {
 			App::new()
 				.app_data(web::Data::from(self.clone()))

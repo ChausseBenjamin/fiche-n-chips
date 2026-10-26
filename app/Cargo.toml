@@ -22,6 +22,7 @@ awc = { version = "3", default-features = false, features = ["rustls-0_23-webpki
 rustls = { version = "0.23", default-features = false, features = ["ring", "tls12"] }
 
 # Specialized tools (specific to this project)
+sqlx = { version = "0.9", features = ["runtime-tokio","sqlite","macros","migrate"] }
 turso = { version = "0.6.0", default-features = false }   # sqlite database
 xxhash-rust = { version = "0.8.15", features = ["xxh3"] } # non-cryptographic hashing
 brotli = "8.0.2"                                          # text compression

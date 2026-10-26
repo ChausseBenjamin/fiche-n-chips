@@ -22,7 +22,7 @@ pub const ERROR: RSlogLevel = RSlogLevel(8);
 
 impl RSlogLevel {
 	#[must_use]
-	pub fn new(level: i8) -> Self { Self(level) }
+	pub const fn new(level: i8) -> Self { Self(level) }
 }
 
 impl Sub for RSlogLevel {
@@ -34,9 +34,7 @@ impl Sub for RSlogLevel {
 impl Sub<i8> for RSlogLevel {
 	type Output = Self;
 
-	fn sub(self, rhs: i8) -> Self::Output {
-		RSlogLevel(self.0.saturating_sub(rhs))
-	}
+	fn sub(self, rhs: i8) -> Self::Output { Self(self.0.saturating_sub(rhs)) }
 }
 
 impl Display for RSlogLevel {

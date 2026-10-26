@@ -1,8 +1,10 @@
+use std::result;
+
 use thiserror::Error;
 
 use crate::storage;
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = result::Result<T, Error>;
 
 #[derive(Debug, Error)]
 pub enum Error {

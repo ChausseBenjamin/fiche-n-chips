@@ -8,22 +8,21 @@ use xxhash_rust::xxh3::xxh3_64_with_seed as hash;
 use crate::domain::encoding::AsPlainRef;
 use crate::util::{compress, decompress};
 
+mod brief;
 mod encoding;
 mod error;
 mod record;
 mod slug;
 mod upload;
 
+pub use brief::{Brief, RouteKind};
 pub use encoding::{Brotli, Checksum, Plain};
 pub use error::{Error, Result};
-pub use record::{Content, Entry, Meta, Record};
+pub use record::{Content, Entry, Existing, Record};
 pub use slug::Slug;
 pub use upload::Upload;
 
-pub struct Blob<E>
-where
-	for<'a> &'a E: TryInto<Plain, Error = Error>,
-{
+pub struct Blob<E> {
 	bytes:    E,
 	checksum: Checksum,
 }
@@ -33,7 +32,7 @@ impl<E: AsPlainRef> Blob<E> {
 	}
 }
 impl Blob<Plain> {
-	pub fn new(bytes: Vec<u8>) -> Self {
+	pub fn new(bytes: &[u8]) -> Self {
 		Self {
 			bytes:    Plain(Bytes::from(bytes)),
 			checksum: Checksum::of(&bytes),
@@ -41,7 +40,7 @@ impl Blob<Plain> {
 	}
 }
 impl Blob<Brotli> {
-	pub fn new(bytes: Vec<u8>, checksum: Checksum) -> Self {
+	pub fn from_compressed(bytes: Bytes, checksum: Checksum) -> Self {
 		Self {
 			bytes: Brotli(bytes),
 			checksum,

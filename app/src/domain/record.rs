@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 use std::time::SystemTime;
 
-use super::{AsPlainRef, Blob, Brotli, Plain, Result, Slug};
-use crate::storage::RouteKind;
+use super::{
+	AsPlainRef, Blob, Brotli, Checksum, Plain, Result, RouteKind, Slug,
+};
 
 pub enum Entry<E> {
 	Reserved, // holds no contents, just blocks paths/slugs
@@ -22,15 +23,10 @@ impl<E: AsPlainRef> Content<E> {
 	}
 }
 
-pub(super) struct New;
-pub(super) struct Existing(pub SystemTime);
-pub struct Record<S, E> {
-	pub(super) slug:    Slug,
-	pub(super) entry:   Content<E>,
-	pub(super) created: S, // Either New or Existing (in storage already)
-}
-
-pub struct Meta {
+pub struct New;
+pub struct Existing(pub SystemTime);
+pub struct Record<E, S> {
 	pub slug:    Slug,
-	pub created: SystemTime,
+	pub entry:   Entry<E>,
+	pub created: S, // Either New or Existing (in storage already)
 }
