@@ -43,71 +43,70 @@ pub async fn api_delete(
 	};
 
 	let elapsed = now.duration_since(created).unwrap_or(Duration::ZERO);
-	if elapsed < max_delay {
-		let entry = match db.queries.del_from_path(id.clone()).await {
-			Err(err) => {
-				error(
-					"failed to delete element from database",
-					attrs!(
+	if elapsed > max_delay {
+		let mut resp = HttpResponse::Forbidden();
+		return resp.body(ui::format!(ansi_resp,
+        "You are trying to delete `{}` but it has been created more than {} ago.\n It can no longer be deleted automatically (created {} ago).\nPlease contact <{}> if you still wish to have this content removed.\n{}",
+        ui::string(id, IDENT),
+        humantime::format_duration(max_delay),
+        ui::string(humantime::format_duration(elapsed), EMPHASIS),
+        ui::string(maintainer_email, CONTACT),
+        sorry(),
+      ));
+	}
+	let entry = match db.queries.del_from_path(id.clone()).await {
+		Err(err) => {
+			error(
+				"failed to delete element from database",
+				attrs!(
 				  SLUG_KEY => id.clone(),
 				  ERR_KEY => err),
-				);
-				let mut resp = HttpResponse::InternalServerError();
-				return resp.body(ui::format!(ansi_resp,
+			);
+			let mut resp = HttpResponse::InternalServerError();
+			return resp.body(ui::format!(ansi_resp,
         "An error occured while attempting to delete `{}`.\nIf you still wish to delete this, please contact <{}> about the issue so he may delete it manually.\n{}",
         ui::string(id, IDENT),
         ui::string(maintainer_email, CONTACT),
         sorry(),
       ));
-			}
-			Ok(v) => v,
-		};
+		}
+		Ok(v) => v,
+	};
 
-		// Manual deletions are quite rare
-		// Creating emmitters+Clients here to keeps the code simple
-		match (
-			MsgEmitter::try_from(&cfg.ntfy),
-			DeletionRequest::try_from(&entry),
-		) {
-			(Ok(emitter), Ok(msg)) => {
-				if let Err(e) = emitter.emit(msg).await {
-					warn(
-						"failed to issue a manual deletion alert",
-						attrs!(
-										ERR_KEY => e,
-										SLUG_KEY => id.clone(),
-						),
-					)
-				}
+	// Manual deletions are quite rare
+	// Creating emmitters+Clients here to keeps the code simple
+	match (
+		MsgEmitter::try_from(&cfg.ntfy),
+		DeletionRequest::try_from(&entry),
+	) {
+		(Ok(emitter), Ok(msg)) => {
+			if let Err(e) = emitter.emit(msg).await {
+				warn(
+					"failed to issue a manual deletion alert",
+					attrs!(
+									ERR_KEY => e,
+									SLUG_KEY => id.clone(),
+					),
+				)
 			}
-			(Err(_), _) => (
+		}
+		(Err(_), _) => (
         // alerting::Error::Unset is ok, it's a runtime configuration
       ),
-			(_, Err(e)) => error(
-				"failed to parse slug type to issue an alert",
-				attrs!(
-								ERR_KEY => e,
-								SLUG_KEY => id.clone(),
-				),
+		(_, Err(e)) => error(
+			"failed to parse slug type to issue an alert",
+			attrs!(
+							ERR_KEY => e,
+							SLUG_KEY => id.clone(),
 			),
-		}
-
-		let mut resp = HttpResponse::Ok();
-		return resp.body(ui::format!(
-			ansi_resp,
-			"Successfully deleted `{}`, {}\n",
-			ui::string(id, IDENT),
-			success(),
-		));
+		),
 	}
 
-	let mut resp = HttpResponse::Forbidden();
-	resp.body(ui::format!(ansi_resp,
-    "You are trying to delete `{}` but it has been created more than {} ago.\n It can no longer be deleted automatically (created {} ago).\nPlease contact <{}> if you still wish to have this content removed.\n{}",
-    ui::string(id, IDENT),
-    humantime::format_duration(max_delay),
-    ui::string(humantime::format_duration(elapsed), EMPHASIS),
-    ui::string(maintainer_email, CONTACT),
-    sorry(),
-  ))
+	let mut resp = HttpResponse::Ok();
+	return resp.body(ui::format!(
+		ansi_resp,
+		"Successfully deleted `{}`, {}\n",
+		ui::string(id, IDENT),
+		success(),
+	));
 }
