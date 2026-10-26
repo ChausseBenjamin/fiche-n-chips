@@ -32,10 +32,11 @@ impl<E: AsPlainRef> Blob<E> {
 	}
 }
 impl Blob<Plain> {
-	pub fn new(bytes: &[u8]) -> Self {
+	pub fn new(bytes: Bytes) -> Self {
+		let checksum = Checksum::of(&bytes);
 		Self {
-			bytes:    Plain(Bytes::from(bytes)),
-			checksum: Checksum::of(&bytes),
+			bytes: Plain(bytes),
+			checksum,
 		}
 	}
 }
