@@ -11,7 +11,7 @@ use sqlx::{query_as, query_scalar};
 use xxhash_rust::xxh3::xxh3_64_with_seed;
 
 use crate::config::Config;
-use crate::domain::{Brief, Novel, Record, RecordStored, Slug, UploadPending};
+use crate::domain::{Brief, Novel, Record, RecordStored, Slug, UploadReady, UploadPending};
 
 mod error;
 mod primitives;
@@ -22,6 +22,7 @@ use primitives::{Meta, Route, RowKind};
 pub struct Storage {
 	cfg: Arc<Config>,
 	db:  SqlitePool,
+  // TODO: Managing slug collisions is a Storage concern, move slug generation here
 }
 
 impl Storage {
@@ -119,4 +120,8 @@ impl Storage {
 		.map(Brief::from)
 		.collect()
 	}
+
+  pub async fn insert(&self, data: UploadReady) -> Result<Brief> {
+  }
+  async fn insert_fixed(&self, data
 }

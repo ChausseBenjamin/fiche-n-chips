@@ -1,92 +1,85 @@
 use core::f64::math::ceil;
 use std::char;
-use std::random::random;
+use std::random::{DefaultRandomSource, RandomSource, random};
 
-use crate::config::logging::{RANDINT_COUNT_KEY, SLUG_KEY, SLUG_LEN_KEY};
 use rslog::{attrs, debug};
 
+use crate::config::logging::{RANDINT_COUNT_KEY, SLUG_KEY, SLUG_LEN_KEY};
+use crate::domain::Slug;
 use crate::storage::{self, Storage};
 
 /// list of characters accepted in slug paths
+const SLUG_BASE: u64 = SLUG_SPACE.len() as u64;
 const SLUG_SPACE: &[u8] =
 	b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-const SLUG_BASE: usize = SLUG_SPACE.len();
 
-pub struct SlugGenerator {
-	/// number of u64 values needed to compute a slug of size n
-	/// cached in the struct to avoid computing a log2 every-time
-	randint_count: usize,
-	slug_len:      usize,
-}
+const BYTES_PER_WORD: usize = size_of::<u64>();
+const DIGITS_PER_WORD: usize = 8;
+
+const SHOTGUN: usize = 16;
+
+/// Computes a list of random, yet valid slug with a set-length
+///
+/// This was quite a unique problem to solve because I want to:
+/// - minimize collisions when many possible slugs are taken
+/// - not be susceptible to malicious actors trying to break insertion
+///
+/// In an ideal world, a sequence would minimize collisions.
+/// But bad actors can forge redirects to upcoming values to
+/// fuck with upcoming slugs (as those can be manually set).
+///
+/// Attempting to insert multiple times with a new random slug
+/// makes it infeasible for bad actors to guess but is inefficient
+/// as it requires multiple clones+memory allocations
+/// (1backup if collisions happen, 1-2 allocation in sqlx+sqlite
+/// during the insert)
+///
+/// So I came up with a middle ground: A shotgun approach
+/// Multiple slugs are generated at once. The database query
+/// is GIVEN (by value, not ref) the contents of an upload
+/// (no duplicate copy) along with multiple slug candidates.
+/// The query returns the slug that got picked. Since slugs are
+/// short and cheap to produce, this introduces a small fixed cost
+/// which minimizes querying and memory usage.
+///
+/// With a default of 4char slugs, there are ~15M possible slugs (N)
+/// If the service expects a 25k uploads/day average, the database should
+/// hold about ~9M entries at any given point during the year (Y) which
+/// means the load (L) is about ~62% of all possible values(Y/N).
+/// This means there is about a ~62% chance that a single random slug
+/// hits a collision. But by trying multiple ones, a shotgun attempt
+/// trying 16 candidates at once only has a ~0.045% chance that all 16
+/// candidates already exist (P(16)=0.00045).
+pub struct SlugGenerator {}
 
 impl SlugGenerator {
-	#[allow(
-		clippy::cast_precision_loss,      // SLUG_BASE is a small constant (62)
-		clippy::cast_possible_truncation, // ceil() result is tiny (< 5)
-		clippy::cast_sign_loss            // ceil() always returns non-negative
-	)]
-	pub fn new(slug_len: u8) -> Self {
-		let randint_count =
-			ceil(f64::from(slug_len) * f64::log2(SLUG_BASE as f64) / 64.0) as usize;
-		let slug_len: usize = slug_len as usize;
-		Self {
-			randint_count,
-			slug_len,
-		}
+	pub fn candidates(slug_len: u8) -> [Slug; SHOTGUN] {
+		let size = usize::from(slug_len);
+		let words = size.div_ceil(DIGITS_PER_WORD);
+		let mut buf = vec![0u8; SHOTGUN * self.words * BYTES_PER_WORD];
+		DefaultRandomSource.fill_bytes(&mut buf);
+		let (chunks, _) = buf.as_chunks::<BYTES_PER_WORD>();
+		std::array::from_fn(|i| {
+			self.encode(size, &chunks[i * self.words..][..self.words])
+		})
 	}
 
 	#[allow(clippy::cast_possible_truncation)]
-	fn random(&self) -> String {
-		// Maximum ammount of bits needed
-		let mut entropy: Vec<_> = (0..self.randint_count)
-			.into_iter()
-			.map(|_| random::<u64>(..))
-			.collect();
-		let out: String = (0..self.slug_len)
-			.into_iter()
-			.map(|_| {
-				// Simple fallback if for some reason, entropy runs out
-				let current = entropy.last().copied().unwrap_or_else(|| {
-					// Debug because it only slows down execution, more of a developer
-					// info than something a user should worry about.
-					debug(
-						"slug creation lacked random data, creating more on the spot...",
-						attrs!(
-							SLUG_LEN_KEY => self.slug_len,
-							RANDINT_COUNT_KEY => self.randint_count),
-					);
-					random::<u64>(..)
-				});
-				// Store the entropy as a character in the space
-				let c = SLUG_SPACE[(current % SLUG_BASE as u64) as usize] as char;
-				// Remove the data that was just used for the lastest char
-				if let Some(v) = entropy.last_mut() {
-					*v /= SLUG_BASE as u64;
-				}
-				// If the last integer ran out of entropy, pop it to access the next one
-				// on the following iteration. Useless to pop if None, I skip the
-				// function call by defaulting to 1
-				if entropy.last().copied().unwrap_or(1) == 0 {
-					entropy.pop();
-				}
-				c
-			})
-			.collect();
-		out
-	}
-
-	pub async fn gen_unique(
-		&self,
-		db: &Storage,
-	) -> Result<String, storage::Error> {
-		let mut output = self.random();
-		while db.queries.slug_exists(&output).await? {
-			debug(
-				"collision while generating a slug name",
-				attrs!( SLUG_KEY => output),
-			);
-			output = self.random();
-		}
-		Ok(output)
+	fn encode(&self, size: usize, words: &[[u8; BYTES_PER_WORD]]) -> Slug {
+		let mut out = String::with_capacity(self.size);
+		out.extend(
+			words
+				.iter()
+				.flat_map(|w| {
+					let mut v = u64::from_le_bytes(*w);
+					(0..DIGITS_PER_WORD).map(move |_| {
+						let d = (v % SLUG_BASE) as usize;
+						v /= SLUG_BASE;
+						SLUG_SPACE[d] as char
+					})
+				})
+				.take(self.size),
+		);
+		Slug::from_validated(out.into_boxed_str())
 	}
 }
