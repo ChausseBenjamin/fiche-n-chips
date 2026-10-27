@@ -11,8 +11,8 @@ use sqlx::{query_as, query_scalar};
 
 use crate::config::Config;
 use crate::domain::{
-	Brief, Checksum, ContentPacked, Novel, Record, RecordStored, RouteKind, Slug,
-	UploadPending, UploadReady,
+	Brief, Checksum, ContentPacked, Novel, Record, RecordStored, RouteKind,
+	SHOTGUN_ATTEMPTS, Slug, SlugGenerator, UploadPending, UploadReady,
 };
 
 mod error;
@@ -124,28 +124,71 @@ impl Storage {
 	}
 
 	pub async fn insert(&self, submission: UploadReady) -> Result<Brief> {
-		match submission.naming {
-			Naming::Fixed(slug) => self.insert_fixed(slug, submission).await,
+		let UploadReady {
+			naming,
+			content,
+			checksum,
+		} = entry;
+		let kind: RowKind = RouteKind::from(&content).into();
+		let hash = i64::from(checksum.unwrap_or_default());
+		let content = content.into_inner(); // Alloc-free move
+		match naming {
+			Naming::Fixed(slug) => self.insert_fixed(slug, hash, kind, content).await,
+			Naming::Generated => self.insert_generated(hash, kind, content).await,
 		}
 	}
 
-	async fn insert_fixed(&self, id: Slug, entry: UploadReady) -> Result<Brief> {
-		let kind: RowKind = RouteKind::from(&entry).into();
-		let data = entry.bytes();
-		let hash: i64 = entry.checksum.unwrap_or_default().into();
+	async fn insert_fixed(
+		&self,
+		id: Slug,
+		hash: i64,
+		kind: RowKind,
+		content: Vec<u8>,
+	) -> Result<Brief> {
 		query_as!(Meta, r#"INSERT INTO routes (id, kind, hash, content) VALUES (?, ?, ?, ?)
         RETURNING id AS "id!: _", kind AS "kind!: _", created AS "created!: _" "#,
         slug.as_str(),
         i64::from(kind),
         hash,
-        &data,
+        content,
     )
 			.fetch_one(&self.db)
 			.await?
 			.map(Brief::from)
 	}
 
-	async fn insert_generated(&self, data: ContentPacked) -> Result<Brief> {
-		todo!("use shotgun generator")
+	async fn insert_generated(
+		&self,
+		hash: i64,
+		kind: RowKind,
+		content: Vec<u8>,
+	) -> Result<Brief> {
+		let c = SlugGenerator::candidates(self.cfg.mgmt.slug_length);
+		#[rustfmt::skip]
+		Ok(query_as!(
+			Meta,
+			r#"WITH candidates(slug, ord) AS ( VALUES
+            (?, 1), (?, 2),  (?, 3),  (?, 4),  (?, 5),  (?, 6),  (?, 7),  (?, 8),
+            (?, 9), (?, 10), (?, 11), (?, 12), (?, 13), (?, 14), (?, 15), (?, 16)
+        )
+        INSERT INTO routes (id, kind, hash, content)
+        SELECT pick.slug, ?, ?, ?
+        FROM (
+            SELECT slug
+            FROM candidates
+            WHERE NOT EXISTS (SELECT 1 FROM routes AS e WHERE e.id = candidates.slug)
+            ORDER BY ord
+            LIMIT 1
+        ) AS pick
+        RETURNING id AS "id!: _", kind as "kind!: _", created AS "created!:_" "#,
+        c[0], c[2], c[4], c[6], c[8], c[10], c[12], c[14],
+        c[1], c[3], c[5], c[7], c[9], c[11], c[13], c[15],
+        i64::from(kind),
+        hash,
+        content)
+            .fetch_optional(&self.db)
+            .await?
+            .ok_or(Err(Error::Collision(SHOTGUN_ATTEMPTS)))?
+            .map(Brief::from))
 	}
 }

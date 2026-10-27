@@ -21,5 +21,5 @@ pub use error::{Error, Result};
 pub use record::{
 	ContentPacked, ContentPlain, Entry, RecordPending, RecordStored,
 };
-pub use slug::Slug;
+pub use slug::{SHOTGUN_ATTEMPTS, Slug, SlugGenerator};
 pub use upload::{PackedUpload, UploadApproved, UploadPending, UploadReady};

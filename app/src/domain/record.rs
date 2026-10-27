@@ -28,9 +28,9 @@ pub(super) enum Content<E> {
 	Redirect(E),
 }
 impl ContentPlain {
-	pub fn redirect(bytes: Bytes) -> Self { Self::Redirect(Plain(bytes)) }
+	pub fn redirect(bytes: Vec<u8>) -> Self { Self::Redirect(Plain(bytes)) }
 
-	pub fn paste(bytes: Bytes) -> Self { Self::Paste(Plain(bytes)) }
+	pub fn paste(bytes: Vec<u8>) -> Self { Self::Paste(Plain(bytes)) }
 
 	pub(super) fn compress(self) -> Result<ContentPacked> {
 		use Content::{Paste, Redirect};
@@ -40,18 +40,18 @@ impl ContentPlain {
 		})
 	}
 
-	pub(super) fn bytes(&self) -> Bytes {
+	pub(super) fn bytes(&self) -> Vec<u8> {
 		match self {
 			Self::Paste(v) | Self::Redirect(v) => v.0,
 		}
 	}
 }
 impl ContentPacked {
-	pub fn from_stored_paste(bytes: Bytes) -> Self { Self(Brotli(bytes)) }
+	pub fn from_stored_paste(bytes: Vec<u8>) -> Self { Self(Brotli(bytes)) }
 
-	pub fn from_stored_redir(bytes: Bytes) -> Self { Self(Brotli(bytes)) }
+	pub fn from_stored_redir(bytes: Vec<u8>) -> Self { Self(Brotli(bytes)) }
 
-	pub fn bytes(&self) -> Bytes {
+	pub fn into_inner(self) -> Vec<u8> {
 		match self {
 			Self::Paste(v) | Self::Redirect(v) => v.0,
 		}

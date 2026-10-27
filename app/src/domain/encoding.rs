@@ -6,7 +6,7 @@ use xxhash_rust::xxh3::xxh3_64_with_seed as hash;
 use super::{Error, Result};
 use crate::util::{compress, decompress};
 
-pub struct Plain(pub(super) Bytes);
+pub struct Plain(pub(super) Vec<u8>);
 
 impl Plain {
 	pub(super) fn compress(self) -> Result<Brotli> {
@@ -26,7 +26,7 @@ impl TryFrom<&Brotli> for Plain {
 	}
 }
 
-pub struct Brotli(pub Bytes);
+pub struct Brotli(pub Vec<u8>);
 
 pub struct Checksum(pub u64);
 impl Checksum {
