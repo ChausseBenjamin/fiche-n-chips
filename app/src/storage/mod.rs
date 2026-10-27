@@ -201,7 +201,7 @@ impl Storage {
 // Ex: first try 11 slugs of lentgth 4 (44chars) and 4 slugs of
 // length 5 (an extra 20chars for the same 64 random char total
 // as 16x 4char). Less 4-bytes candidates means the probability
-// that all are taken raises to 1/200 (5%) for 25k daily requests.
+// that all are taken raises to 1/200 (0.5%) for 25k daily requests.
 // But:
 //
 // - the 5-byte namespace has 62 times the capacity (62^5 vs 62^4)
