@@ -204,13 +204,12 @@ impl Storage {
 // that all are taken raises to 1/200 (5%) for 25k daily requests.
 // But:
 //
-// - the 5-byte namespace fills up slower at 1250 daily entries (5% of daily
-//   requests)
-// - the 5-byte namespace is 62 times bigger (62^5 vs 62^4)
-// - probability of failure (all 15 candidates) at a steady 25k daily requests
-//   drops to about 1 every 45 thousand years
-// - there would need to be 78k daily requests before reaching an average of 1
-//   dropped upload per year (that's about 28.5 Million req/yr)
+// - the 5-byte namespace has 62 times the capacity (62^5 vs 62^4)
+// - at 25k daily requests, ~0.47% are degraded to 5-byte slugs
+// - for that many daily requests, probability of exhausting all 15 candidates
+//   is ~1 failure every 5 trillion years
+// - there would need to be ~78k daily requests (~28.5 million/year) before
+//   reaching an average of 1 dropped upload per year, assuming 1-year retention
 //
 //
 // WITH RECURSIVE split(slug, rest, ord) AS (
