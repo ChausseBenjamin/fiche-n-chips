@@ -188,7 +188,46 @@ impl Storage {
         content)
             .fetch_optional(&self.db)
             .await?
-            .ok_or(Err(Error::Collision(SHOTGUN_ATTEMPTS)))?
+            .ok_or(Error::Collision(SHOTGUN_ATTEMPTS))?
             .map(Brief::from))
 	}
 }
+
+// TODO: Make the generator return a single Box<str> where
+// each candidate appends a trailing `/`. Then sqlite does the
+// splitting and candidate count can be dynamic.
+//
+// In the future, this would even allow for varying size slugs.
+// Ex: first try 11 slugs of lentgth 4 (44chars) and 4 slugs of
+// length 5 (an extra 20chars for the same 64 random char total
+// as 16x 4char). Less 4-bytes candidates means the probability
+// that all are taken raises to 1/200 (5%) for 25k daily requests.
+// But:
+//
+// - the 5-byte namespace fills up slower at 1250 daily entries (5% of daily
+//   requests)
+// - the 5-byte namespace is 62 times bigger (62^5 vs 62^4)
+// - probability of failure (all 15 candidates) at a steady 25k daily requests
+//   drops to about 1 every 45 thousand years
+// - there would need to be 78k daily requests before reaching an average of 1
+//   dropped upload per year (that's about 28.5 Million req/yr)
+//
+//
+// WITH RECURSIVE split(slug, rest, ord) AS (
+//     SELECT NULL, ? || '/', 0
+//     UNION ALL
+//     SELECT substr(rest, 1, instr(rest, '/') - 1),
+//            substr(rest, instr(rest, '/') + 1),
+//            ord + 1
+//     FROM split
+//     WHERE rest <> ''
+// )
+// INSERT INTO routes (id, kind, hash, content)
+// SELECT slug, ?, ?, ?
+// FROM split
+// WHERE ord > 0
+//   AND slug <> ''
+//   AND NOT EXISTS (SELECT 1 FROM routes AS e WHERE e.id = split.slug)
+// ORDER BY ord
+// LIMIT 1
+// RETURNING id AS "id!: _", kind AS "kind!: _", created AS "created!: _"
