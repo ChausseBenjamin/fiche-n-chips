@@ -11,7 +11,6 @@ use crate::util::{compress, decompress};
 mod brief;
 mod encoding;
 mod error;
-mod name;
 mod record;
 mod slug;
 mod upload;
@@ -23,4 +22,4 @@ pub use record::{
 	ContentPacked, ContentPlain, Entry, RecordPending, RecordStored,
 };
 pub use slug::Slug;
-pub use upload::{PackedUpload, UploadApproved, UploadPending};
+pub use upload::{PackedUpload, UploadApproved, UploadPending, UploadReady};

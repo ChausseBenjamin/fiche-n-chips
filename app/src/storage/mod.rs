@@ -8,10 +8,12 @@ use sqlx::sqlite::SqliteJournalMode::Wal;
 use sqlx::sqlite::SqliteSynchronous::Normal;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
 use sqlx::{query_as, query_scalar};
-use xxhash_rust::xxh3::xxh3_64_with_seed;
 
 use crate::config::Config;
-use crate::domain::{Brief, Novel, Record, RecordStored, Slug, UploadReady, UploadPending};
+use crate::domain::{
+	Brief, Checksum, ContentPacked, Novel, Record, RecordStored, RouteKind, Slug,
+	UploadPending, UploadReady,
+};
 
 mod error;
 mod primitives;
@@ -22,7 +24,6 @@ use primitives::{Meta, Route, RowKind};
 pub struct Storage {
 	cfg: Arc<Config>,
 	db:  SqlitePool,
-  // TODO: Managing slug collisions is a Storage concern, move slug generation here
 }
 
 impl Storage {
@@ -47,7 +48,9 @@ impl Storage {
 		upload: &UploadPending,
 	) -> Result<Vec<RecordStored>> {
 		let plain = upload.content();
-		let hash = xxh3_64_with_seed(&plain, 0).cast_signed();
+		let hash = upload.checksum().ok_or(Err(Error::Validation(
+			"imposible to validate uniqueness for slug without a hash".to_string(),
+		)))?;
 		query_as!(Route, r#"SELECT
           id AS "id!: _", kind AS "kind!: _", content AS "content?: _", created AS "created!: _"
           FROM routes WHERE hash = ?"#,
@@ -64,14 +67,13 @@ impl Storage {
           .await?.map(RecordStored::try_from))
 	}
 
-	pub async fn get_brief(&self, slug: &Path) -> Result<Brief> {
-		let id = slug.to_string_lossy();
+	pub async fn get_brief(&self, id: &Path) -> Result<Brief> {
 		let meta = query_as!(
 			Meta,
 			r#"SELECT
           id AS "id!: _", kind AS "kind!: _", created AS "created!: _"
           FROM routes WHERE id = ? "#,
-			id.as_ref(),
+			id.to_string_lossy().as_ref(),
 		)
 		.fetch_one(&self.db)
 		.await?;
@@ -121,7 +123,29 @@ impl Storage {
 		.collect()
 	}
 
-  pub async fn insert(&self, data: UploadReady) -> Result<Brief> {
-  }
-  async fn insert_fixed(&self, data
+	pub async fn insert(&self, submission: UploadReady) -> Result<Brief> {
+		match submission.naming {
+			Naming::Fixed(slug) => self.insert_fixed(slug, submission).await,
+		}
+	}
+
+	async fn insert_fixed(&self, id: Slug, entry: UploadReady) -> Result<Brief> {
+		let kind: RowKind = RouteKind::from(&entry).into();
+		let data = entry.bytes();
+		let hash: i64 = entry.checksum.unwrap_or_default().into();
+		query_as!(Meta, r#"INSERT INTO routes (id, kind, hash, content) VALUES (?, ?, ?, ?)
+        RETURNING id AS "id!: _", kind AS "kind!: _", created AS "created!: _" "#,
+        slug.as_str(),
+        i64::from(kind),
+        hash,
+        &data,
+    )
+			.fetch_one(&self.db)
+			.await?
+			.map(Brief::from)
+	}
+
+	async fn insert_generated(&self, data: ContentPacked) -> Result<Brief> {
+		todo!("use shotgun generator")
+	}
 }

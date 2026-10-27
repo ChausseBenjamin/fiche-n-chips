@@ -56,17 +56,15 @@ impl SlugGenerator {
 	pub fn candidates(slug_len: u8) -> [Slug; SHOTGUN] {
 		let size = usize::from(slug_len);
 		let words = size.div_ceil(DIGITS_PER_WORD);
-		let mut buf = vec![0u8; SHOTGUN * self.words * BYTES_PER_WORD];
+		let mut buf = vec![0u8; SHOTGUN * words * BYTES_PER_WORD];
 		DefaultRandomSource.fill_bytes(&mut buf);
 		let (chunks, _) = buf.as_chunks::<BYTES_PER_WORD>();
-		std::array::from_fn(|i| {
-			self.encode(size, &chunks[i * self.words..][..self.words])
-		})
+		std::array::from_fn(|i| Self::encode(size, &chunks[i * words..][..words]))
 	}
 
 	#[allow(clippy::cast_possible_truncation)]
-	fn encode(&self, size: usize, words: &[[u8; BYTES_PER_WORD]]) -> Slug {
-		let mut out = String::with_capacity(self.size);
+	fn encode(size: usize, words: &[[u8; BYTES_PER_WORD]]) -> Slug {
+		let mut out = String::with_capacity(size);
 		out.extend(
 			words
 				.iter()
@@ -78,7 +76,7 @@ impl SlugGenerator {
 						SLUG_SPACE[d] as char
 					})
 				})
-				.take(self.size),
+				.take(size),
 		);
 		Slug::from_validated(out.into_boxed_str())
 	}

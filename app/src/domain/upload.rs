@@ -3,7 +3,6 @@ use std::marker::PhantomData;
 use bytes::Bytes;
 
 use super::encoding::AsPlainRef;
-use super::name::Name;
 use super::record::{Content, Existing};
 use super::{
 	Brief, Brotli, Entry, Error, Plain, Record, RecordStored, Result, Slug,
@@ -26,8 +25,8 @@ impl TryFrom<Option<Box<str>>> for Naming {
 	}
 }
 
-pub struct Upload<S, E> {
-	content: Content<E>, // becomes Brotli when becoming a Record
+pub struct Upload<S> {
+	content: ContentPlain,
 	naming:  Naming,
 	state:   S,
 }
@@ -36,12 +35,10 @@ pub struct Upload<S, E> {
 struct Pending(Option<Checksum>); // payload received but not yet approved against the DB
 // In order to be approved, the checksum has to be computed. Carying it through
 // state ensures that, although cheap, it doesn't get computed twice.
-struct Hashed(Option<Checksum>);
 struct Approved(Option<Checksum>); // content is approved but no slug (confirmed to be unique) generated
 
-pub type UploadPending = Upload<Pending, Plain>;
-pub type UploadApproved = Upload<Approved, Plain>;
-pub type UploadPacked = Upload<Approved, Brotli>;
+pub type UploadPending = Upload<Pending>;
+pub type UploadApproved = Upload<Approved>;
 
 impl UploadPending {
 	pub fn try_redirect(bytes: Vec<u8>, slug: Option<Box<str>>) -> Result<Self> {
@@ -102,7 +99,7 @@ impl UploadPending {
 impl UploadApproved {
 	pub fn prepare(self) -> Result<UploadReady> {
 		Ok(UploadReady {
-			name:     self.slug.into(),
+			naming:   self.slug.into(),
 			content:  self.content.compress()?,
 			checksum: self.state.0,
 		})
@@ -117,7 +114,7 @@ pub enum Resolved {
 }
 
 pub struct UploadReady {
-	name:     Name,
-	content:  ContentPacked,
-	checksum: Option<Checksum>,
+	pub naming:   Naming,
+	pub content:  ContentPacked,
+	pub checksum: Option<Checksum>,
 }

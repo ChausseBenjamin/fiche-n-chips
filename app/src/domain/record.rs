@@ -50,4 +50,10 @@ impl ContentPacked {
 	pub fn from_stored_paste(bytes: Bytes) -> Self { Self(Brotli(bytes)) }
 
 	pub fn from_stored_redir(bytes: Bytes) -> Self { Self(Brotli(bytes)) }
+
+	pub fn bytes(&self) -> Bytes {
+		match self {
+			Self::Paste(v) | Self::Redirect(v) => v.0,
+		}
+	}
 }
