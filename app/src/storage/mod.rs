@@ -163,26 +163,29 @@ impl Storage {
 		kind: RowKind,
 		content: Vec<u8>,
 	) -> Result<Brief> {
-		let c = SlugGenerator::candidates(self.cfg.mgmt.slug_length);
+		let shotgun = SlugGenerator::generate(SHOTGUN_SHELL);
 		#[rustfmt::skip]
 		Ok(query_as!(
-			Meta,
-			r#"WITH candidates(slug, ord) AS ( VALUES
-            (?, 1), (?, 2),  (?, 3),  (?, 4),  (?, 5),  (?, 6),  (?, 7),  (?, 8),
-            (?, 9), (?, 10), (?, 11), (?, 12), (?, 13), (?, 14), (?, 15), (?, 16)
+			Meta, r#"
+        WITH RECURSIVE split(slug, rest, ord) AS (
+            SELECT NULL, ? || '/', 0
+            UNION ALL
+            SELECT substr(rest, 1, instr(rest, '/') - 1),
+                   substr(rest, instr(rest, '/') + 1),
+                   ord + 1
+            FROM split
+            WHERE rest <> ''
         )
         INSERT INTO routes (id, kind, hash, content)
-        SELECT pick.slug, ?, ?, ?
-        FROM (
-            SELECT slug
-            FROM candidates
-            WHERE NOT EXISTS (SELECT 1 FROM routes AS e WHERE e.id = candidates.slug)
-            ORDER BY ord
-            LIMIT 1
-        ) AS pick
-        RETURNING id AS "id!: _", kind as "kind!: _", created AS "created!:_" "#,
-        c[0], c[2], c[4], c[6], c[8], c[10], c[12], c[14],
-        c[1], c[3], c[5], c[7], c[9], c[11], c[13], c[15],
+        SELECT slug, ?, ?, ?
+        FROM split
+        WHERE ord > 0
+          AND slug <> ''
+          AND NOT EXISTS (SELECT 1 FROM routes AS e WHERE e.id = split.slug)
+        ORDER BY ord
+        LIMIT 1
+        RETURNING id AS "id!: _", kind AS "kind!: _", created AS "created!: _" "#,
+        shotgun,
         i64::from(kind),
         hash,
         content)
@@ -192,41 +195,3 @@ impl Storage {
             .map(Brief::from))
 	}
 }
-
-// TODO: Make the generator return a single Box<str> where
-// each candidate appends a trailing `/`. Then sqlite does the
-// splitting and candidate count can be dynamic.
-//
-// In the future, this would even allow for varying size slugs.
-// Ex: first try 11 slugs of lentgth 4 (44chars) and 4 slugs of
-// length 5 (an extra 20chars for the same 64 random char total
-// as 16x 4char). Less 4-bytes candidates means the probability
-// that all are taken raises to 1/200 (0.5%) for 25k daily requests.
-// But:
-//
-// - the 5-byte namespace has 62 times the capacity (62^5 vs 62^4)
-// - at 25k daily requests, ~0.47% are degraded to 5-byte slugs
-// - for that many daily requests, probability of exhausting all 15 candidates
-//   is ~1 failure every 5 trillion years
-// - there would need to be ~78k daily requests (~28.5 million/year) before
-//   reaching an average of 1 dropped upload per year, assuming 1-year retention
-//
-//
-// WITH RECURSIVE split(slug, rest, ord) AS (
-//     SELECT NULL, ? || '/', 0
-//     UNION ALL
-//     SELECT substr(rest, 1, instr(rest, '/') - 1),
-//            substr(rest, instr(rest, '/') + 1),
-//            ord + 1
-//     FROM split
-//     WHERE rest <> ''
-// )
-// INSERT INTO routes (id, kind, hash, content)
-// SELECT slug, ?, ?, ?
-// FROM split
-// WHERE ord > 0
-//   AND slug <> ''
-//   AND NOT EXISTS (SELECT 1 FROM routes AS e WHERE e.id = split.slug)
-// ORDER BY ord
-// LIMIT 1
-// RETURNING id AS "id!: _", kind AS "kind!: _", created AS "created!: _"

@@ -46,6 +46,7 @@ pub fn embedded_files() -> Vec<WebFile<'static>> {
     embed!("/index.html",                     FileContents::Brotli),
     embed!("/main.css",                       FileContents::Brotli),
     embed!("/misc/icons.svg",                 FileContents::Brotli),
+    embed!("/x7kq.txt",                       FileContents::Raw),
     embed!("/robots.txt",                     FileContents::Raw),
     embed!("/sitemap.xml",                    FileContents::Raw),
     embed!("/misc/jetbrainsmono-latin.woff2", FileContents::Raw),

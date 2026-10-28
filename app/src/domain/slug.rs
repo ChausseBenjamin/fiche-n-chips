@@ -19,7 +19,21 @@ const SLUG_SPACE: &[u8] =
 const BYTES_PER_WORD: usize = size_of::<u64>();
 const DIGITS_PER_WORD: usize = 8;
 
-pub const SHOTGUN_ATTEMPTS: usize = 16;
+/// default shell fired by the generator/shotgun
+pub const SHOTGUN_SHELL: [SubBatch; 2] =
+	[SubBatch { len: 11, qty: 8 }, SubBatch { len: 4, qty: 5 }];
+
+/// Receptacle that can be fired to see what sticks
+pub type ShotgunShell = [SubBatch];
+/// Number of pellets of a given size in the shell
+struct SubBatch {
+	len: usize,
+	qty: usize,
+}
+/// What the shotgun produces, aka multiple small candidates
+/// striving to be a fully fledged slug. Candidates are split
+/// by `/` as the character isn't allowed in slug urls.
+type Pellets = String;
 
 const FORBIDDEN_CHARS: [char; 9] =
 	['.', '?', '&', '/', '#', '\\', '"', '%', '^'];
@@ -85,34 +99,57 @@ impl Display for Slug {
 /// hits a collision. But by trying multiple ones, a shotgun attempt
 /// trying 16 candidates at once only has a ~0.045% chance that all 16
 /// candidates already exist (P(16)=0.00045).
+///
+/// A failure rate of ~0.05% means eleven failures/day on average (not good
+/// enough). So the middle ground to the middle ground is:
+/// - first try 11 slugs of length=4
+/// - if ALL are taken, then try 4 more of length=5
+/// They're bit more lengthy/less user-friendly, but just look at
+/// those numbers:
+// - 25k daily requests: ~0.5% become to 5-byte slugs (the first 11 failed)
+// - for that many daily requests, probability of exhausting all 15 candidates
+//   is ~1 failure every 5 trillion years (yeah...)
+// - there would need to be ~78k daily requests (~28.5 million/year) before
+//   reaching an average of 1 dropped upload per year, assuming 1-year retention
+//
+// And remember those numbers are just for unique uploads. Deduplication of
+// existing slugs doesn't add up toward that total.
 pub struct SlugGenerator {}
 
 impl SlugGenerator {
-	pub fn candidates(slug_len: u8) -> [Slug; SHOTGUN_ATTEMPTS] {
-		let size = usize::from(slug_len);
-		let words = size.div_ceil(DIGITS_PER_WORD);
-		let mut buf = vec![0u8; SHOTGUN_ATTEMPTS * words * BYTES_PER_WORD];
-		DefaultRandomSource.fill_bytes(&mut buf);
-		let (chunks, _) = buf.as_chunks::<BYTES_PER_WORD>();
-		std::array::from_fn(|i| Self::encode(size, &chunks[i * words..][..words]))
+	fn digits(word: u64) -> impl Iterator<Item = char> {
+		std::iter::successors(Some(word), |v| Some(v / SLUG_BASE))
+			.take(DIGITS_PER_WORD)
+			.map(|v| SLUG_SPACE[(v % SLUG_BASE) as usize] as char)
 	}
 
 	#[allow(clippy::cast_possible_truncation)]
-	fn encode(size: usize, words: &[[u8; BYTES_PER_WORD]]) -> Slug {
-		let mut out = String::with_capacity(size);
-		out.extend(
-			words
-				.iter()
-				.flat_map(|w| {
-					let mut v = u64::from_le_bytes(*w);
-					(0..DIGITS_PER_WORD).map(move |_| {
-						let d = (v % SLUG_BASE) as usize;
-						v /= SLUG_BASE;
-						SLUG_SPACE[d] as char
-					})
-				})
-				.take(size),
-		);
-		Slug::from_validated(out.into_boxed_str())
+	pub fn generate(shell: &ShotgunShell) -> String {
+		let lens = || shell.iter().flat_map(|b| std::iter::repeat_n(b.len, b.qty));
+
+		let words = lens().map(|l| l.div_ceil(DIGITS_PER_WORD)).sum::<usize>();
+		let capacity = lens().map(|l| l + 1).sum::<usize>();
+
+		let mut buf = vec![0u8; words * BYTES_PER_WORD];
+		DefaultRandomSource.fill_bytes(&mut buf);
+
+		let mut stream = buf
+			.as_chunks::<BYTES_PER_WORD>()
+			.0
+			.iter()
+			.map(|w| u64::from_le_bytes(*w));
+
+		let mut out = String::with_capacity(capacity);
+		lens().for_each(|len| {
+			out.extend(
+				stream
+					.by_ref()
+					.take(len.div_ceil(DIGITS_PER_WORD))
+					.flat_map(digits)
+					.take(len),
+			);
+			out.push('/');
+		});
+		out
 	}
 }
