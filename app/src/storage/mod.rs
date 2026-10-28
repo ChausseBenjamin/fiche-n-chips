@@ -6,13 +6,14 @@ use bytes::Bytes;
 use sqlx::sqlite::SqliteAutoVacuum::Incremental;
 use sqlx::sqlite::SqliteJournalMode::Wal;
 use sqlx::sqlite::SqliteSynchronous::Normal;
-use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
-use sqlx::{query_as, query_scalar};
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
+use sqlx::{ConnectOptions, query_as, query_scalar};
+use tokio::sync::Mutex;
 
 use crate::config::Config;
 use crate::domain::{
 	Brief, Checksum, ContentPacked, Novel, Record, RecordStored, RouteKind,
-	SHOTGUN_ATTEMPTS, Slug, SlugGenerator, UploadPending, UploadReady,
+	SHOTGUN_SHELL, Slug, SlugGenerator, UploadPending, UploadReady,
 };
 
 mod error;
@@ -21,13 +22,18 @@ mod primitives;
 pub use error::{Error, Result};
 use primitives::{Meta, Route, RowKind};
 
+pub struct StorageCfg {
+	retention: Duration,
+}
+
 pub struct Storage {
-	cfg: Arc<Config>,
-	db:  SqlitePool,
+	db:     SqlitePool,
+	cfg:    StorageCfg,
+	shrink: Mutex<()>,
 }
 
 impl Storage {
-	pub async fn setup(cfg: Arc<Config>) -> Result<Self> {
+	pub async fn setup(cfg: &Config) -> Result<Self> {
 		let opts = SqliteConnectOptions::new()
 			.filename(&cfg.mgmt.db_path)
 			.auto_vacuum(Incremental)
@@ -38,9 +44,19 @@ impl Storage {
 			.pragma("cache_size", (&cfg.mgmt.db_cache.get() / 1024).to_string())
 			.foreign_keys(true)
 			.create_if_missing(true);
-		let db = SqlitePool::connect_with(opts).await?;
+		let db = SqlitePoolOptions::new()
+			.max_connections(10)
+			.acquire_timeout(Duration::from_secs(5))
+			.connect_with(opts)
+			.await?;
 		sqlx::migrate!("src/storage/migrations").run(&db).await?;
-		Ok(Self { cfg, db })
+		Ok(Self {
+			cfg: StorageCfg {
+				retention: cfg.mgmt.retention,
+			},
+			db,
+			shrink: Mutex::new(()),
+		})
 	}
 
 	pub async fn potential_duplicates(
@@ -163,27 +179,21 @@ impl Storage {
 		kind: RowKind,
 		content: Vec<u8>,
 	) -> Result<Brief> {
-		let shotgun = SlugGenerator::generate(SHOTGUN_SHELL);
+		let shotgun = SlugGenerator::generate(&SHOTGUN_SHELL);
 		#[rustfmt::skip]
 		Ok(query_as!(
 			Meta, r#"
         WITH RECURSIVE split(slug, rest, ord) AS (
-            SELECT NULL, ? || '/', 0
-            UNION ALL
+            SELECT NULL, ? || '/', 0 UNION ALL
             SELECT substr(rest, 1, instr(rest, '/') - 1),
                    substr(rest, instr(rest, '/') + 1),
                    ord + 1
-            FROM split
-            WHERE rest <> ''
-        )
+            FROM split WHERE rest <> '' AND instr(rest, '/') > 0 )
         INSERT INTO routes (id, kind, hash, content)
-        SELECT slug, ?, ?, ?
-        FROM split
-        WHERE ord > 0
-          AND slug <> ''
+        SELECT slug, ?, ?, ? FROM split
+        WHERE ord > 0 AND slug <> ''
           AND NOT EXISTS (SELECT 1 FROM routes AS e WHERE e.id = split.slug)
-        ORDER BY ord
-        LIMIT 1
+        ORDER BY ord LIMIT 1
         RETURNING id AS "id!: _", kind AS "kind!: _", created AS "created!: _" "#,
         shotgun,
         i64::from(kind),

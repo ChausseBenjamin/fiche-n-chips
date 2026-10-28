@@ -21,7 +21,7 @@ const DIGITS_PER_WORD: usize = 8;
 
 /// default shell fired by the generator/shotgun
 pub const SHOTGUN_SHELL: [SubBatch; 2] =
-	[SubBatch { len: 11, qty: 8 }, SubBatch { len: 4, qty: 5 }];
+	[SubBatch { len: 4, qty: 11 }, SubBatch { len: 5, qty: 4 }];
 
 /// Receptacle that can be fired to see what sticks
 pub type ShotgunShell = [SubBatch];
@@ -106,14 +106,15 @@ impl Display for Slug {
 /// - if ALL are taken, then try 4 more of length=5
 /// They're bit more lengthy/less user-friendly, but just look at
 /// those numbers:
-// - 25k daily requests: ~0.5% become to 5-byte slugs (the first 11 failed)
-// - for that many daily requests, probability of exhausting all 15 candidates
-//   is ~1 failure every 5 trillion years (yeah...)
-// - there would need to be ~78k daily requests (~28.5 million/year) before
-//   reaching an average of 1 dropped upload per year, assuming 1-year retention
-//
-// And remember those numbers are just for unique uploads. Deduplication of
-// existing slugs doesn't add up toward that total.
+/// - 25k daily requests: ~0.5% become to 5-byte slugs (the first 11 failed)
+/// - for that many daily requests, probability of exhausting all 15 candidates
+///   is ~1 failure every 5 trillion years (yeah...)
+/// - there would need to be ~78k daily requests (~28.5 million/year) before
+///   reaching an average of 1 dropped upload per year, assuming 1-year
+///   retention
+///
+/// And remember those numbers are just for unique uploads. Deduplication of
+/// existing slugs doesn't add up toward that total.
 pub struct SlugGenerator {}
 
 impl SlugGenerator {
@@ -124,11 +125,11 @@ impl SlugGenerator {
 	}
 
 	#[allow(clippy::cast_possible_truncation)]
-	pub fn generate(shell: &ShotgunShell) -> String {
+	pub fn generate(shell: &ShotgunShell) -> Pellets {
 		let lens = || shell.iter().flat_map(|b| std::iter::repeat_n(b.len, b.qty));
 
 		let words = lens().map(|l| l.div_ceil(DIGITS_PER_WORD)).sum::<usize>();
-		let capacity = lens().map(|l| l + 1).sum::<usize>();
+		let capacity = lens().map(|l| l + 1).sum::<usize>().saturating_sub(1);
 
 		let mut buf = vec![0u8; words * BYTES_PER_WORD];
 		DefaultRandomSource.fill_bytes(&mut buf);
@@ -140,7 +141,10 @@ impl SlugGenerator {
 			.map(|w| u64::from_le_bytes(*w));
 
 		let mut out = String::with_capacity(capacity);
-		lens().for_each(|len| {
+		lens().enumerate().for_each(|(i, len)| {
+			if i > 0 {
+				out.push('/');
+			}
 			out.extend(
 				stream
 					.by_ref()
@@ -148,7 +152,6 @@ impl SlugGenerator {
 					.flat_map(digits)
 					.take(len),
 			);
-			out.push('/');
 		});
 		out
 	}

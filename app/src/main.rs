@@ -43,7 +43,6 @@ async fn main() -> Result<()> {
 		warn("rustls CryptoProvider was already installed", src!());
 	}
 	let reserved = ReservedPathProvider::new(&cfg);
-	let slugs = Arc::from(SlugGenerator::new(cfg.mgmt.slug_length));
 	let anonimizer = Arc::from(Anonimizer::new(&cfg.mgmt.seed_path)?);
 	let rate_limiter = Arc::new(Mutex::new(RateLimiter::new(
 		cfg.mgmt.rate_limit,

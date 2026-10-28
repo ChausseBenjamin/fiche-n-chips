@@ -86,11 +86,6 @@ pub struct ManagementCfg {
 	/// How long pastes and redirects are retained
 	#[arg(long, env = "RETENTION", default_value = "365days", value_parser = parse_duration)]
 	pub retention:         Duration,
-	/// Character length of generated slugs
-	/// - always the case for paste
-	/// - used for shortening when no short url is provided
-	#[arg(long, env = "SLUG_LEN", default_value_t = 4)]
-	pub slug_length:       u8,
 	/// At which time interval the server should check for expired entries and
 	/// clean them up
 	#[arg(long, env = "CLEANUP_INTERVAL", default_value = "1h", value_parser = parse_duration)]
