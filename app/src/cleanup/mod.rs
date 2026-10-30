@@ -45,23 +45,23 @@ impl Cleaner {
 				_ = interval.tick() => {},
 			}
 			self.limiter.lock().unwrap_or_else(PoisonError::into_inner).cleanup();
-			match self.db.queries.del_expired(self.cfg.mgmt.retention).await {
-				Ok(v) => {
-					if v.is_empty() {
+			match self.db.purge_expired(self.cfg.mgmt.retention).await {
+				Ok(list) => {
+					if list.is_empty() {
 						debug("no expired entries to clean", src!());
 					} else {
 						let now = SystemTime::now();
-						let routes: String = v
+						let routes: String = list
 							.iter()
-							.map(|route| format!("`{}`", route.id))
+							.map(|brief| brief.slug.to_string())
 							.collect::<Vec<String>>()
 							.join(",");
-						let (oldest, youngest) = v.iter().fold(
-							(&v[0].created, &v[0].created),
-							|(min, max), route| {
+						let (oldest, youngest) = list.iter().fold(
+							(&list[0].created, &list[0].created),
+							|(min, max), brief| {
 								(
-									if route.created < *min { &route.created } else { min },
-									if route.created > *max { &route.created } else { max },
+									if brief.created < *min { &brief.created } else { min },
+									if brief.created > *max { &brief.created } else { max },
 								)
 							},
 						);

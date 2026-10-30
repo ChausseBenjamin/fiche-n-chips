@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use sqlx::sqlite::SqliteAutoVacuum::Incremental;
 use sqlx::sqlite::SqliteJournalMode::Wal;
@@ -14,6 +14,7 @@ use crate::domain::{
 	SHOTGUN_SHELL, Slug, SlugGenerator, UploadPending, UploadReady,
 };
 use crate::storage::primitives::Payload;
+use crate::util::{unix_secs_ceil, unix_secs_floor};
 
 mod error;
 mod primitives;
@@ -21,13 +22,8 @@ mod primitives;
 pub use error::{Error, Result};
 use primitives::{Meta, Route, RowKind};
 
-pub struct StorageCfg {
-	retention: Duration,
-}
-
 pub struct Storage {
 	db:     SqlitePool,
-	cfg:    StorageCfg,
 	shrink: Mutex<()>,
 }
 
@@ -50,9 +46,6 @@ impl Storage {
 			.await?;
 		sqlx::migrate!("src/storage/migrations").run(&db).await?;
 		Ok(Self {
-			cfg: StorageCfg {
-				retention: cfg.mgmt.retention,
-			},
 			db,
 			shrink: Mutex::new(()),
 		})
@@ -94,6 +87,26 @@ impl Storage {
 		.fetch_one(&self.db)
 		.await?;
 		Ok(meta.into())
+	}
+
+	pub async fn get_created_between(
+		&self,
+		from: SystemTime,
+		to: SystemTime,
+	) -> Result<Vec<Brief>> {
+		Ok(
+			query_file_as!(
+				Meta,
+				"src/storage/statements/get_created_between.sql",
+				unix_secs_ceil(from),
+				unix_secs_ceil(to),
+			)
+			.fetch_all(&self.db)
+			.await?
+			.iter()
+			.map(Brief::from)
+			.collect(),
+		)
 	}
 
 	pub async fn insert(&self, submission: UploadReady) -> Result<Brief> {
@@ -175,8 +188,8 @@ impl Storage {
 		.collect()
 	}
 
-	pub async fn purge_expired(&self) -> Result<Vec<Brief>> {
-		let retention = self.cfg.retention.as_secs().cast_signed();
+	pub async fn purge_expired(&self, retention: Duration) -> Result<Vec<Brief>> {
+		let retention = retention.as_secs().cast_signed();
 		let expired = query_file_as!(
 			Meta,
 			"src/storage/statements/purge_expired.sql",

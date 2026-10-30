@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!: _\", kind AS \"kind!: _\", created AS \"created!: _\"\nFROM routes where kind != 0\nAND created BETWEEN ? AND ?\n",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: _",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "routes",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "kind!: _",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "routes",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "name": "created!: _",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "routes",
+            "name": "created"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "d3729ae5493079ee9d70fefe5e4011f204a5e3a08949180ccd041d87fc4a6e55"
+}

@@ -159,7 +159,7 @@ impl Server {
 			}
 
 			(&Method::GET, None) => match self.db.get(&slug_path).await {
-				Ok(Some(entry)) => handle_entry(&req, entry),
+				Ok(Some(entry)) => handle_entry(&req, slug_path.as_path(), entry),
 				Ok(None) => {
 					debug(
 						"user tried to reach a non-existent page",

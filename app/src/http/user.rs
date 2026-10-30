@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use actix_web::http::header::{self, HeaderValue};
 use actix_web::{HttpRequest, HttpResponse};
 use bytes::Bytes;
@@ -50,7 +52,8 @@ impl ServeFault {
 
 pub(super) fn handle_entry(
 	req: &HttpRequest,
-	record: EntryPacked,
+	slug: &Path,
+	entry: EntryPacked,
 ) -> HttpResponse {
 	let client = Client::from(req);
 	let ansi_resp = matches!(client.prefered_format(), RespFmt::Ansi);
@@ -58,7 +61,7 @@ pub(super) fn handle_entry(
 		slug,
 		entry,
 		created,
-	} = record;
+	} = entry;
 
 	let result = match entry {
 		EntryPacked::Reserved => Err(ServeFault::Reserved {
@@ -79,7 +82,7 @@ pub(super) fn handle_entry(
 }
 
 fn handle_redirect(
-	slug: Slug,
+	slug: &Path,
 	entry: Brotli,
 ) -> Result<HttpResponse, ServeFault> {
 	let dest = entry.decompress().map_err(|source| ServeFault::Decompress {
