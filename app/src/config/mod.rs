@@ -5,6 +5,7 @@ use std::time::Duration;
 use clap::{Args, Parser};
 use logging::LoggingCfg;
 
+use crate::domain::RedirectLimits;
 use crate::util::{Secret, StorageSize};
 
 #[derive(Parser)]
@@ -143,6 +144,15 @@ pub struct RedirectCfg {
 	/// Maximum character length of generated redirect slugs
 	#[arg(long, env = "REDIRECT_SLUG_LIMIT", default_value_t = 144)]
 	pub max_short: u16,
+}
+
+impl From<&RedirectCfg> for RedirectLimits {
+	fn from(cfg: &RedirectCfg) -> Self {
+		Self {
+			dst: cfg.max_raw,
+			src: cfg.max_short,
+		}
+	}
 }
 
 pub fn parse_duration(s: &str) -> Result<Duration, String> {

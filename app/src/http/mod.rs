@@ -12,24 +12,24 @@ use actix_web::http::{Method, StatusCode};
 use actix_web::{App, HttpRequest, HttpResponse, HttpServer, web};
 use api::{api_delete, api_post};
 use client::ResponseFmt as RespFmt;
-use rslog::{attrs, debug};
+use rslog::{attrs, debug, error};
 use service::{handle_404, handle_static};
 use tokio_util::sync::CancellationToken;
 use user::handle_entry;
 
 use crate::anonymizer::Anonimizer;
 use crate::config::Config;
-use crate::config::logging::{METHOD_KEY, PATH_KEY};
+use crate::config::logging::{ERR_KEY, METHOD_KEY, PATH_KEY};
+use crate::domain::Brief;
 use crate::http::api::api_healthcheck;
 use crate::http::client::Client;
 use crate::limiter::{RateLimitStatus, RateLimiter};
 use crate::reserved::{
 	HEALTHCHECK_PATH, ReservedPath as ResPath, ReservedPathProvider, WebFile,
 };
-use crate::storage::model::RowEntry;
 use crate::storage::{self, Storage};
 use crate::ui;
-use crate::util::{EMPHASIS, IDENT, SlugGenerator, normalize_http, sorry};
+use crate::util::{EMPHASIS, IDENT, normalize_http, sorry};
 
 const NOT_FOUND_PATH: &str = "/404";
 
@@ -37,7 +37,6 @@ pub struct Server {
 	cfg:          Arc<Config>,
 	db:           Arc<Storage>,
 	reserved:     Arc<ReservedPathProvider>,
-	slugs:        Arc<SlugGenerator>,
 	anonimizer:   Arc<Anonimizer>,
 	rate_limiter: Arc<Mutex<RateLimiter>>,
 }
@@ -47,7 +46,6 @@ impl Server {
 		cfg: Arc<Config>,
 		db: Arc<Storage>,
 		reserved: Arc<ReservedPathProvider>,
-		slugs: Arc<SlugGenerator>,
 		anonimizer: Arc<Anonimizer>,
 		rate_limiter: Arc<Mutex<RateLimiter>>,
 	) -> Self {
@@ -55,7 +53,6 @@ impl Server {
 			cfg,
 			db,
 			reserved,
-			slugs,
 			anonimizer,
 			rate_limiter,
 		}
@@ -145,15 +142,7 @@ impl Server {
 					}
 				}
 
-				api_post(
-					&req,
-					path,
-					body,
-					self.slugs.clone(),
-					self.db.clone(),
-					&self.cfg,
-				)
-				.await
+				api_post(&req, path, body, self.db.clone(), &self.cfg).await
 			}
 			(_, Some(ResPath::Api(_))) => HttpResponse::MethodNotAllowed()
 				.insert_header(("Allow", "POST"))
@@ -169,19 +158,25 @@ impl Server {
 				handle_404(&req, self.get_404(), slug_path.as_path())
 			}
 
-			(&Method::GET, None) => {
-				if let Ok(p) = Self::get_row(self.db.clone(), slug_path.clone()).await {
-					return handle_entry(&req, p);
+			(&Method::GET, None) => match self.db.get(&slug_path).await {
+				Ok(Some(entry)) => handle_entry(&req, entry),
+				Ok(None) => {
+					debug(
+						"user tried to reach a non-existent page",
+						attrs!(PATH_KEY => format!("{}", path.display())),
+					);
+					handle_404(&req, self.get_404(), slug_path.as_path())
 				}
-
-				debug(
-					"user tried to reach a non-existent page",
-					attrs!(PATH_KEY => format!("{}", path.display())),
-				);
-				handle_404(&req, self.get_404(), slug_path.as_path())
-			}
+				Err(err) => {
+					error(
+						"failed to load entry",
+						attrs!(PATH_KEY => format!("{}", path.display()), ERR_KEY => err),
+					);
+					HttpResponse::InternalServerError().finish()
+				}
+			},
 			(&Method::DELETE, None) => {
-				if let Ok(p) = Self::get_row(self.db.clone(), slug_path.clone()).await {
+				if let Ok(p) = self.db.get_brief(&slug_path).await {
 					return api_delete(&req, p, &self.cfg, self.db.clone()).await;
 				}
 
@@ -204,13 +199,6 @@ impl Server {
 				))
 			}
 		}
-	}
-
-	async fn get_row(
-		db: Arc<Storage>,
-		path: PathBuf,
-	) -> Result<RowEntry, storage::Error> {
-		db.queries.get_from_path(path.to_string_lossy().to_string()).await
 	}
 
 	fn get_404(&self) -> Option<&WebFile<'static>> {

@@ -1,27 +1,38 @@
-use std::marker::PhantomData;
+use super::record::{Content, Record};
+use super::{Brief, Brotli, Error, Plain, RecordPacked, Result, Slug};
+use crate::domain::{Checksum, ContentPacked, ContentPlain, EntryPacked};
+use crate::util::StorageSize;
 
-use bytes::Bytes;
+/// Limits applied when constructing a redirect upload.
+///
+/// Caps are supplied by the caller (config) so the domain doesn't depend on
+/// deployment policy.
+#[derive(Clone, Copy)]
+pub struct RedirectLimits {
+	/// Maximum length of the redirect destination (URL), in bytes
+	pub dst: StorageSize,
+	/// Maximum length of the redirect slug, in bytes (matching [`Slug::parse`])
+	pub src: u16,
+}
 
-use super::encoding::AsPlainRef;
-use super::record::{Content, Existing};
-use super::{
-	Brief, Brotli, Entry, Error, Plain, Record, RecordStored, Result, Slug,
-};
-use crate::domain::{Checksum, ContentPacked, ContentPlain};
+impl RedirectLimits {
+	fn fits_dst(self, len: usize) -> bool {
+		u64::try_from(len).is_ok_and(|n| n <= self.dst.get())
+	}
+}
+
+fn len_as_u64(len: usize) -> u64 { u64::try_from(len).unwrap_or(u64::MAX) }
 
 pub enum Naming {
 	Fixed(Slug),
 	Generated,
 }
-impl TryFrom<Option<Box<str>>> for Naming {
-	type Error = Error;
-
-	fn try_from(input: Option<Box<str>>) -> Self {
-		if let Some(slug) = input {
-			Self::Fixed(Slug::parse(slug)?)
-		} else {
-			Self::Generated
-		}
+impl Naming {
+	fn parse(slug: Option<&str>, limits: RedirectLimits) -> Result<Self> {
+		let Some(slug) = slug else {
+			return Ok(Self::Generated);
+		};
+		Ok(Self::Fixed(Slug::parse(slug, usize::from(limits.src))?))
 	}
 }
 
@@ -29,6 +40,17 @@ pub struct Upload<S> {
 	content: ContentPlain,
 	naming:  Naming,
 	state:   S,
+}
+impl<S> Upload<S> {
+	pub fn len(&self) -> usize { self.content.len() }
+
+	/// Slug explicitly requested by the caller, if any.
+	pub fn requested_slug(&self) -> Option<&Slug> {
+		match &self.naming {
+			Naming::Fixed(slug) => Some(slug),
+			Naming::Generated => None,
+		}
+	}
 }
 
 // possible [S]tates during the upload process
@@ -41,15 +63,27 @@ pub type UploadPending = Upload<Pending>;
 pub type UploadApproved = Upload<Approved>;
 
 impl UploadPending {
-	pub fn try_redirect(bytes: Vec<u8>, slug: Option<Box<str>>) -> Result<Self> {
+	pub fn try_redirect(
+		bytes: impl Into<Box<[u8]>>,
+		slug: Option<&str>,
+		limits: RedirectLimits,
+	) -> Result<Self> {
+		let content = bytes.into();
+		if !limits.fits_dst(content.len()) {
+			return Err(Error::UrlTooLong {
+				max:    limits.dst.get(),
+				actual: len_as_u64(content.len()),
+			});
+		}
 		Ok(Self {
-			content: ContentPlain::redirect(Bytes::from(bytes)),
-			naming:  Naming::try_from(slug)?,
+			content: ContentPlain::redirect(content),
+			naming:  Naming::parse(slug, limits)?,
 			state:   Pending(None),
 		})
 	}
 
-	pub fn paste(bytes: Bytes) -> Self {
+	pub fn paste(bytes: impl Into<Box<[u8]>>) -> Self {
+		let bytes = bytes.into();
 		let checksum = Some(Checksum::of(&bytes));
 		Self {
 			content: ContentPlain::paste(bytes),
@@ -65,20 +99,19 @@ impl UploadPending {
 	/// records with colliding checksums.
 	pub fn resolve(
 		self,
-		partial_collisions: Vec<RecordStored>,
+		partial_collisions: Vec<RecordPacked>,
 	) -> Result<Resolved> {
 		// only check duplicates for pastes
 		// multiple redirects can point to the same destination
 		if let Content::Paste(blob) = &self.content {
-			let bytes = blob.bytes.as_plain_ref()?;
-
 			for record in partial_collisions {
-				let Entry::Served(Content::Paste(existing)) = &record.entry else {
+				let EntryPacked::Served(Content::Paste(existing)) = &record.entry
+				else {
 					continue;
 				};
 
-				if existing.matches(bytes.as_ref())? {
-					let (Existing(created), slug) = (record.created, record.slug);
+				if existing.matches(&blob.0)? {
+					let (created, slug) = (record.created, record.slug);
 					return Ok(Resolved::Existing(Brief {
 						slug,
 						kind: super::RouteKind::Paste,
@@ -99,7 +132,7 @@ impl UploadPending {
 impl UploadApproved {
 	pub fn prepare(self) -> Result<UploadReady> {
 		Ok(UploadReady {
-			naming:   self.slug.into(),
+			naming:   self.naming,
 			content:  self.content.compress()?,
 			checksum: self.state.0,
 		})

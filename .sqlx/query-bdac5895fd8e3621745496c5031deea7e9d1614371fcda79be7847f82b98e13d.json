@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT\n          id AS \"id!: _\", kind AS \"kind!: _\", content AS \"content?: _\", created AS \"created!: _\"\n          FROM routes WHERE hash = ?",
+  "query": "DELETE FROM routes WHERE kind != 0 AND created < CAST(strftime('%s','now') AS INTEGER) - ?\nRETURNING id AS \"id!: _\", kind AS \"kind!: _\", created AS \"created!: _\"\n",
   "describe": {
     "columns": [
       {
@@ -26,19 +26,8 @@
         }
       },
       {
-        "name": "content?: _",
-        "ordinal": 2,
-        "type_info": "Blob",
-        "origin": {
-          "Table": {
-            "table": "routes",
-            "name": "content"
-          }
-        }
-      },
-      {
         "name": "created!: _",
-        "ordinal": 3,
+        "ordinal": 2,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -54,9 +43,8 @@
     "nullable": [
       true,
       false,
-      true,
       false
     ]
   },
-  "hash": "86c268e7f747bd088c28f21fbfdd8bb4e34ae3ce7bfaa5cb00d7f03e6d13af1b"
+  "hash": "bdac5895fd8e3621745496c5031deea7e9d1614371fcda79be7847f82b98e13d"
 }

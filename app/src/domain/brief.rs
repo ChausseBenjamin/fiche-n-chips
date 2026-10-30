@@ -5,6 +5,7 @@ use super::record::Content;
 
 /// Allows describing served routes without serializing
 /// data-heavy structures like [super::Entry]
+#[derive(Copy, Clone)]
 pub enum RouteKind {
 	Reserved,
 	Redirect,

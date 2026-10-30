@@ -31,7 +31,6 @@ use crate::limiter::RateLimiter;
 use crate::pastebin::Pastebin;
 use crate::reserved::ReservedPathProvider;
 use crate::storage::Storage;
-use crate::util::SlugGenerator;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -49,11 +48,10 @@ async fn main() -> Result<()> {
 		cfg.mgmt.rate_limit_period,
 	)));
 
-	let storage =
-		Arc::from(Storage::setup(cfg.clone()).await.unwrap_or_else(|e| {
-			error("failed to complete database setup", attrs!( ERR_KEY => e));
-			panic!()
-		}));
+	let storage = Arc::from(Storage::setup(&cfg).await.unwrap_or_else(|e| {
+		error("failed to complete database setup", attrs!( ERR_KEY => e));
+		panic!()
+	}));
 	let _changed_rows = storage
 		.sync_reserved_routes(
 			reserved.paths().into_iter().map(Into::into).collect(),
@@ -113,7 +111,6 @@ async fn main() -> Result<()> {
 	let pb = Pastebin::new(
 		cfg.clone(),
 		storage.clone(),
-		slugs.clone(),
 		anonimizer.clone(),
 		rate_limiter.clone(),
 	);
@@ -121,7 +118,6 @@ async fn main() -> Result<()> {
 		cfg.clone(),
 		storage.clone(),
 		Arc::from(reserved),
-		slugs,
 		anonimizer,
 		rate_limiter,
 	));

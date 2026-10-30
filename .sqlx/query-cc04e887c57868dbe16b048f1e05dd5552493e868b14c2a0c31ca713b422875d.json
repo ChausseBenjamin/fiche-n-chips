@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": " DELETE FROM routes WHERE id = ? RETURNING\n      id AS \"id!: _\", kind AS \"kind!: _\", created AS \"created!: _\" ",
+  "query": "WITH RECURSIVE split(slug, rest, ord) AS (\n\t\tSELECT NULL, ? || '/', 0 UNION ALL\n\t\tSELECT substr(rest, 1, instr(rest, '/') - 1),\n\t\t\t\t\t substr(rest, instr(rest, '/') + 1),\n\t\t\t\t\t ord + 1\n\t\tFROM split WHERE rest <> '' AND instr(rest, '/') > 0\n)\nINSERT INTO routes (id, kind, hash, content)\nSELECT slug, ?, ?, ? FROM split\nWHERE ord > 0 AND slug <> '' AND NOT EXISTS\n(SELECT 1 FROM routes AS e WHERE e.id = split.slug)\nORDER BY ord LIMIT 1\nRETURNING id AS \"id!: _\", kind AS \"kind!: _\", created AS \"created!: _\"\n",
   "describe": {
     "columns": [
       {
@@ -38,7 +38,7 @@
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 4
     },
     "nullable": [
       true,
@@ -46,5 +46,5 @@
       false
     ]
   },
-  "hash": "44fb79ba2360370169c9830b1d3543c226f0e0f7eabcad6f104da6ae4a316484"
+  "hash": "cc04e887c57868dbe16b048f1e05dd5552493e868b14c2a0c31ca713b422875d"
 }

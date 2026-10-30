@@ -3,18 +3,19 @@ use std::time::SystemTime;
 
 use bytes::Bytes;
 
-use super::{AsPlainRef, Brotli, Checksum, Plain, Result, RouteKind, Slug};
+use super::{Brotli, Checksum, Plain, Result, RouteKind, Slug};
 
-pub type RecordPending = Record<Brotli, Novel>;
-pub type RecordStored = Record<Brotli, Existing>;
+pub type RecordPacked = Record<Brotli>;
+pub type RecordPlain = Record<Plain>;
 
-pub struct Novel(Option<Checksum>);
-pub struct Existing(pub SystemTime);
-pub struct Record<E, S> {
+pub struct Record<E> {
 	pub slug:    Slug,
 	pub entry:   Entry<E>,
-	pub created: S, // Either New or Existing (in storage already)
+	pub created: SystemTime,
 }
+
+pub type EntryPacked = Entry<Brotli>;
+pub type EntryPlain = Entry<Plain>;
 
 pub enum Entry<E> {
 	Reserved, // holds no contents, just blocks paths/slugs
@@ -23,14 +24,26 @@ pub enum Entry<E> {
 
 pub type ContentPlain = Content<Plain>;
 pub type ContentPacked = Content<Brotli>;
-pub(super) enum Content<E> {
+pub enum Content<E> {
 	Paste(E),
 	Redirect(E),
 }
+impl<E: AsRef<[u8]>> Content<E> {
+	pub fn len(&self) -> usize {
+		let bytes = match self {
+			Self::Paste(v) | Self::Redirect(v) => v.as_ref(),
+		};
+		bytes.len()
+	}
+}
 impl ContentPlain {
-	pub fn redirect(bytes: Vec<u8>) -> Self { Self::Redirect(Plain(bytes)) }
+	pub fn redirect(bytes: impl Into<Box<[u8]>>) -> Self {
+		Self::Redirect(Plain(bytes.into()))
+	}
 
-	pub fn paste(bytes: Vec<u8>) -> Self { Self::Paste(Plain(bytes)) }
+	pub fn paste(bytes: impl Into<Box<[u8]>>) -> Self {
+		Self::Paste(Plain(bytes.into()))
+	}
 
 	pub(super) fn compress(self) -> Result<ContentPacked> {
 		use Content::{Paste, Redirect};
@@ -40,18 +53,22 @@ impl ContentPlain {
 		})
 	}
 
-	pub(super) fn bytes(&self) -> Vec<u8> {
+	pub(super) fn bytes(&self) -> &[u8] {
 		match self {
-			Self::Paste(v) | Self::Redirect(v) => v.0,
+			Self::Paste(v) | Self::Redirect(v) => &v.0,
 		}
 	}
 }
 impl ContentPacked {
-	pub fn from_stored_paste(bytes: Vec<u8>) -> Self { Self(Brotli(bytes)) }
+	pub fn from_stored_paste(bytes: Box<[u8]>) -> Self {
+		Self::Paste(Brotli(bytes))
+	}
 
-	pub fn from_stored_redir(bytes: Vec<u8>) -> Self { Self(Brotli(bytes)) }
+	pub fn from_stored_redir(bytes: Box<[u8]>) -> Self {
+		Self::Redirect(Brotli(bytes))
+	}
 
-	pub fn into_inner(self) -> Vec<u8> {
+	pub fn into_inner(self) -> Box<[u8]> {
 		match self {
 			Self::Paste(v) | Self::Redirect(v) => v.0,
 		}

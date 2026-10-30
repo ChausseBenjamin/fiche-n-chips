@@ -1,12 +1,4 @@
 use std::io::Write;
-use std::marker::PhantomData;
-
-use brotli::CompressorWriter;
-use bytes::Bytes;
-use xxhash_rust::xxh3::xxh3_64_with_seed as hash;
-
-use crate::domain::encoding::AsPlainRef;
-use crate::util::{compress, decompress};
 
 mod brief;
 mod encoding;
@@ -19,7 +11,10 @@ pub use brief::{Brief, RouteKind};
 pub use encoding::{Brotli, Checksum, Plain};
 pub use error::{Error, Result};
 pub use record::{
-	ContentPacked, ContentPlain, Entry, RecordPending, RecordStored,
+	Content, ContentPacked, ContentPlain, Entry, EntryPacked, EntryPlain,
+	RecordPacked, RecordPlain,
 };
-pub use slug::{SHOTGUN_SHELL, Slug, SlugGenerator};
-pub use upload::{PackedUpload, UploadApproved, UploadPending, UploadReady};
+pub use slug::{SHOTGUN_ATTEMPTS, SHOTGUN_SHELL, Slug, SlugGenerator};
+pub use upload::{
+	Naming, RedirectLimits, Resolved, UploadApproved, UploadPending, UploadReady,
+};

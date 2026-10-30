@@ -1,20 +1,19 @@
 use std::path::Path;
-use std::sync::Arc;
 use std::time::Duration;
 
-use bytes::Bytes;
 use sqlx::sqlite::SqliteAutoVacuum::Incremental;
 use sqlx::sqlite::SqliteJournalMode::Wal;
 use sqlx::sqlite::SqliteSynchronous::Normal;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
-use sqlx::{ConnectOptions, query_as, query_scalar};
+use sqlx::{query_as, query_file_as, query_file_scalar, query_scalar};
 use tokio::sync::Mutex;
 
 use crate::config::Config;
 use crate::domain::{
-	Brief, Checksum, ContentPacked, Novel, Record, RecordStored, RouteKind,
+	Brief, Entry, EntryPacked, Naming, RecordPacked, RouteKind, SHOTGUN_ATTEMPTS,
 	SHOTGUN_SHELL, Slug, SlugGenerator, UploadPending, UploadReady,
 };
+use crate::storage::primitives::Payload;
 
 mod error;
 mod primitives;
@@ -59,84 +58,42 @@ impl Storage {
 		})
 	}
 
-	pub async fn potential_duplicates(
-		&self,
-		upload: &UploadPending,
-	) -> Result<Vec<RecordStored>> {
-		let plain = upload.content();
-		let hash = upload.checksum().ok_or(Err(Error::Validation(
-			"imposible to validate uniqueness for slug without a hash".to_string(),
-		)))?;
-		query_as!(Route, r#"SELECT
-          id AS "id!: _", kind AS "kind!: _", content AS "content?: _", created AS "created!: _"
-          FROM routes WHERE hash = ?"#,
-          hash,
-        ).fetch_all(&self.db)
-        .await?.into_iter().map(RecordStored::try_from).collect()
+	pub async fn delete(&self, brief: Brief) -> Result<Brief> {
+		let id = brief.slug.as_str();
+		let meta = query_file_as!(Meta, "src/storage/statements/delete.sql", id)
+			.fetch_one(&self.db)
+			.await?;
+		Ok(Brief::from(meta))
 	}
 
-	pub async fn get(&self, id: Slug) -> Result<RecordStored> {
-		Ok(query_as!(Route,r#"SELECT
-          id AS "id!: _", kind AS "kind!: _", content AS "content?: _", created AS "created!: _"
-          FROM routes WHERE id = ?"#, id.as_str())
-          .fetch_one(&self.db)
-          .await?.map(RecordStored::try_from))
+	pub async fn exists(&self, id: &Slug) -> Result<bool> {
+		Ok(
+			query_file_scalar!("src/storage/statements/exists.sql", id.as_str())
+				.fetch_one(&self.db)
+				.await?,
+		)
+	}
+
+	pub async fn get(&self, id: &Path) -> Result<Option<EntryPacked>> {
+		let payload = query_file_as!(
+			Payload,
+			"src/storage/statements/get.sql",
+			id.to_string_lossy()
+		)
+		.fetch_optional(&self.db)
+		.await?;
+		payload.map(EntryPacked::try_from).transpose()
 	}
 
 	pub async fn get_brief(&self, id: &Path) -> Result<Brief> {
-		let meta = query_as!(
+		let meta = query_file_as!(
 			Meta,
-			r#"SELECT
-          id AS "id!: _", kind AS "kind!: _", created AS "created!: _"
-          FROM routes WHERE id = ? "#,
-			id.to_string_lossy().as_ref(),
+			"src/storage/statements/get_brief.sql",
+			id.to_string_lossy(),
 		)
 		.fetch_one(&self.db)
 		.await?;
 		Ok(meta.into())
-	}
-
-	pub async fn exists(&self, id: Slug) -> Result<bool> {
-		Ok(
-			query_scalar!(
-				r#"SELECT EXISTS(SELECT 1 FROM routes WHERE id = ?) AS "exists!: bool" "#,
-				id.as_str()
-			)
-			.fetch_one(&self.db)
-			.await?,
-		)
-	}
-
-	pub async fn delete(&self, brief: Brief) -> Result<Brief> {
-		let id = brief.slug.as_str();
-		Ok(
-			query_as!(
-				Meta,
-				r#" DELETE FROM routes WHERE id = ? RETURNING
-      id AS "id!: _", kind AS "kind!: _", created AS "created!: _" "#,
-				id
-			)
-			.fetch_one(&self.db)
-			.await?
-			.map(Brief::from),
-		)
-	}
-
-	pub async fn purge_expired(&self) -> Result<Vec<Brief>> {
-		let retention = self.cfg.mgmt.retention.as_secs().cast_signed();
-		query_as!(
-			Meta,
-			r#"DELETE FROM routes
-      WHERE kind != 0
-      AND created < CAST(strftime('%s','now') AS INTEGER) - ? RETURNING
-      id AS "id!: _", kind AS "kind!: _", created AS "created!: _" "#,
-			&retention,
-		)
-		.fetch_all(&self.db)
-		.await?
-		.into_iter()
-		.map(Brief::from)
-		.collect()
 	}
 
 	pub async fn insert(&self, submission: UploadReady) -> Result<Brief> {
@@ -144,9 +101,9 @@ impl Storage {
 			naming,
 			content,
 			checksum,
-		} = entry;
+		} = submission;
 		let kind: RowKind = RouteKind::from(&content).into();
-		let hash = i64::from(checksum.unwrap_or_default());
+		let hash = checksum.map(i64::from);
 		let content = content.into_inner(); // Alloc-free move
 		match naming {
 			Naming::Fixed(slug) => self.insert_fixed(slug, hash, kind, content).await,
@@ -157,51 +114,76 @@ impl Storage {
 	async fn insert_fixed(
 		&self,
 		id: Slug,
-		hash: i64,
+		hash: Option<i64>,
 		kind: RowKind,
-		content: Vec<u8>,
+		content: Box<[u8]>,
 	) -> Result<Brief> {
-		query_as!(Meta, r#"INSERT INTO routes (id, kind, hash, content) VALUES (?, ?, ?, ?)
-        RETURNING id AS "id!: _", kind AS "kind!: _", created AS "created!: _" "#,
-        slug.as_str(),
-        i64::from(kind),
-        hash,
-        content,
-    )
-			.fetch_one(&self.db)
-			.await?
-			.map(Brief::from)
+		let meta = query_file_as!(
+			Meta,
+			"src/storage/statements/insert_fixed.sql",
+			id.as_str(),
+			i64::from(kind),
+			hash,
+			content,
+		)
+		.fetch_optional(&self.db)
+		.await?
+		// `ON CONFLICT ... DO NOTHING`: only 1 insert can
+		// win if two concurrent requests want the same slug.
+		// NOTHING => detect if we lost the race (we get None instead of a brief)
+		.ok_or(Error::SlugTaken(id))?;
+		Ok(Brief::from(meta))
 	}
 
+	#[rustfmt::skip]
 	async fn insert_generated(
 		&self,
-		hash: i64,
+		hash: Option<i64>,
 		kind: RowKind,
-		content: Vec<u8>,
+		content: Box<[u8]>,
 	) -> Result<Brief> {
 		let shotgun = SlugGenerator::generate(&SHOTGUN_SHELL);
-		#[rustfmt::skip]
-		Ok(query_as!(
-			Meta, r#"
-        WITH RECURSIVE split(slug, rest, ord) AS (
-            SELECT NULL, ? || '/', 0 UNION ALL
-            SELECT substr(rest, 1, instr(rest, '/') - 1),
-                   substr(rest, instr(rest, '/') + 1),
-                   ord + 1
-            FROM split WHERE rest <> '' AND instr(rest, '/') > 0 )
-        INSERT INTO routes (id, kind, hash, content)
-        SELECT slug, ?, ?, ? FROM split
-        WHERE ord > 0 AND slug <> ''
-          AND NOT EXISTS (SELECT 1 FROM routes AS e WHERE e.id = split.slug)
-        ORDER BY ord LIMIT 1
-        RETURNING id AS "id!: _", kind AS "kind!: _", created AS "created!: _" "#,
-        shotgun,
+		let meta = query_file_as!(
+			Meta, "src/storage/statements/insert_generated.sql",
+      shotgun,
         i64::from(kind),
         hash,
         content)
             .fetch_optional(&self.db)
             .await?
-            .ok_or(Error::Collision(SHOTGUN_ATTEMPTS))?
-            .map(Brief::from))
+            .ok_or(Error::Exhausted(SHOTGUN_ATTEMPTS))?;
+		Ok(Brief::from(meta))
+	}
+
+	pub async fn potential_duplicates(
+		&self,
+		upload: &UploadPending,
+	) -> Result<Vec<RecordPacked>> {
+		let Some(hash) = upload.checksum() else {
+			// hashes only exist for pastes; redirects are never deduplicated.
+			return Ok(Vec::new());
+		};
+		query_file_as!(
+			Route,
+			"src/storage/statements/potential_duplicates.sql",
+			i64::from(hash),
+		)
+		.fetch_all(&self.db)
+		.await?
+		.into_iter()
+		.map(RecordPacked::try_from)
+		.collect()
+	}
+
+	pub async fn purge_expired(&self) -> Result<Vec<Brief>> {
+		let retention = self.cfg.retention.as_secs().cast_signed();
+		let expired = query_file_as!(
+			Meta,
+			"src/storage/statements/purge_expired.sql",
+			&retention,
+		)
+		.fetch_all(&self.db)
+		.await?;
+		Ok(expired.into_iter().map(Brief::from).collect())
 	}
 }

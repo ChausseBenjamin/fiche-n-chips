@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "DELETE FROM routes\n      WHERE kind != 0\n      AND created < CAST(strftime('%s','now') AS INTEGER) - ? RETURNING\n      id AS \"id!: _\", kind AS \"kind!: _\", created AS \"created!: _\" ",
+  "query": "DELETE FROM routes WHERE id = ? RETURNING\nid AS \"id!: _\",\nkind AS \"kind!: _\",\ncreated AS \"created!: _\"\n\n",
   "describe": {
     "columns": [
       {
@@ -46,5 +46,5 @@
       false
     ]
   },
-  "hash": "f41ed0f9caf41f22b83cd3f35049f7537d6df88107d539fae3712245d146d10e"
+  "hash": "621ad7d7510f4ccea6d8808aa84733898789bf8afdf9e0bbfc85549fa48727d1"
 }

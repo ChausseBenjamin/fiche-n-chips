@@ -1,0 +1,44 @@
+#!/bin/sh
+# Regenerate the sqlx offline query cache (.sqlx) from the migrations.
+#
+# The query_as!/query_scalar! macros need either DATABASE_URL (a live schema) or
+# a matching .sqlx cache. This script builds a throwaway database from
+# app/src/storage/migrations, lets the macros describe every query against it,
+# then verifies that all queries resolve with SQLX_OFFLINE=true.
+#
+# Usage: tools/sqlx-prepare
+# Requires: sqlite3 (the `sqlx` CLI is not needed)
+
+set -eu
+
+root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$root"
+
+command -v sqlite3 >/dev/null 2>&1 || {
+	echo "sqlite3 is required" >&2
+	exit 1
+}
+
+db=${TMPDIR:-/tmp}/fiche-n-chips-sqlx-$$.db
+trap 'rm -f "$db" "$db-shm" "$db-wal"' EXIT
+
+for migration in app/src/storage/migrations/*.sql; do
+	sqlite3 "$db" < "$migration"
+done
+
+rm -f .sqlx/query-*.json
+mkdir -p .sqlx
+
+cargo clean -p fiche-n-chips >/dev/null
+
+DATABASE_URL="sqlite://$db" SQLX_OFFLINE_DIR="$root/.sqlx" \
+	cargo build >/dev/null 2>&1 || true
+
+out=$(SQLX_OFFLINE=true cargo build 2>&1 || true)
+if printf '%s\n' "$out" | grep -q 'no cached data for this query'; then
+	printf '%s\n' "$out" | grep -B2 -A6 'no cached data' >&2
+	echo "sqlx cache is incomplete" >&2
+	exit 1
+fi
+
+echo "sqlx cache regenerated: $(find .sqlx -name 'query-*.json' | wc -l | tr -d ' ') queries"

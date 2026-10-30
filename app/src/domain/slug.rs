@@ -23,6 +23,17 @@ const DIGITS_PER_WORD: usize = 8;
 pub const SHOTGUN_SHELL: [SubBatch; 2] =
 	[SubBatch { len: 4, qty: 11 }, SubBatch { len: 5, qty: 4 }];
 
+/// Total number of pellets in [`SHOTGUN_SHELL`]
+pub const SHOTGUN_ATTEMPTS: usize = {
+	let mut total = 0;
+	let mut i = 0;
+	while i < SHOTGUN_SHELL.len() {
+		total += SHOTGUN_SHELL[i].qty;
+		i += 1;
+	}
+	total
+};
+
 /// Receptacle that can be fired to see what sticks
 pub type ShotgunShell = [SubBatch];
 /// Number of pellets of a given size in the shell
@@ -38,26 +49,37 @@ type Pellets = String;
 const FORBIDDEN_CHARS: [char; 9] =
 	['.', '?', '&', '/', '#', '\\', '"', '%', '^'];
 
+#[derive(Debug)]
 pub struct Slug(Box<str>);
 impl Slug {
 	pub(crate) fn from_validated(raw: Box<str>) -> Self { Self(raw) }
 
 	pub fn as_str(&self) -> &str { &self.0 }
 
-	pub fn parse(raw: impl Into<Box<str>>) -> Result<Self> {
+	pub fn parse(raw: impl Into<Box<str>>, cap: usize) -> Result<Self> {
 		let s = raw.into();
+		if s.len() > cap {
+			return Err(Error::InvalidSlug {
+				reason: format!(
+					"exceeds maximum allowed length of {cap} bytes (got {})",
+					s.len()
+				),
+			});
+		}
 		if let Some(c) = s.chars().find(|c| FORBIDDEN_CHARS.contains(c)) {
-			return Err(super::Error::Parse(format!(
-				"slug contains undesirable character: '{c}'"
-			)));
+			return Err(Error::InvalidSlug {
+				reason: format!("contains undesirable character: '{c}'"),
+			});
 		}
 		let normalized = normalize_http(Path::new(&*s));
 		let normalized = normalized.to_string_lossy();
 		if normalized.len() != s.len() {
-			return Err(Error::Parse(format!(
-				"slug would be mangled by path normalization (`{s}` -> `{}`)",
-				&normalized
-			)));
+			return Err(Error::InvalidSlug {
+				reason: format!(
+					"would be mangled by path normalization (`{s}` -> `{}`)",
+					&normalized
+				),
+			});
 		}
 		Ok(Self(s))
 	}
@@ -149,7 +171,7 @@ impl SlugGenerator {
 				stream
 					.by_ref()
 					.take(len.div_ceil(DIGITS_PER_WORD))
-					.flat_map(digits)
+					.flat_map(|word| Self::digits(word))
 					.take(len),
 			);
 		});

@@ -1,14 +1,37 @@
-use std::time::SystemTime;
-
-use bytes::Bytes;
 use sqlx::{FromRow, Type};
 
 use super::super::{Error, Result};
 use super::SystemTimeExt;
 use crate::domain::{
-	Brief, Brotli, Checksum, Content, ContentPacked, Entry, Novel, Record,
-	RecordStored, RouteKind, Slug,
+	Brief, Brotli, ContentPacked, EntryPacked, RecordPacked, RouteKind, Slug,
 };
+
+#[derive(FromRow)]
+pub struct Payload {
+	pub kind:    RowKind,
+	pub content: Option<Box<[u8]>>,
+}
+impl TryFrom<Payload> for EntryPacked {
+	type Error = Error;
+
+	fn try_from(p: Payload) -> Result<EntryPacked> {
+		use RowKind as RK;
+		Ok(match (p.kind, p.content) {
+			(RK::Reserved, _) => EntryPacked::Reserved,
+			(RK::Redirect, Some(data)) => {
+				EntryPacked::Served(ContentPacked::from_stored_redir(data))
+			}
+			(RK::Paste, Some(data)) => {
+				EntryPacked::Served(ContentPacked::from_stored_paste(data))
+			}
+			(kind, None) => {
+				return Err(Error::Formatting(format!(
+					"non-reserved route of kind {kind:?} has no content",
+				)));
+			}
+		})
+	}
+}
 
 /// Decouples storage implementation from the [RouteKind] domain object
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Type)]
@@ -28,6 +51,19 @@ impl From<RowKind> for RouteKind {
 		}
 	}
 }
+impl From<RouteKind> for RowKind {
+	fn from(kind: RouteKind) -> Self {
+		use RouteKind as DK;
+		match kind {
+			DK::Reserved => Self::Reserved,
+			DK::Redirect => Self::Redirect,
+			DK::Paste => Self::Paste,
+		}
+	}
+}
+impl From<RowKind> for i64 {
+	fn from(kind: RowKind) -> Self { kind as Self }
+}
 
 #[derive(FromRow)]
 pub struct Route {
@@ -36,27 +72,18 @@ pub struct Route {
 	pub content: Option<Box<[u8]>>,
 	pub created: SystemTimeExt,
 }
-impl TryFrom<Route> for RecordStored {
+impl TryFrom<Route> for RecordPacked {
 	type Error = Error;
 
 	fn try_from(r: Route) -> Result<Self> {
 		use RowKind as RK;
 		let slug = Slug::from_validated(r.id);
-		let created = Novel(r.created.into());
-		let entry = match (r.kind, r.content) {
-			(RK::Reserved, _) => Entry::Reserved,
-			(RK::Redirect, Some(data)) => {
-				Entry::Served(ContentPacked::from_stored_redir(Bytes::from(data)))
-			}
-			(RK::Paste, Some(data)) => {
-				Entry::Served(ContentPacked::from_stored_paste(Bytes::from(data)))
-			}
-			(RK::Redirect, None) | (RK::Paste, None) => {
-				return Err(Error::Formatting(format!(
-					"non-reserved route `{slug}` has no content",
-				)));
-			}
+		let created = r.created.into();
+		let payload = Payload {
+			kind:    r.kind,
+			content: r.content,
 		};
+		let entry = EntryPacked::try_from(payload)?;
 		Ok(Self {
 			slug,
 			entry,
