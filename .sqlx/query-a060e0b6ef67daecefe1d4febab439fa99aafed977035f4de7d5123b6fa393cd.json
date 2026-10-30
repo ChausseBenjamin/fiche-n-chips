@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT kind AS \"kind!: _\", content AS \"content?: _\" FROM routes WHERE id = ?\n",
+  "describe": {
+    "columns": [
+      {
+        "name": "kind!: _",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "routes",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "name": "content?: _",
+        "ordinal": 1,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "routes",
+            "name": "content"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "a060e0b6ef67daecefe1d4febab439fa99aafed977035f4de7d5123b6fa393cd"
+}

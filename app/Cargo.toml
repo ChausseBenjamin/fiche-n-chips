@@ -14,7 +14,7 @@ clap = { version = "4.6.1", features = ["derive", "env"] }
 humantime = "2.3.0"
 
 # Web interactions
-tokio = {version = "1.0.1", features = ["rt-multi-thread", "macros", "net", "io-util", "time", "signal"]}
+tokio = {version = "1.0.1", features = ["rt-multi-thread", "macros", "net", "io-util", "time", "signal", "sync"]}
 tokio-util = { version = "0.7", features = ["rt"] }
 actix-web = { version = "4", default-features = false, features = ["macros"] }
 actix-rt = { version = "2", features = ["signal"] }
@@ -22,7 +22,8 @@ awc = { version = "3", default-features = false, features = ["rustls-0_23-webpki
 rustls = { version = "0.23", default-features = false, features = ["ring", "tls12"] }
 
 # Specialized tools (specific to this project)
-turso = { version = "0.6.0", default-features = false }   # sqlite database
+sqlx = { version = "0.9", features = ["runtime-tokio","sqlite","macros","migrate"] }
+# turso = { version = "0.6.0", default-features = false }   # sqlite database
 xxhash-rust = { version = "0.8.15", features = ["xxh3"] } # non-cryptographic hashing
 brotli = "8.0.2"                                          # text compression
 
@@ -32,6 +33,7 @@ thiserror = "2.0.18"
 const_format = "0.2.36"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
+bytes = { version = "1.11" }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }

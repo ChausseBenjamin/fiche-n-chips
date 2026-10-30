@@ -8,19 +8,19 @@ use std::net::IpAddr;
 pub use error::Result;
 use rslog::{attrs, debug, error, info, src};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpListener;
-use tokio::time::{timeout, Duration};
+use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
+use tokio::time::{Duration, timeout};
 use tokio_util::sync::CancellationToken;
 
 use crate::anonymizer::Anonimizer;
-use crate::config::logging::{ADDR_KEY, ERR_KEY, SLUG_KEY};
 use crate::config::Config;
+use crate::config::logging::{ADDR_KEY, ERR_KEY, SLUG_KEY};
+use crate::domain::{Brief, Resolved, Slug, UploadApproved, UploadPending};
 use crate::limiter::{RateLimitStatus, RateLimiter};
-use crate::storage::model::PasteInput;
 use crate::storage::Storage;
 use crate::ui;
-use crate::util::{decompress, sorry, SlugGenerator};
+use crate::util::{decompress, sorry};
 
 //                  data    over-the-limit
 pub struct RawInput(String, bool);
@@ -28,7 +28,6 @@ pub struct RawInput(String, bool);
 pub struct Pastebin {
 	cfg:          Arc<Config>,
 	db:           Arc<Storage>,
-	slugs:        Arc<SlugGenerator>,
 	anonimizer:   Arc<Anonimizer>,
 	rate_limiter: Arc<Mutex<RateLimiter>>,
 }
@@ -39,14 +38,12 @@ impl Pastebin {
 	pub fn new(
 		cfg: Arc<Config>,
 		db: Arc<Storage>,
-		slugs: Arc<SlugGenerator>,
 		anonimizer: Arc<Anonimizer>,
 		rate_limiter: Arc<Mutex<RateLimiter>>,
 	) -> Self {
 		Self {
 			cfg,
 			db,
-			slugs,
 			anonimizer,
 			rate_limiter,
 		}
@@ -85,37 +82,33 @@ impl Pastebin {
 					}
 
 					let db = self.db.clone();
-					let slugs = self.slugs.clone();
 					let cfg = self.cfg.clone();
 
 					tokio::spawn(async move {
 						let result: Result<()> = async {
 							let (mut reader, writer) = sock.into_split();
-							let RawInput(raw, busted) =
-								Self::recv_paste(max_buffer, read_timeout, &mut reader).await?;
-							let paste = PasteInput::from(raw);
-
-							if let Some(slug) = Self::find_match(&db, &paste).await? {
-								let msg =
-									Some("It apears this has already been uploaded at some point.\nHere is the url from the original upload.\n");
-								Self::return_url(writer, &cfg, slug.clone(), msg).await?;
-								debug("reused existing paste", attrs!(SLUG_KEY => slug));
+							let upload = Self::recv_paste(max_buffer, read_timeout, &mut reader).await?;
+							let upload = match Self::resolve_paste(&db, &upload).await? {
+										Resolved::Existing(brief) => {
+								let msg = Some("It apears this has already been uploaded at some point.\n\
+										Here is the url from the original upload.\n");
+								Self::return_url(writer, &cfg, &brief.slug, msg).await?;
+								debug("reused existing paste", attrs!(SLUG_KEY => brief.slug));
 								return Ok(());
-							}
+										},
+										Resolved::Novel(upload) => upload,
+								};
 
-							let owned = if busted {
+							let msg = if upload.len() > max_buffer {
 								debug("received oversized paste", src!());
 								Some(format!("It looks like what you uploaded was a bit too big and had to get cut short.\n{}", sorry()))
 							} else {
 									None
 							};
-							let msg = owned.as_deref();
+							let ready = upload.prepare()?;
 
-							let slug = slugs.gen_unique(&db).await?;
-							let compressed = paste.try_into_compressed_paste(slug.clone())?;
-							let _created = db.queries.insert(&compressed).await?;
-							db.spawn_shrink(cfg.management.db_size.get());
-							Self::return_url(writer, &cfg, slug.clone(), msg).await?;
+							let Brief{slug,kind: _,created: _} = db.insert(ready).await?;
+							Self::return_url(writer, &cfg, &slug, msg.as_deref()).await?;
 							debug("created new paste", attrs!(SLUG_KEY => slug));
 
 							Ok(())
@@ -136,24 +129,18 @@ impl Pastebin {
 		Ok(())
 	}
 
-	async fn find_match(
+	async fn resolve_paste(
 		db: &Storage,
-		paste: &PasteInput,
-	) -> Result<Option<String>> {
-		let hash_matches = db.queries.get_slugs_by_hash(paste.hash()).await?;
-		for p in hash_matches {
-			let decompressed = decompress(&p.content)?;
-			if paste.content() == decompressed {
-				return Ok(Some(p.slug));
-			}
-		}
-		Ok(None)
+		paste: &UploadPending,
+	) -> Result<Resolved> {
+		let candidates = db.potential_duplicates(paste).await?;
+		Ok(paste.resolve(candidates)?)
 	}
 
 	async fn return_url(
 		mut w: OwnedWriteHalf,
 		cfg: &Config,
-		slug: String,
+		slug: &Slug,
 		extra: Option<&str>,
 	) -> Result<()> {
 		let extra = extra.unwrap_or_default();
@@ -166,7 +153,7 @@ impl Pastebin {
 		buf_max: usize,
 		read_timeout: Duration,
 		reader: &mut OwnedReadHalf,
-	) -> Result<RawInput> {
+	) -> Result<UploadPending> {
 		let mut output = String::with_capacity(BUFFER_CAPACITY);
 		let mut buf: Box<[u8]> = vec![0; BUFFER_CAPACITY].into();
 		let mut overflowed = false;
@@ -187,6 +174,6 @@ impl Pastebin {
 			output.push_str(&txt);
 		}
 
-		Ok(RawInput(output, overflowed))
+		Ok(UploadPending::paste(output))
 	}
 }

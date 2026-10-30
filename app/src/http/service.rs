@@ -8,11 +8,12 @@ use super::client::{Client, ResponseFmt as RespFmt};
 use crate::config::logging::{ERR_KEY, MIME_KEY, PATH_KEY};
 use crate::reserved::{FileContents, WebFile};
 use crate::ui::{self, UiString};
-use crate::util::{decompress, sorry, IDENT};
+use crate::util::{IDENT, decompress, sorry};
 
 pub(super) fn handle_static(
 	req: &HttpRequest,
 	endpoint: &'_ WebFile<'static>,
+	not_found: bool,
 ) -> HttpResponse {
 	debug(
 		"serving static file",
@@ -20,8 +21,10 @@ pub(super) fn handle_static(
 			PATH_KEY => endpoint.path().display().to_string(),
 			MIME_KEY => endpoint.mime().to_owned()),
 	);
-	let mut resp = HttpResponse::Ok();
+	let mut resp =
+		if not_found { HttpResponse::NotFound() } else { HttpResponse::Ok() };
 	resp.insert_header(("Content-Type", endpoint.mime()));
+	resp.insert_header(("X-Content-Type-Options", "nosniff"));
 	let client = Client::from(req);
 	let content: Cow<'_, [u8]> = match endpoint.content() {
 		FileContents::Raw(cow) => cow.clone(),
@@ -75,7 +78,7 @@ pub(super) fn handle_404(
 		)),
 		RespFmt::Html => {
 			if let Some(page) = endpoint {
-				handle_static(req, page)
+				handle_static(req, page, true)
 			} else {
 				resp.finish()
 			}

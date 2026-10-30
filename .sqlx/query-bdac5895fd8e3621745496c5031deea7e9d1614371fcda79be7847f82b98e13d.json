@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM routes WHERE kind != 0 AND created < CAST(strftime('%s','now') AS INTEGER) - ?\nRETURNING id AS \"id!: _\", kind AS \"kind!: _\", created AS \"created!: _\"\n",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: _",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "routes",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "kind!: _",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "routes",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "name": "created!: _",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "routes",
+            "name": "created"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "bdac5895fd8e3621745496c5031deea7e9d1614371fcda79be7847f82b98e13d"
+}
