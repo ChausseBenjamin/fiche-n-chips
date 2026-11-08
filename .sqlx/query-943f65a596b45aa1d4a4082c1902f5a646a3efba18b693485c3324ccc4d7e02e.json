@@ -1,0 +1,28 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n    CAST(page_count     AS INTEGER) AS \"page_count!: i64\",\n    CAST(freelist_count AS INTEGER) AS \"freelist_count!: i64\"\nFROM pragma_page_count(), pragma_freelist_count()\n",
+  "describe": {
+    "columns": [
+      {
+        "name": "page_count!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "freelist_count!: i64",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "943f65a596b45aa1d4a4082c1902f5a646a3efba18b693485c3324ccc4d7e02e"
+}

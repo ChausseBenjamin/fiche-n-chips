@@ -52,11 +52,7 @@ async fn main() -> Result<()> {
 		error("failed to complete database setup", attrs!( ERR_KEY => e));
 		panic!()
 	}));
-	let _changed_rows = storage
-		.sync_reserved_routes(
-			reserved.paths().into_iter().map(Into::into).collect(),
-		)
-		.await;
+	let _changed_rows = storage.sync_reserved_routes(reserved.paths()).await;
 
 	let cleaner = Arc::from(Cleaner::new(
 		cfg.clone(),

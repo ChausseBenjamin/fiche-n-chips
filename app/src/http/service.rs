@@ -34,7 +34,7 @@ pub(super) fn handle_static(
 				cow.clone()
 			} else {
 				match decompress(cow) {
-					Ok(s) => Cow::Owned(s.into_bytes()),
+					Ok(s) => Cow::Owned(s.into_vec()),
 					Err(err) => {
 						error(
 							"static file decompression failed",

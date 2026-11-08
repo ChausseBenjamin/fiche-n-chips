@@ -7,9 +7,7 @@ use rslog::{attrs, debug, error};
 
 use super::client::{Client, ResponseFmt as RespFmt};
 use crate::config::logging::{COMPRESSED_KEY, DEST_KEY, ERR_KEY, SLUG_KEY};
-use crate::domain::{
-	Brotli, ContentPacked, EntryPacked, Error as DomainError, RecordPacked, Slug,
-};
+use crate::domain::{Brotli, ContentPacked, EntryPacked, Error as DomainError};
 use crate::ui;
 use crate::util::sorry;
 
@@ -57,15 +55,10 @@ pub(super) fn handle_entry(
 ) -> HttpResponse {
 	let client = Client::from(req);
 	let ansi_resp = matches!(client.prefered_format(), RespFmt::Ansi);
-	let EntryPacked {
-		slug,
-		entry,
-		created,
-	} = entry;
 
 	let result = match entry {
 		EntryPacked::Reserved => Err(ServeFault::Reserved {
-			slug: slug.to_string(),
+			slug: slug.display().to_string(),
 		}),
 		EntryPacked::Served(ContentPacked::Redirect(data)) => {
 			handle_redirect(slug, data)
@@ -86,13 +79,13 @@ fn handle_redirect(
 	entry: Brotli,
 ) -> Result<HttpResponse, ServeFault> {
 	let dest = entry.decompress().map_err(|source| ServeFault::Decompress {
-		slug: slug.to_string(),
+		slug: slug.display().to_string(),
 		source,
 	})?;
 
 	let dest = HeaderValue::from_bytes(dest.as_ref()).map_err(|_| {
 		ServeFault::InvalidLocation {
-			slug: slug.to_string(),
+			slug: slug.display().to_string(),
 		}
 	})?;
 
@@ -103,13 +96,13 @@ fn handle_redirect(
 
 fn handle_paste(
 	client: &Client,
-	slug: Slug,
+	slug: &Path,
 	paste: Brotli,
 ) -> Result<HttpResponse, ServeFault> {
 	let compressed = client.accepts_compression();
 	debug(
 		"serving paste",
-		attrs!(SLUG_KEY => slug.to_string(), COMPRESSED_KEY => compressed),
+		attrs!(SLUG_KEY => slug.display().to_string(), COMPRESSED_KEY => compressed),
 	);
 
 	let mut resp = HttpResponse::Ok();
@@ -123,7 +116,7 @@ fn handle_paste(
 	}
 
 	let plain = paste.decompress().map_err(|source| ServeFault::Decompress {
-		slug: slug.to_string(),
+		slug: slug.display().to_string(),
 		source,
 	})?;
 	Ok(resp.body(Bytes::copy_from_slice(plain.as_ref())))

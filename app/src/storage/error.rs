@@ -17,6 +17,8 @@ pub enum Error {
 	DB(#[from] sqlx::Error),
 	#[error("Database migration error: {0}")]
 	Migration(#[from] MigrateError),
+	#[error("Invalid database path: {0}")]
+	Path(#[from] std::io::Error),
 	#[error("Invalid row: {0}")]
 	Formatting(String),
 }

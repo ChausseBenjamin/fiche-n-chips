@@ -2,7 +2,7 @@ use std::result;
 
 use thiserror::Error;
 
-use crate::storage;
+use crate::{domain, storage};
 
 pub type Result<T> = result::Result<T, Error>;
 
@@ -12,4 +12,6 @@ pub enum Error {
 	IoErr(#[from] std::io::Error),
 	#[error("Storage error: {0}")]
 	StorageErr(#[from] storage::Error),
+	#[error("Domain error: {0}")]
+	DomainErr(#[from] domain::Error),
 }

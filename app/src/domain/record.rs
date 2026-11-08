@@ -1,9 +1,6 @@
-use std::borrow::Cow;
 use std::time::SystemTime;
 
-use bytes::Bytes;
-
-use super::{Brotli, Checksum, Plain, Result, RouteKind, Slug};
+use super::{Brotli, Plain, Result, Slug};
 
 pub type RecordPacked = Record<Brotli>;
 pub type RecordPlain = Record<Plain>;

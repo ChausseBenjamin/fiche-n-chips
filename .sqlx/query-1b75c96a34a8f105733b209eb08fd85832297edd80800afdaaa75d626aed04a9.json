@@ -1,0 +1,21 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT CAST(page_size AS INTEGER) AS \"page_size!: i64\"\nFROM pragma_page_size()\n",
+  "describe": {
+    "columns": [
+      {
+        "name": "page_size!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "1b75c96a34a8f105733b209eb08fd85832297edd80800afdaaa75d626aed04a9"
+}

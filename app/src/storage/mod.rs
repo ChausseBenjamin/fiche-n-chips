@@ -1,54 +1,83 @@
+use std::borrow::Cow;
 use std::path::Path;
+use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use sqlx::sqlite::SqliteAutoVacuum::Incremental;
-use sqlx::sqlite::SqliteJournalMode::Wal;
-use sqlx::sqlite::SqliteSynchronous::Normal;
-use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
-use sqlx::{query_as, query_file_as, query_file_scalar, query_scalar};
+use rslog::{attrs, debug, error, info, src, warn};
+use sqlx::sqlite::SqlitePool;
+use sqlx::{QueryBuilder, query_file_as, query_file_scalar};
 use tokio::sync::Mutex;
 
-use crate::config::Config;
+use crate::config::logging::{COUNT_KEY, DESC_KEY, ERR_KEY};
 use crate::domain::{
-	Brief, Entry, EntryPacked, Naming, RecordPacked, RouteKind, SHOTGUN_ATTEMPTS,
+	Brief, EntryPacked, Naming, RecordPacked, RouteKind, SHOTGUN_ATTEMPTS,
 	SHOTGUN_SHELL, Slug, SlugGenerator, UploadPending, UploadReady,
 };
 use crate::storage::primitives::Payload;
-use crate::util::{unix_secs_ceil, unix_secs_floor};
+use crate::util::unix_secs_ceil;
 
 mod error;
 mod primitives;
+mod setup;
 
 pub use error::{Error, Result};
-use primitives::{Meta, Route, RowKind};
+use primitives::{Meta, PageCounts, Route, RowKind};
 
 pub struct Storage {
-	db:     SqlitePool,
-	shrink: Mutex<()>,
+	db:        SqlitePool,
+	shrink:    Mutex<()>,
+	page_size: u64,
 }
 
+const SHRINK_BATCH: i64 = 512;
+
 impl Storage {
-	pub async fn setup(cfg: &Config) -> Result<Self> {
-		let opts = SqliteConnectOptions::new()
-			.filename(&cfg.mgmt.db_path)
-			.auto_vacuum(Incremental)
-			.synchronous(Normal)
-			.journal_mode(Wal)
-			.busy_timeout(Duration::from_secs(1))
-			.pragma("temp_store", "MEMORY")
-			.pragma("cache_size", (&cfg.mgmt.db_cache.get() / 1024).to_string())
-			.foreign_keys(true)
-			.create_if_missing(true);
-		let db = SqlitePoolOptions::new()
-			.max_connections(10)
-			.acquire_timeout(Duration::from_secs(5))
-			.connect_with(opts)
-			.await?;
-		sqlx::migrate!("src/storage/migrations").run(&db).await?;
-		Ok(Self {
-			db,
-			shrink: Mutex::new(()),
-		})
+	pub async fn sync_reserved_routes(
+		&self,
+		paths: impl IntoIterator<Item = &Path>,
+	) -> Result<u64> {
+		let ids: Vec<Cow<'_, str>> =
+			paths.into_iter().map(Path::to_string_lossy).collect();
+
+		if ids.is_empty() {
+			error(
+				"no http paths are reserved",
+				attrs!(
+					DESC_KEY => "the server should accept/serve stuff but getting this error indicates api endpoints aren't protected and no homepages are being hosted...",
+				),
+			);
+			// Return Ok to remain resilient and serve content.
+			// Best we can do is log the error...
+			return Ok(0);
+		}
+
+		let mut tx = self.db.begin().await?;
+
+		let mut insert = QueryBuilder::new(
+			"INSERT OR IGNORE INTO routes (id, kind, hash, content) ",
+		);
+		insert.push_values(ids.iter(), |mut b, id| {
+			b.push_bind(id.as_ref())
+				.push_bind(i64::from(RowKind::Reserved))
+				.push_bind(None::<i64>)
+				.push_bind(None::<Vec<u8>>);
+		});
+		let inserted = insert.build().execute(&mut *tx).await?.rows_affected();
+
+		let mut delete = QueryBuilder::new("DELETE FROM routes WHERE kind = ");
+		delete.push_bind(i64::from(RowKind::Reserved));
+		delete.push(" AND id NOT IN (");
+		let mut separated = delete.separated(", ");
+		for id in &ids {
+			separated.push_bind(id.as_ref());
+		}
+		separated.push_unseparated(")");
+		drop(separated);
+		let deleted = delete.build().execute(&mut *tx).await?.rows_affected();
+
+		tx.commit().await?;
+
+		Ok(inserted.saturating_add(deleted))
 	}
 
 	pub async fn delete(&self, brief: Brief) -> Result<Brief> {
@@ -103,7 +132,7 @@ impl Storage {
 			)
 			.fetch_all(&self.db)
 			.await?
-			.iter()
+			.into_iter()
 			.map(Brief::from)
 			.collect(),
 		)
@@ -198,5 +227,86 @@ impl Storage {
 		.fetch_all(&self.db)
 		.await?;
 		Ok(expired.into_iter().map(Brief::from).collect())
+	}
+
+	async fn size(&self) -> Result<PageCounts> {
+		Ok(
+			query_file_as!(PageCounts, "src/storage/statements/db_size.sql")
+				.fetch_one(&self.db)
+				.await?,
+		)
+	}
+
+	pub async fn shrink_to_fit(&self, max_bytes: u64) -> Result<Vec<Brief>> {
+		let _guard = self.shrink.lock().await;
+		let mut deleted = Vec::new();
+
+		if self.size().await?.live(self.page_size) <= max_bytes {
+			return Ok(deleted);
+		}
+
+		loop {
+			let mut tx = self.db.begin().await?;
+
+			let batch = query_file_as!(
+				Meta,
+				"src/storage/statements/delete_oldest_batch.sql",
+				SHRINK_BATCH,
+			)
+			.fetch_all(&mut *tx)
+			.await?;
+
+			if batch.is_empty() {
+				tx.commit().await?;
+				break;
+			}
+
+			// Read inside the transaction so the measurement includes this batch.
+			let counts =
+				query_file_as!(PageCounts, "src/storage/statements/db_size.sql")
+					.fetch_one(&mut *tx)
+					.await?;
+
+			deleted.extend(batch.into_iter().map(Brief::from));
+			tx.commit().await?;
+
+			if counts.live(self.page_size) <= max_bytes {
+				break;
+			}
+		}
+
+		// Deletes only move pages to the freelist.
+		if self.size().await?.physical(self.page_size) > max_bytes
+			&& let Err(e) =
+				sqlx::query("PRAGMA incremental_vacuum").execute(&self.db).await
+		{
+			warn(
+				"failed to reclaim disk space after shrinking database",
+				attrs!(ERR_KEY => e),
+			);
+		}
+
+		Ok(deleted)
+	}
+
+	pub fn spawn_shrink(self: &Arc<Self>, max_bytes: u64) {
+		let this = Arc::clone(self);
+		tokio::spawn(async move {
+			match this.shrink_to_fit(max_bytes).await {
+				Ok(deleted) => {
+					if deleted.is_empty() {
+						debug("db is within size limit after insert", src!());
+					} else {
+						info(
+							"freed space by deleting old entries after insert",
+							attrs!(COUNT_KEY => deleted.len()),
+						);
+					}
+				}
+				Err(e) => {
+					error("failed to shrink db after insert", attrs!(ERR_KEY => e));
+				}
+			}
+		});
 	}
 }

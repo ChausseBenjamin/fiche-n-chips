@@ -1,5 +1,5 @@
-use super::record::{Content, Record};
-use super::{Brief, Brotli, Error, Plain, RecordPacked, Result, Slug};
+use super::record::Content;
+use super::{Brief, Error, RecordPacked, Result, Slug};
 use crate::domain::{Checksum, ContentPacked, ContentPlain, EntryPacked};
 use crate::util::StorageSize;
 
@@ -44,6 +44,10 @@ pub struct Upload<S> {
 impl<S> Upload<S> {
 	pub fn len(&self) -> usize { self.content.len() }
 
+	/// Raw content, for assertions about byte-exact round-tripping.
+	#[cfg(test)]
+	pub fn raw(&self) -> &[u8] { self.content.bytes() }
+
 	/// Slug explicitly requested by the caller, if any.
 	pub fn requested_slug(&self) -> Option<&Slug> {
 		match &self.naming {
@@ -54,10 +58,10 @@ impl<S> Upload<S> {
 }
 
 // possible [S]tates during the upload process
-struct Pending(Option<Checksum>); // payload received but not yet approved against the DB
+pub struct Pending(Option<Checksum>); // payload received but not yet approved against the DB
 // In order to be approved, the checksum has to be computed. Carying it through
 // state ensures that, although cheap, it doesn't get computed twice.
-struct Approved(Option<Checksum>); // content is approved but no slug (confirmed to be unique) generated
+pub struct Approved(Option<Checksum>); // content is approved but no slug (confirmed to be unique) generated
 
 pub type UploadPending = Upload<Pending>;
 pub type UploadApproved = Upload<Approved>;

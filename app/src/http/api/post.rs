@@ -136,7 +136,7 @@ pub async fn api_post(
 
 async fn handle_shorten(
 	body: web::Bytes,
-	db: &Storage,
+	db: &Arc<Storage>,
 	cfg: &Config,
 	ansi_resp: bool,
 ) -> Result<HttpResponse, ShortenError> {
@@ -170,6 +170,7 @@ async fn handle_shorten(
 		StorageError::SlugTaken(slug) => ShortenError::Conflict(slug.to_string()),
 		other => ShortenError::Storage(other),
 	})?;
+	db.spawn_shrink(cfg.mgmt.db_size.get());
 
 	Ok(HttpResponse::Ok().body(ui::format!(
 		ansi_resp,

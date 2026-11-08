@@ -1,4 +1,3 @@
-use bytes::Bytes;
 use xxhash_rust::xxh3::xxh3_64_with_seed as hash;
 
 use super::{Error, Result};

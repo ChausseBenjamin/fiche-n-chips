@@ -4,7 +4,7 @@ mod service; // Issued by the service
 mod user; // Issued by users
 
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
@@ -20,14 +20,13 @@ use user::handle_entry;
 use crate::anonymizer::Anonimizer;
 use crate::config::Config;
 use crate::config::logging::{ERR_KEY, METHOD_KEY, PATH_KEY};
-use crate::domain::Brief;
 use crate::http::api::api_healthcheck;
 use crate::http::client::Client;
 use crate::limiter::{RateLimitStatus, RateLimiter};
 use crate::reserved::{
 	HEALTHCHECK_PATH, ReservedPath as ResPath, ReservedPathProvider, WebFile,
 };
-use crate::storage::{self, Storage};
+use crate::storage::Storage;
 use crate::ui;
 use crate::util::{EMPHASIS, IDENT, normalize_http, sorry};
 

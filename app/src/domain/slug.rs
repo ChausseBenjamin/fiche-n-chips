@@ -1,14 +1,9 @@
-use core::f64::math::ceil;
 use std::char;
 use std::fmt::{self, Display, Formatter};
 use std::path::Path;
-use std::random::{DefaultRandomSource, RandomSource, random};
-use std::str::FromStr;
-
-use rslog::{attrs, debug};
+use std::random::{DefaultRandomSource, RandomSource};
 
 use super::{Error, Result};
-use crate::config::logging::{RANDINT_COUNT_KEY, SLUG_KEY, SLUG_LEN_KEY};
 use crate::util::normalize_http;
 
 /// list of characters accepted in slug paths
@@ -37,7 +32,7 @@ pub const SHOTGUN_ATTEMPTS: usize = {
 /// Receptacle that can be fired to see what sticks
 pub type ShotgunShell = [SubBatch];
 /// Number of pellets of a given size in the shell
-struct SubBatch {
+pub struct SubBatch {
 	len: usize,
 	qty: usize,
 }
@@ -89,20 +84,21 @@ impl Display for Slug {
 	fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result { f.write_str(&self.0) }
 }
 
-/// Computes a list of random, yet valid slug with a set-length
+/// Computes a list of random, yet valid slugs with a set-length
 ///
 /// This was quite a unique problem to solve because I want to:
-/// - minimize collisions when many possible slugs are taken
+/// - prioritize slugs that are short (ideally 4 characters)
+/// - minimize collisions when many slugs are taken
 /// - not be susceptible to malicious actors trying to break insertion
 ///
-/// In an ideal world, a sequence would minimize collisions.
+/// In an ideal world, a pre-defined sequence would minimize collisions.
 /// But bad actors can forge redirects to upcoming values to
 /// fuck with upcoming slugs (as those can be manually set).
 ///
 /// Attempting to insert multiple times with a new random slug
 /// makes it infeasible for bad actors to guess but is inefficient
 /// as it requires multiple clones+memory allocations
-/// (1backup if collisions happen, 1-2 allocation in sqlx+sqlite
+/// (1backup if collisions happen + 1-2 allocation in sqlx+sqlite
 /// during the insert)
 ///
 /// So I came up with a middle ground: A shotgun approach

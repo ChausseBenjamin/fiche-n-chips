@@ -149,7 +149,9 @@ impl ReservedPathProvider {
 		files
 	}
 
-	pub fn paths(&self) -> Vec<&ReservedPath> { self.files.values().collect() }
+	pub fn paths(&self) -> impl Iterator<Item = &Path> + '_ {
+		self.files.keys().map(PathBuf::as_path)
+	}
 
 	pub fn get(&self, path: &Path) -> Option<&ReservedPath> {
 		self.files.get(path)
