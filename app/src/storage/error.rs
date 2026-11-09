@@ -19,6 +19,8 @@ pub enum Error {
 	Migration(#[from] MigrateError),
 	#[error("Invalid database path: {0}")]
 	Path(#[from] std::io::Error),
+	#[error("Invalid configuration: {0}")]
+	Config(String),
 	#[error("Invalid row: {0}")]
 	Formatting(String),
 }

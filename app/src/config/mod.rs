@@ -68,9 +68,12 @@ pub struct ManagementCfg {
 	/// How much of the database to cache in memory
 	#[arg(long, env = "DB_CACHE", default_value = "32MB")]
 	pub db_cache:          StorageSize,
-	/// Maximum size the database is allowed to have
-	#[arg(long, env = "DB_MAX_SIZE", default_value = "10GB")]
-	pub db_size:           StorageSize,
+	/// File size at which the database triggers a trim
+	#[arg(long, env = "DB_CAP", default_value = "12GB")]
+	pub db_cap:            StorageSize,
+	/// Size the database is trimmed back to after reaching its cap
+	#[arg(long, env = "DB_TARGET", default_value = "10GB")]
+	pub db_target:         StorageSize,
 	/// Seed location used to anonymize user IPs
 	#[arg(long, env = "SECRET_SEED_PATH", default_value = ".internal/seed")]
 	pub seed_path:         PathBuf,

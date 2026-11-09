@@ -42,8 +42,10 @@ Just pipe text over a raw TCP connection — works with netcat, socat, or any to
 that can open a TCP socket. Each paste gets a unique alphanumeric slug.
 
 Paste reads have a per-chunk timeout (default: 1s) and a maximum body size
-(default: 256 KB). Duplicate content is detected automatically and reuses the
-same slug, so identical pastes always map to the same URL.
+(default: 256 KB). Anything past the limit is cut off and the reply says so.
+Uploads that aren't valid UTF-8 are refused and nothing is stored. Duplicate
+content is detected automatically and reuses the same slug, so identical
+pastes always map to the same URL.
 
 ### Redirects (URL shortener)
 
@@ -116,6 +118,8 @@ file needed.
 | `HTML_DIR`             | —                    | Directory for static web files[^1]     |
 | `DB_PATH`              | `.internal/store.db` | Database file or directory             |
 | `DB_CACHE`             | `32`                 | SQLite memory cache in MB              |
+| `DB_CAP`               | `12GB`               | File size that triggers a database trim |
+| `DB_TARGET`            | `10GB`               | Size the database is trimmed back to   |
 | `RETENTION`            | `365days`            | How long before entries get deleted    |
 | `SLUG_LEN`             | `4`                  | Length of auto-generated slugs         |
 | `PASTE_MAX_SIZE`       | `256KB`              | Maximum paste body size                |
@@ -129,6 +133,11 @@ file needed.
 | `LOG_OUTPUT`           | `stdout`             | One of: stdout, stderr, or a file path |
 | `LOG_FORMAT`           | `json`               | One of: plain, json, none              |
 | `LOG_TRACE`            | `false`              | Include source location in log entries |
+
+When the database file reaches `DB_CAP`, the oldest entries are deleted until
+live data fits in `DB_TARGET`, then the file is compacted with a full `VACUUM`.
+The vacuum needs roughly twice the database size in free disk space and briefly
+holds the database write lock, so size the cap/target gap to keep it infrequent.
 
 <!-- | `NTFY_SERVER` | —                | ntfy.sh URL for notifications | --->
 <!-- | `NTFY_PREFIX` | `fiche-n-chips-` | ntfy topic prefix             | --->

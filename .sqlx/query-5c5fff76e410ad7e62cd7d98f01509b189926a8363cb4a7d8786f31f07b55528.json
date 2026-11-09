@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!: _\", kind AS \"kind!: _\", created AS \"created!: _\"\nFROM routes where kind != 0\nAND created BETWEEN ? AND ?\n",
+  "query": "-- Half-open interval [from, to): callers pass ceil(from) and ceil(to).\nSELECT id AS \"id!: _\", kind AS \"kind!: _\", created AS \"created!: _\"\nFROM routes where kind != 0\nAND created >= ? AND created < ?\n",
   "describe": {
     "columns": [
       {
@@ -46,5 +46,5 @@
       false
     ]
   },
-  "hash": "d3729ae5493079ee9d70fefe5e4011f204a5e3a08949180ccd041d87fc4a6e55"
+  "hash": "5c5fff76e410ad7e62cd7d98f01509b189926a8363cb4a7d8786f31f07b55528"
 }

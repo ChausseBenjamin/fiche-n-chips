@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM routes WHERE kind = 0\n",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "f05576484d166c0e2adea7036013d2119a8e3ee1bdf9d35316c4822286e9cdf8"
+}

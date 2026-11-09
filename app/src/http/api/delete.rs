@@ -22,6 +22,7 @@ struct DeleteError {
 
 enum DeleteFault {
 	Reserved,
+	NotFound,
 	TooOld {
 		max:     Duration,
 		elapsed: Duration,
@@ -38,6 +39,14 @@ impl DeleteError {
 					ansi_resp,
 					"Deleting statically served files such as `{}` isn't permitted.\n{}",
 					slug,
+					sorry(),
+				))
+			}
+			DeleteFault::NotFound => {
+				HttpResponse::NotFound().body(ui::format!(
+					ansi_resp,
+					"`{}` doesn't exist.\n{}",
+					ui::string(slug, IDENT),
 					sorry(),
 				))
 			}
@@ -114,10 +123,21 @@ async fn handle_delete(
 		});
 	}
 
-	let brief = db.delete(endpoint).await.map_err(|e| DeleteError {
-		slug,
-		fault: DeleteFault::Storage(e),
-	})?;
+	let brief = match db.delete(&endpoint.slug).await {
+		Ok(Some(brief)) => brief,
+		Ok(None) => {
+			return Err(DeleteError {
+				slug,
+				fault: DeleteFault::NotFound,
+			});
+		}
+		Err(e) => {
+			return Err(DeleteError {
+				slug,
+				fault: DeleteFault::Storage(e),
+			});
+		}
+	};
 
 	issue_alert(&brief, cfg).await;
 

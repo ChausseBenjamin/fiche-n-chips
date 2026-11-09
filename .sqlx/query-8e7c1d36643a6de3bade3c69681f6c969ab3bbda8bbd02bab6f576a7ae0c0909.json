@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "WITH RECURSIVE seq(created) AS (\n    SELECT 1\n    UNION ALL\n    SELECT created + 1 FROM seq WHERE created < ?\n)\nINSERT INTO routes (id, kind, hash, content, created)\nSELECT 'paste-' || created, 2, NULL, ?, created FROM seq\n",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "8e7c1d36643a6de3bade3c69681f6c969ab3bbda8bbd02bab6f576a7ae0c0909"
+}

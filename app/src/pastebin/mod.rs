@@ -165,7 +165,6 @@ impl Pastebin {
 			Resolved::Novel(upload) => {
 				let ready = upload.prepare()?;
 				let Brief { slug, .. } = db.insert(ready).await?;
-				db.spawn_shrink(cfg.mgmt.db_size.get());
 				Self::return_url(
 					&mut writer,
 					&mut reader,

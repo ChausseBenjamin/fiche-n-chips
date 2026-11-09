@@ -9,7 +9,7 @@ use tokio_util::sync::CancellationToken;
 use crate::config::Config;
 use crate::config::logging::{
 	CLEANUP_INTERVAL_KEY, COUNT_KEY, ERR_KEY, OLDEST_KEY, RETENTION_KEY,
-	ROUTES_KEY, YOUNGEST_KEY,
+	ROUTES_KEY, SIZE_KEY, VACUUMED_KEY, YOUNGEST_KEY,
 };
 use crate::limiter::RateLimiter;
 use crate::storage::Storage;
@@ -84,19 +84,25 @@ impl Cleaner {
 				}
 			}
 
-			match self.db.shrink_to_fit(self.cfg.mgmt.db_size.get()).await {
-				Ok(0) => {
+			let cap = self.cfg.mgmt.db_cap.get();
+			let target = self.cfg.mgmt.db_target.get();
+			match self.db.trim_to_spec(cap, target).await {
+				Ok(report) if report.before < cap => {
 					debug("db is within size limit", src!());
 				}
-				Ok(deleted) => {
+				Ok(report) => {
 					info(
-						"freed space by deleting old entries",
-						attrs!(COUNT_KEY => deleted),
+						"trimmed database to target size",
+						attrs!(
+							COUNT_KEY => report.deleted,
+							SIZE_KEY => report.before.saturating_sub(report.after),
+							VACUUMED_KEY => report.vacuumed,
+						),
 					);
 				}
 				Err(e) => {
 					error(
-						"failure while shrinking database to max size",
+						"failure while trimming database to target size",
 						attrs!(ERR_KEY => e),
 					);
 				}

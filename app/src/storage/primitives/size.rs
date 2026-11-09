@@ -17,3 +17,15 @@ impl PageCounts {
 			.saturating_mul(page_size)
 	}
 }
+
+/// Result of a database trim pass.
+#[derive(Debug, Clone, Copy)]
+pub struct TrimReport {
+	// Rows deleted
+	pub deleted:  u64,
+	// Bytes
+	pub before:   u64,
+	pub after:    u64,
+	// Whether a full `VACUUM` ran.
+	pub vacuumed: bool,
+}

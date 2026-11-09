@@ -174,17 +174,26 @@ impl Server {
 					HttpResponse::InternalServerError().finish()
 				}
 			},
-			(&Method::DELETE, None) => {
-				if let Ok(p) = self.db.get_brief(&slug_path).await {
-					return api_delete(&req, p, &self.cfg, self.db.clone()).await;
+			(&Method::DELETE, None) => match self.db.get_brief(&slug_path).await {
+				Ok(Some(p)) => api_delete(&req, p, &self.cfg, self.db.clone()).await,
+				Ok(None) => {
+					debug(
+						"user tried to delete a non-existent page",
+						attrs!(PATH_KEY => format!("{}", path.display())),
+					);
+					handle_404(&req, self.get_404(), slug_path.as_path())
 				}
-
-				debug(
-					"user tried to delete a non-existent page",
-					attrs!(PATH_KEY => format!("{}", path.display())),
-				);
-				handle_404(&req, self.get_404(), slug_path.as_path())
-			}
+				Err(err) => {
+					error(
+						"failed to load entry for deletion",
+						attrs!(
+							PATH_KEY => format!("{}", path.display()),
+							ERR_KEY => err
+						),
+					);
+					HttpResponse::InternalServerError().finish()
+				}
+			},
 			(_, None) => {
 				let client = Client::from(&req);
 				let mut resp = HttpResponse::MethodNotAllowed();

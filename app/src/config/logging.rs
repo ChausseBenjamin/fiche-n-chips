@@ -44,6 +44,7 @@ pub mod log_key {
   pub const SLUG_KEY:             LogKey = "slug";
   pub const SLUG_LEN_KEY:         LogKey = "slug_len";
   pub const STORED_KEY:           LogKey = "stored";
+  pub const VACUUMED_KEY:         LogKey = "vacuumed";
   pub const VALUE_KEY:            LogKey = "value";
   pub const YOUNGEST_KEY:         LogKey = "youngest";
 }
