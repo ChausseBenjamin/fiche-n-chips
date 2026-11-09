@@ -2,7 +2,7 @@ use std::path::Path;
 use std::time::Duration;
 
 use sqlx::query_file_scalar;
-use sqlx::sqlite::SqliteAutoVacuum::Incremental;
+use sqlx::sqlite::SqliteAutoVacuum::None;
 use sqlx::sqlite::SqliteJournalMode::Wal;
 use sqlx::sqlite::SqliteSynchronous::Normal;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
@@ -46,7 +46,7 @@ impl Storage {
 fn connect_options(cfg: &Config, path: &Path) -> SqliteConnectOptions {
 	SqliteConnectOptions::new()
 		.filename(path)
-		.auto_vacuum(Incremental)
+		.auto_vacuum(None) // manual vacuums done instead
 		.synchronous(Normal)
 		.journal_mode(Wal)
 		.busy_timeout(Duration::from_secs(1))

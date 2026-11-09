@@ -24,8 +24,9 @@ WORKDIR /build
 COPY rust-toolchain.toml Cargo.toml Cargo.lock ./
 COPY app/Cargo.toml app/build.rs ./app/
 COPY rslog/Cargo.toml ./rslog/
-COPY .cargo/ ./.cargo/
-COPY tools/ ./tools/
+COPY .cargo/          ./.cargo/
+COPY tools/           ./tools/
+ENV SQLX_OFFLINE=true
 
 # ── Layer 2: Dummy sources to pre-build all dependencies ──
 # Use an empty build.rs so cargo registers the build script and creates an
@@ -43,9 +44,10 @@ RUN mkdir -p app/src rslog/src && \
 # fingerprint, causing cargo to skip recompilation.  Remove the dummy sources
 # first, then COPY, then touch everything so cargo sees the changes.
 RUN rm -rf app/src rslog/src
-COPY rslog/src ./rslog/src
-COPY app/src ./app/src
+COPY rslog/src  ./rslog/src
+COPY app/src    ./app/src
 COPY app/assets ./app/assets/
+COPY .sqlx      ./.sqlx
 # Restore the real build.rs (overwrites the empty one from the dummy step)
 COPY app/build.rs ./app/build.rs
 RUN find app/src rslog/src app/build.rs -type f -exec touch {} +

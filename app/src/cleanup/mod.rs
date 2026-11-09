@@ -85,15 +85,14 @@ impl Cleaner {
 			}
 
 			match self.db.shrink_to_fit(self.cfg.mgmt.db_size.get()).await {
-				Ok(v) => {
-					if v.is_empty() {
-						debug("db is within size limit", src!());
-					} else {
-						info(
-							"freed space by deleting old entries",
-							attrs!(COUNT_KEY => v.len()),
-						);
-					}
+				Ok(0) => {
+					debug("db is within size limit", src!());
+				}
+				Ok(deleted) => {
+					info(
+						"freed space by deleting old entries",
+						attrs!(COUNT_KEY => deleted),
+					);
 				}
 				Err(e) => {
 					error(

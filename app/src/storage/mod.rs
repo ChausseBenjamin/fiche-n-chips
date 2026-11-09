@@ -5,7 +5,7 @@ use std::time::{Duration, SystemTime};
 
 use rslog::{attrs, debug, error, info, src, warn};
 use sqlx::sqlite::SqlitePool;
-use sqlx::{QueryBuilder, query_file_as, query_file_scalar};
+use sqlx::{QueryBuilder, query_file, query_file_as, query_file_scalar};
 use tokio::sync::Mutex;
 
 use crate::config::logging::{COUNT_KEY, DESC_KEY, ERR_KEY};
@@ -237,9 +237,9 @@ impl Storage {
 		)
 	}
 
-	pub async fn shrink_to_fit(&self, max_bytes: u64) -> Result<Vec<Brief>> {
-		let _guard = self.shrink.lock().await;
-		let mut deleted = Vec::new();
+	pub async fn shrink_to_fit(&self, max_bytes: u64) -> Result<u64> {
+		let guard = self.shrink.lock().await;
+		let mut deleted: u64 = 0;
 
 		if self.size().await?.live(self.page_size) <= max_bytes {
 			return Ok(deleted);
@@ -248,26 +248,25 @@ impl Storage {
 		loop {
 			let mut tx = self.db.begin().await?;
 
-			let batch = query_file_as!(
-				Meta,
+			let affected = query_file!(
 				"src/storage/statements/delete_oldest_batch.sql",
 				SHRINK_BATCH,
 			)
-			.fetch_all(&mut *tx)
-			.await?;
+			.execute(&mut *tx)
+			.await?
+			.rows_affected();
 
-			if batch.is_empty() {
+			if affected == 0 {
 				tx.commit().await?;
 				break;
 			}
 
-			// Read inside the transaction so the measurement includes this batch.
 			let counts =
 				query_file_as!(PageCounts, "src/storage/statements/db_size.sql")
 					.fetch_one(&mut *tx)
 					.await?;
 
-			deleted.extend(batch.into_iter().map(Brief::from));
+			deleted = deleted.saturating_add(affected);
 			tx.commit().await?;
 
 			if counts.live(self.page_size) <= max_bytes {
@@ -286,22 +285,22 @@ impl Storage {
 			);
 		}
 
+		drop(guard);
 		Ok(deleted)
 	}
 
 	pub fn spawn_shrink(self: &Arc<Self>, max_bytes: u64) {
-		let this = Arc::clone(self);
+		let db = Arc::clone(self);
 		tokio::spawn(async move {
-			match this.shrink_to_fit(max_bytes).await {
+			match db.shrink_to_fit(max_bytes).await {
+				Ok(0) => {
+					debug("db is within size limit after insert", src!());
+				}
 				Ok(deleted) => {
-					if deleted.is_empty() {
-						debug("db is within size limit after insert", src!());
-					} else {
-						info(
-							"freed space by deleting old entries after insert",
-							attrs!(COUNT_KEY => deleted.len()),
-						);
-					}
+					info(
+						"freed space by deleting old entries after insert",
+						attrs!(COUNT_KEY => deleted),
+					);
 				}
 				Err(e) => {
 					error("failed to shrink db after insert", attrs!(ERR_KEY => e));
