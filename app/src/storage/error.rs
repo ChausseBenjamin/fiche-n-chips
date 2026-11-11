@@ -1,15 +1,16 @@
+use std::result;
+
+use sqlx::migrate::MigrateError;
 use thiserror::Error;
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = result::Result<T, Error>;
 
 #[derive(Debug, Error)]
 pub enum Error {
 	#[error("Database error: {0}")]
-	Db(#[from] turso::Error),
-	#[error("Failed to read file: {0}")]
-	Io(#[from] std::io::Error),
-	#[error("Initialization failure: {0}")]
-	Setup(String),
-	#[error("Parsing error: {0}")]
-	Parse(String),
+	DB(#[from] sqlx::Error),
+	#[error("Database migration error: {0}")]
+	Migration(#[from] MigrateError),
+	#[error("Invalid row: {0}")]
+	Formatting(String),
 }

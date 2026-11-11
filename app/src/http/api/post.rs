@@ -1,18 +1,18 @@
-use std::path::PathBuf;
+use std::path::Path;
 use std::sync::Arc;
 
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use rslog::{attrs, debug, error};
 use serde::{Deserialize, Serialize};
 
 use super::super::Client;
-use crate::config::logging::{ERR_KEY, PATH_KEY};
 use crate::config::Config;
+use crate::config::logging::{ERR_KEY, PATH_KEY};
 use crate::http::client::ResponseFmt as RespFmt;
-use crate::storage::model::{RedirectInput, Storable};
 use crate::storage::Storage;
+use crate::storage::model::{RedirectInput, Storable};
 use crate::ui;
-use crate::util::{sorry, success, SlugGenerator, CONTACT, IDENT};
+use crate::util::{CONTACT, IDENT, SlugGenerator, sorry, success};
 
 fn short_req_demo() -> ui::UiString {
 	ui::string(
@@ -30,7 +30,7 @@ pub struct ShortenReq {
 
 pub async fn api_post(
 	req: &HttpRequest,
-	endpoint: PathBuf,
+	endpoint: &Path,
 	body: web::Bytes,
 	slugs: Arc<SlugGenerator>,
 	db: Arc<Storage>,
@@ -46,7 +46,6 @@ pub async fn api_post(
 		"/api/shorten" => handle_shorten(body, slugs, db, cfg, ansi_resp).await,
 		_ => {
 			let mut resp = HttpResponse::InternalServerError();
-			// TODO: log an error internally
 			error(
 				"user reached a supposedly unreachable api endpoint",
 				attrs!(PATH_KEY => endpoint.to_string_lossy().to_string()),
@@ -134,9 +133,9 @@ async fn handle_shorten(
 			));
 		}
 	};
-	db.spawn_shrink(cfg.management.db_size.get());
 	match db.queries.insert(&redirect).await {
 		Ok(_) => {
+			db.spawn_shrink(cfg.mgmt.db_size.get());
 			HttpResponse::Ok().body(ui::format!(ansi_resp,
 				"Successfully created a short url for the requested target, {}\nYou may use the url below:\n{}/{}\n",
 				success(),

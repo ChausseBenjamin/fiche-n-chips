@@ -33,7 +33,7 @@ impl AlertScheduler {
 		storage: Arc<Storage>,
 		cfg: &Config,
 	) -> Self {
-		let retention = cfg.management.retention;
+		let retention = cfg.mgmt.retention;
 		Self {
 			emitter,
 			storage,

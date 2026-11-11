@@ -4,6 +4,7 @@ mod alerting;
 mod anonymizer;
 mod cleanup;
 mod config;
+mod domain;
 mod http;
 mod limiter;
 mod pastebin;
@@ -38,18 +39,15 @@ async fn main() -> Result<()> {
 	let logger: Logger = TryFrom::try_from(&cfg.logging)?;
 	rslog::set_default(logger);
 	info("starting server", src!());
-	if rustls::crypto::ring::default_provider()
-		.install_default()
-		.is_err()
-	{
+	if rustls::crypto::ring::default_provider().install_default().is_err() {
 		warn("rustls CryptoProvider was already installed", src!());
 	}
 	let reserved = ReservedPathProvider::new(&cfg);
-	let slugs = Arc::from(SlugGenerator::new(cfg.management.slug_length));
-	let anonimizer = Arc::from(Anonimizer::new(&cfg.management.seed_path)?);
+	let slugs = Arc::from(SlugGenerator::new(cfg.mgmt.slug_length));
+	let anonimizer = Arc::from(Anonimizer::new(&cfg.mgmt.seed_path)?);
 	let rate_limiter = Arc::new(Mutex::new(RateLimiter::new(
-		cfg.management.rate_limit,
-		cfg.management.rate_limit_period,
+		cfg.mgmt.rate_limit,
+		cfg.mgmt.rate_limit_period,
 	)));
 
 	let storage =
@@ -70,7 +68,7 @@ async fn main() -> Result<()> {
 	));
 
 	let shutdown = CancellationToken::new();
-	let shutdown_timeout = cfg.management.shutdown_timeout;
+	let shutdown_timeout = cfg.mgmt.shutdown_timeout;
 
 	let (sched_cfg, sched_db, sched_shutdown) =
 		(cfg.clone(), storage.clone(), shutdown.clone());

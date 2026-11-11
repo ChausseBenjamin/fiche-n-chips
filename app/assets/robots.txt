@@ -4,7 +4,8 @@ Disallow: /
 Allow: /$
 Allow: /index.html
 Allow: /main.css
-Allow: /favicon.ico
+Allow: /favicon.svg
+Allow: /og-image.png
 Allow: /sitemap.xml
 
 Sitemap: https://1yr.ca/sitemap.xml

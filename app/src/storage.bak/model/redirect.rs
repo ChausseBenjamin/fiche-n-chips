@@ -3,10 +3,10 @@ use std::sync::Arc;
 
 use super::{Result, RouteKind, Storable};
 use crate::storage::Storage;
-use crate::util::{compress, decompress, normalize_http, SlugGenerator};
+use crate::util::{SlugGenerator, compress, decompress, normalize_http};
 
 fn validate_slug(slug: &str) -> Result<()> {
-	let undesirable = ['.', '?', '&', '/'];
+	let undesirable = ['.', '?', '&', '/', '#', '\\', '"', '%', '^'];
 	if let Some(c) = slug.chars().find(|c| undesirable.contains(c)) {
 		return Err(super::Error::Parse(format!(
 			"slug contains undesirable character: '{c}'"

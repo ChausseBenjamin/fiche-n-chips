@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 
 const RESERVED_NTFY_PATHS: &[&str] = &[
 	"/docs",
@@ -11,10 +11,11 @@ const RESERVED_NTFY_PATHS: &[&str] = &[
 	"/signup",
 	"/login",
 	"/v1",
-	// Not blocked by ntfy but used as a topic for global (non-slug) messages:
+	// Not blocked by ntfy but will be used as a topic for global alerts
+	// which aren't slug-specific (Soon-TM)
 	"/status",
 ];
 
-pub fn reserved_paths() -> Vec<PathBuf> {
-	RESERVED_NTFY_PATHS.iter().map(|p| PathBuf::from(*p)).collect()
+pub fn reserved_paths() -> Vec<&'static Path> {
+	RESERVED_NTFY_PATHS.iter().map(|p| Path::new(*p)).collect()
 }

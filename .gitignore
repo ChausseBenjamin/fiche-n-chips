@@ -1,3 +1,5 @@
 .env
 target/
 src/reference/
+.DS_Store
+ROADMAP.md

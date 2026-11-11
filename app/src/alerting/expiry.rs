@@ -5,7 +5,7 @@ use serde::Serialize;
 
 use super::Error;
 use super::emitter::{AlertMsg, MessagePriority};
-use crate::storage::model::RouteKind;
+use crate::domain::RouteKind;
 
 #[derive(Serialize)]
 #[serde(rename_all = "lowercase")]

@@ -2,15 +2,16 @@ mod api;
 mod file;
 mod provider;
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
+pub use api::HEALTHCHECK_PATH;
 pub use file::{FileContents, WebFile};
 pub use provider::ReservedPathProvider;
 
 pub enum ReservedPath {
 	File(WebFile<'static>),
-	Api(PathBuf),
-	Alerting(PathBuf),
+	Api(&'static Path),
+	Alerting(&'static Path),
 }
 
 impl ReservedPath {

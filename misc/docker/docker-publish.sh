@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage: ./misc/docker-publish.sh <dockerhub-user> [version]
+# Usage: ./misc/docker/docker-publish.sh <dockerhub-user> [version]
 #
 # If version is omitted, it reads the version from Cargo.toml
 # (the workspace root).  Example:
 #
-#   ./misc/docker-publish.sh johndoe 0.1.0
-#   ./misc/docker-publish.sh johndoe           # reads version from Cargo.toml
+#   ./misc/docker/docker-publish.sh johndoe 0.1.0
+#   ./misc/docker/docker-publish.sh johndoe       # reads version from Cargo.toml
 
 DOCKER_USER="${1:?Usage: $0 <dockerhub-user> [version]}"
 VERSION="${2:-}"
@@ -21,7 +21,7 @@ IMAGE="fiche-n-chips"
 REMOTE="${DOCKER_USER}/${IMAGE}"
 
 echo "==> Building ${REMOTE}:latest …"
-docker build -f misc/Dockerfile -t "${REMOTE}:latest" .
+docker build -f misc/docker/Dockerfile -t "${REMOTE}:latest" .
 
 echo "==> Tagging ${REMOTE}:v${VERSION} …"
 docker tag "${REMOTE}:latest" "${REMOTE}:v${VERSION}"

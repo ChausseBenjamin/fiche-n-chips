@@ -145,7 +145,7 @@ cargo test --workspace
 cargo clippy --workspace --all-targets --all-features
 
 # Dev mode (short retention, frequent cleanup)
-misc/run-dev.sh
+misc/dev/run-dev.sh
 ```
 
 ## Roadmap

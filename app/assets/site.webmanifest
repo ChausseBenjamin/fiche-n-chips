@@ -1,0 +1,33 @@
+{
+  "name": "1yr.ca — terminal pastebin & url shortener",
+  "short_name": "1yr.ca",
+  "description": "Terminal-based pastebin and URL shortener hosted in Canada. Storage up to 1 year.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0d0d0d",
+  "theme_color": "#0d0d0d",
+  "lang": "en-CA",
+  "categories": ["utilities", "productivity", "developer"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
