@@ -79,7 +79,6 @@ impl Storage {
 		Ok(inserted.saturating_add(deleted))
 	}
 
-	/// Deletes a route by slug, returning the removed brief if it existed.
 	pub async fn delete(&self, id: &Slug) -> Result<Option<Brief>> {
 		Ok(
 			query_file_as!(Meta, "src/storage/statements/delete.sql", id.as_str())
@@ -108,7 +107,6 @@ impl Storage {
 		payload.map(EntryPacked::try_from).transpose()
 	}
 
-	/// Returns the brief for a route, or `None` if it does not exist.
 	pub async fn get_brief(&self, id: &Path) -> Result<Option<Brief>> {
 		Ok(
 			query_file_as!(

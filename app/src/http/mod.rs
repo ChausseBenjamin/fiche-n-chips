@@ -12,14 +12,14 @@ use actix_web::http::{Method, StatusCode};
 use actix_web::{App, HttpRequest, HttpResponse, HttpServer, web};
 use api::{api_delete, api_post};
 use client::ResponseFmt as RespFmt;
-use rslog::{attrs, debug, error};
+use rslog::{attrs, debug, error, info};
 use service::{handle_404, handle_static};
 use tokio_util::sync::CancellationToken;
 use user::handle_entry;
 
 use crate::anonymizer::Anonimizer;
 use crate::config::Config;
-use crate::config::logging::{ERR_KEY, METHOD_KEY, PATH_KEY};
+use crate::config::logging::{ADDR_KEY, ERR_KEY, METHOD_KEY, PATH_KEY};
 use crate::http::api::api_healthcheck;
 use crate::http::client::Client;
 use crate::limiter::{RateLimitStatus, RateLimiter};
@@ -64,16 +64,33 @@ impl Server {
 		let addr = self.cfg.server.listen_addr.clone();
 		let port = self.cfg.server.http_port;
 		let timeout = self.cfg.mgmt.shutdown_timeout;
-		HttpServer::new(move || {
+		let server = HttpServer::new(move || {
 			App::new()
 				.app_data(web::Data::from(self.clone()))
 				.default_service(web::to(Server::handler))
 		})
-		.bind((addr.as_ref(), port))?
-		.shutdown_timeout(timeout.as_secs())
-		.shutdown_signal(shutdown.cancelled_owned())
-		.run()
-		.await
+		.bind((addr.as_ref(), port))?;
+
+		let addrs = server
+			.addrs_with_scheme()
+			.into_iter()
+			.map(|(socket, scheme)| {
+				let addr = if socket.ip().is_unspecified() {
+					format!("localhost:{}", socket.port())
+				} else {
+					socket.to_string()
+				};
+				format!("{scheme}://{addr}")
+			})
+			.collect::<Vec<_>>()
+			.join(", ");
+		info("http listener started", attrs!(ADDR_KEY => addrs));
+
+		server
+			.shutdown_timeout(timeout.as_secs())
+			.shutdown_signal(shutdown.cancelled_owned())
+			.run()
+			.await
 	}
 
 	pub async fn handler(

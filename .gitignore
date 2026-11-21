@@ -1,4 +1,5 @@
 .env
+.internal
 target/
 src/reference/
 .DS_Store

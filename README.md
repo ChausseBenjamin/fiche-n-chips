@@ -108,41 +108,41 @@ cargo run --release --package fiche-n-chips
 Every setting can be set via CLI flag **or** environment variable — no config
 file needed.
 
-| Variable               | Default              | What it does                           |
-|------------------------|----------------------|----------------------------------------|
-| `PUBLIC_ADDR`          | `localhost`          | Public-facing domain                   |
-| `LISTEN_ADDR`          | `127.0.0.1`          | Address to bind the server to          |
-| `HTTP_PORT`            | `9001`               | HTTP server (browser & API)            |
-| `PASTE_PORT`           | `9002`               | TCP pastebin (netcat)                  |
-| `MAINTAINER_EMAIL`     | `john@example.com`   | Contact email in error messages        |
-| `HTML_DIR`             | —                    | Directory for static web files[^1]     |
-| `DB_PATH`              | `.internal/store.db` | Database file or directory             |
-| `DB_CACHE`             | `32`                 | SQLite memory cache in MB              |
-| `DB_CAP`               | `12GB`               | File size that triggers a database trim |
-| `DB_TARGET`            | `10GB`               | Size the database is trimmed back to   |
-| `RETENTION`            | `365days`            | How long before entries get deleted    |
-| `SLUG_LEN`             | `4`                  | Length of auto-generated slugs         |
-| `PASTE_MAX_SIZE`       | `256KB`              | Maximum paste body size                |
-| `PASTE_READ_TIMEOUT`   | `1s`                 | Per-chunk timeout for paste uploads    |
-| `REDIRECT_MAX_SIZE`    | `2KB`                | Maximum URL length to shorten          |
-| `REDIRECT_SLUG_LIMIT`  | `144`                | Maximum custom slug length             |
-| `USER_DELETION_WINDOW` | `10m`                | Time window to delete your own entry   |
-| `CLEANUP_INTERVAL`     | `1h`                 | How often expired entries are swept    |
-| `SHUTDOWN_TIMEOUT`     | `10s`                | Graceful shutdown timeout              |
-| `LOG_LEVEL`            | `info`               | One of: debug, info, warn, error       |
-| `LOG_OUTPUT`           | `stdout`             | One of: stdout, stderr, or a file path |
-| `LOG_FORMAT`           | `json`               | One of: plain, json, none              |
-| `LOG_TRACE`            | `false`              | Include source location in log entries |
+| Variable                 | Default                | What it does                          |
+|--------------------------|------------------------|---------------------------------------|
+| `PUBLIC_ADDR`            | `localhost`            | Public-facing domain                  |
+| `LISTEN_ADDR`            | `127.0.0.1`            | Address to bind the server to         |
+| `HTTP_PORT`              | `9001`                 | HTTP server (browser & API)           |
+| `PASTE_PORT`             | `9002`                 | TCP pastebin (netcat)                 |
+| `MAINTAINER_EMAIL`       | `john@example.com`     | Contact email in error messages       |
+| `HTML_DIR`               | -                      | Directory for static web files[^1]    |
+| `DB_PATH`                | `.internal/store.db`   | Database file or directory            |
+| `DB_CACHE`               | `32`                   | SQLite memory cache in MB             |
+| `DB_CAP`                 | `12GB`                 | File size triggering a database trim  |
+| `DB_TARGET`              | `10GB`                 | Size the database is trimmed back to  |
+| `RETENTION`              | `365days`              | How long before entries get deleted   |
+| `SLUG_LEN`               | `4`                    | Length of auto-generated slugs        |
+| `PASTE_MAX_SIZE`         | `256KB`                | Maximum paste body size               |
+| `PASTE_READ_TIMEOUT`     | `1s`                   | Per-chunk timeout for paste uploads   |
+| `REDIRECT_MAX_SIZE`      | `2KB`                  | Maximum URL length to shorten         |
+| `REDIRECT_SLUG_LIMIT`    | `144`                  | Maximum custom slug length            |
+| `USER_DELETION_WINDOW`   | `10m`                  | Time window to delete your own entry  |
+| `CLEANUP_INTERVAL`       | `1h`                   | How often expired entries are swept   |
+| `SHUTDOWN_TIMEOUT`       | `10s`                  | Graceful shutdown timeout             |
+| `LOG_LEVEL`              | `info`                 | debug, info, warn, or error           |
+| `LOG_OUTPUT`             | `stdout`               | stdout, stderr, or a file path        |
+| `LOG_FORMAT`             | `json`                 | One of: plain, json, none             |
+| `LOG_TRACE`              | `false`                | Include source location in logs       |
+| `NTFY_SERVER`            | -                      | ntfy.sh URL for notifications         |
+| `NTFY_TOPIC_PREFIX`      | -                      | ntfy topic prefix                     |
+| `NTFY_API_KEY`           | -                      | ntfy topic prefix                     |
 
 When the database file reaches `DB_CAP`, the oldest entries are deleted until
 live data fits in `DB_TARGET`, then the file is compacted with a full `VACUUM`.
 The vacuum needs roughly twice the database size in free disk space and briefly
 holds the database write lock, so size the cap/target gap to keep it infrequent.
 
-<!-- | `NTFY_SERVER` | —                | ntfy.sh URL for notifications | --->
-<!-- | `NTFY_PREFIX` | `fiche-n-chips-` | ntfy topic prefix             | --->
-
-See `cargo run -- --help` for the full list.
+See `fiche-n-chips --help` for the full list.
 
 ## Development
 
@@ -180,9 +180,10 @@ misc/dev/run-dev.sh
 - [ ] Manage users with special permissions:
     - [ ] anonimized whitelist
     - [ ] anonimized blacklist
-- [ ] [ntfy.sh][4] support for notifications:
-  - [ ] prematurely deleted pastebin (server storage shortage)
-  - [ ] short-url about to expire (ex: 1 week prior)
+- [x] [ntfy.sh][4] support for notifications:
+  - [x] prematurely deleted pastebin (server storage shortage)
+  - [x] short-url about to expire (ex: 1 week prior)
+  - [ ] server status topic (db capacity, slug count, shutdown/startup, etc...)
 
 ## License
 
