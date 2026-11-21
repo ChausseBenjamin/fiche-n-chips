@@ -11,8 +11,17 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       gcc \
       clang \
-      mold && \
+      mold \
+      curl \
+      xz-utils \
+      ca-certificates && \
     rm -rf /var/lib/apt/lists/*
+
+ARG ZIG_VERSION=0.17.1
+RUN curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" \
+      | tar -xJ -C /opt && \
+    ln -s "/opt/zig-x86_64-linux-${ZIG_VERSION}/zig" /usr/local/bin/zig && \
+    zig version
 
 # Add the musl cross-compilation target (for the nightly toolchain from rust-toolchain.toml)
 RUN rustup target add x86_64-unknown-linux-musl --toolchain nightly-2026-05-17
