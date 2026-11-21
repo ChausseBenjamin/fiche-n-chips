@@ -7,6 +7,10 @@ codegen-backend = true
 [profile.dev]
 codegen-backend = "cranelift"
 
+# Some build deps don't work with cranelift on ARM/macOS, RIP...
+[profile.dev.build-override]
+codegen-backend = "llvm"
+
 # ── Environment variables ──
 [env]
 CC_x86_64_unknown_linux_musl = { value = "tools/ccpicker", relative = true }

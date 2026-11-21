@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO routes (id, kind, hash, content) VALUES (?, ?, ?, ?)\nON CONFLICT(id) DO NOTHING\nRETURNING id AS \"id!: _\", kind AS \"kind!: _\", created AS \"created!: _\"\n",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: _",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "routes",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "kind!: _",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "routes",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "name": "created!: _",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "routes",
+            "name": "created"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "f3ef593156470170bc9b112cac3078710546db820bf42f660f77137fe8e8ac91"
+}

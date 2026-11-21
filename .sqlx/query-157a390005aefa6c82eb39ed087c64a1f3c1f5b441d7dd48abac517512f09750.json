@@ -1,0 +1,21 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT CAST(auto_vacuum AS INTEGER) AS \"auto_vacuum!: i64\"\nFROM pragma_auto_vacuum()\n",
+  "describe": {
+    "columns": [
+      {
+        "name": "auto_vacuum!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "157a390005aefa6c82eb39ed087c64a1f3c1f5b441d7dd48abac517512f09750"
+}

@@ -33,7 +33,7 @@ impl AlertScheduler {
 		storage: Arc<Storage>,
 		cfg: &Config,
 	) -> Self {
-		let retention = cfg.management.retention;
+		let retention = cfg.mgmt.retention;
 		Self {
 			emitter,
 			storage,
@@ -72,10 +72,12 @@ impl AlertScheduler {
 		for bracket in ExpiryBracket::iter() {
 			let from = now + bracket.lead() - self.retention;
 			let until = from + WINDOW;
-			for r in self.storage.queries.get_created_between(from, until).await? {
+			for r in self.storage.get_created_between(from, until).await? {
 				let kind: ContentKind = r.kind.try_into()?;
 				let fire_at = r.created + self.retention - bracket.lead();
-				self.queue.insert((fire_at, bracket.create_warning(r.id, kind)));
+				self
+					.queue
+					.insert((fire_at, bracket.create_warning(r.slug.to_string(), kind)));
 			}
 		}
 		Ok(())

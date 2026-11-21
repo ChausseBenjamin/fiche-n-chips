@@ -4,7 +4,7 @@ mod service; // Issued by the service
 mod user; // Issued by users
 
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
@@ -12,21 +12,23 @@ use actix_web::http::{Method, StatusCode};
 use actix_web::{App, HttpRequest, HttpResponse, HttpServer, web};
 use api::{api_delete, api_post};
 use client::ResponseFmt as RespFmt;
-use rslog::{attrs, debug};
+use rslog::{attrs, debug, error, info};
 use service::{handle_404, handle_static};
 use tokio_util::sync::CancellationToken;
 use user::handle_entry;
 
 use crate::anonymizer::Anonimizer;
 use crate::config::Config;
-use crate::config::logging::{METHOD_KEY, PATH_KEY};
+use crate::config::logging::{ADDR_KEY, ERR_KEY, METHOD_KEY, PATH_KEY};
+use crate::http::api::api_healthcheck;
 use crate::http::client::Client;
 use crate::limiter::{RateLimitStatus, RateLimiter};
-use crate::reserved::{ReservedPath as ResPath, ReservedPathProvider, WebFile};
-use crate::storage::model::RowEntry;
-use crate::storage::{self, Storage};
+use crate::reserved::{
+	HEALTHCHECK_PATH, ReservedPath as ResPath, ReservedPathProvider, WebFile,
+};
+use crate::storage::Storage;
 use crate::ui;
-use crate::util::{EMPHASIS, IDENT, SlugGenerator, normalize_http, sorry};
+use crate::util::{EMPHASIS, IDENT, normalize_http, sorry};
 
 const NOT_FOUND_PATH: &str = "/404";
 
@@ -34,7 +36,6 @@ pub struct Server {
 	cfg:          Arc<Config>,
 	db:           Arc<Storage>,
 	reserved:     Arc<ReservedPathProvider>,
-	slugs:        Arc<SlugGenerator>,
 	anonimizer:   Arc<Anonimizer>,
 	rate_limiter: Arc<Mutex<RateLimiter>>,
 }
@@ -44,7 +45,6 @@ impl Server {
 		cfg: Arc<Config>,
 		db: Arc<Storage>,
 		reserved: Arc<ReservedPathProvider>,
-		slugs: Arc<SlugGenerator>,
 		anonimizer: Arc<Anonimizer>,
 		rate_limiter: Arc<Mutex<RateLimiter>>,
 	) -> Self {
@@ -52,7 +52,6 @@ impl Server {
 			cfg,
 			db,
 			reserved,
-			slugs,
 			anonimizer,
 			rate_limiter,
 		}
@@ -64,17 +63,34 @@ impl Server {
 	) -> io::Result<()> {
 		let addr = self.cfg.server.listen_addr.clone();
 		let port = self.cfg.server.http_port;
-		let timeout = self.cfg.management.shutdown_timeout;
-		HttpServer::new(move || {
+		let timeout = self.cfg.mgmt.shutdown_timeout;
+		let server = HttpServer::new(move || {
 			App::new()
 				.app_data(web::Data::from(self.clone()))
 				.default_service(web::to(Server::handler))
 		})
-		.bind((addr.as_ref(), port))?
-		.shutdown_timeout(timeout.as_secs())
-		.shutdown_signal(shutdown.cancelled_owned())
-		.run()
-		.await
+		.bind((addr.as_ref(), port))?;
+
+		let addrs = server
+			.addrs_with_scheme()
+			.into_iter()
+			.map(|(socket, scheme)| {
+				let addr = if socket.ip().is_unspecified() {
+					format!("localhost:{}", socket.port())
+				} else {
+					socket.to_string()
+				};
+				format!("{scheme}://{addr}")
+			})
+			.collect::<Vec<_>>()
+			.join(", ");
+		info("http listener started", attrs!(ADDR_KEY => addrs));
+
+		server
+			.shutdown_timeout(timeout.as_secs())
+			.shutdown_signal(shutdown.cancelled_owned())
+			.run()
+			.await
 	}
 
 	pub async fn handler(
@@ -89,6 +105,10 @@ impl Server {
 		let path = normalize_http(Path::new(req.uri().path()));
 		let slug_path = path.strip_prefix("/").unwrap_or(&path).to_path_buf();
 
+		if path.as_path() == Path::new(HEALTHCHECK_PATH) {
+			// calling early helps mitigate noise in logs
+			return api_healthcheck(&req).await;
+		}
 		debug(
 			"dispatching request",
 			attrs!(
@@ -102,7 +122,7 @@ impl Server {
 					"matched reserved file",
 					attrs!(PATH_KEY => path.display().to_string()),
 				);
-				handle_static(&req, file)
+				handle_static(&req, file, false)
 			}
 			(_, Some(ResPath::File(_))) => HttpResponse::MethodNotAllowed()
 				.insert_header(("Allow", "GET"))
@@ -138,15 +158,7 @@ impl Server {
 					}
 				}
 
-				api_post(
-					&req,
-					path.clone(),
-					body,
-					self.slugs.clone(),
-					self.db.clone(),
-					&self.cfg,
-				)
-				.await
+				api_post(&req, path, body, self.db.clone(), &self.cfg).await
 			}
 			(_, Some(ResPath::Api(_))) => HttpResponse::MethodNotAllowed()
 				.insert_header(("Allow", "POST"))
@@ -162,28 +174,43 @@ impl Server {
 				handle_404(&req, self.get_404(), slug_path.as_path())
 			}
 
-			(&Method::GET, None) => {
-				if let Ok(p) = Self::get_row(self.db.clone(), slug_path.clone()).await {
-					return handle_entry(&req, p);
+			(&Method::GET, None) => match self.db.get(&slug_path).await {
+				Ok(Some(entry)) => handle_entry(&req, slug_path.as_path(), entry),
+				Ok(None) => {
+					debug(
+						"user tried to reach a non-existent page",
+						attrs!(PATH_KEY => format!("{}", path.display())),
+					);
+					handle_404(&req, self.get_404(), slug_path.as_path())
 				}
-
-				debug(
-					"user tried to reach a non-existent page",
-					attrs!(PATH_KEY => format!("{}", path.display())),
-				);
-				handle_404(&req, self.get_404(), slug_path.as_path())
-			}
-			(&Method::DELETE, None) => {
-				if let Ok(p) = Self::get_row(self.db.clone(), slug_path.clone()).await {
-					return api_delete(&req, p, &self.cfg, self.db.clone()).await;
+				Err(err) => {
+					error(
+						"failed to load entry",
+						attrs!(PATH_KEY => format!("{}", path.display()), ERR_KEY => err),
+					);
+					HttpResponse::InternalServerError().finish()
 				}
-
-				debug(
-					"user tried to delete a non-existent page",
-					attrs!(PATH_KEY => format!("{}", path.display())),
-				);
-				handle_404(&req, self.get_404(), slug_path.as_path())
-			}
+			},
+			(&Method::DELETE, None) => match self.db.get_brief(&slug_path).await {
+				Ok(Some(p)) => api_delete(&req, p, &self.cfg, self.db.clone()).await,
+				Ok(None) => {
+					debug(
+						"user tried to delete a non-existent page",
+						attrs!(PATH_KEY => format!("{}", path.display())),
+					);
+					handle_404(&req, self.get_404(), slug_path.as_path())
+				}
+				Err(err) => {
+					error(
+						"failed to load entry for deletion",
+						attrs!(
+							PATH_KEY => format!("{}", path.display()),
+							ERR_KEY => err
+						),
+					);
+					HttpResponse::InternalServerError().finish()
+				}
+			},
 			(_, None) => {
 				let client = Client::from(&req);
 				let mut resp = HttpResponse::MethodNotAllowed();
@@ -197,13 +224,6 @@ impl Server {
 				))
 			}
 		}
-	}
-
-	async fn get_row(
-		db: Arc<Storage>,
-		path: PathBuf,
-	) -> Result<RowEntry, storage::Error> {
-		db.queries.get_from_path(path.to_string_lossy().to_string()).await
 	}
 
 	fn get_404(&self) -> Option<&WebFile<'static>> {

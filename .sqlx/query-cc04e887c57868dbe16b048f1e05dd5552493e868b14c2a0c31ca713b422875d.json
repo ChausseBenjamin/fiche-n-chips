@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "WITH RECURSIVE split(slug, rest, ord) AS (\n\t\tSELECT NULL, ? || '/', 0 UNION ALL\n\t\tSELECT substr(rest, 1, instr(rest, '/') - 1),\n\t\t\t\t\t substr(rest, instr(rest, '/') + 1),\n\t\t\t\t\t ord + 1\n\t\tFROM split WHERE rest <> '' AND instr(rest, '/') > 0\n)\nINSERT INTO routes (id, kind, hash, content)\nSELECT slug, ?, ?, ? FROM split\nWHERE ord > 0 AND slug <> '' AND NOT EXISTS\n(SELECT 1 FROM routes AS e WHERE e.id = split.slug)\nORDER BY ord LIMIT 1\nRETURNING id AS \"id!: _\", kind AS \"kind!: _\", created AS \"created!: _\"\n",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: _",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "routes",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "kind!: _",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "routes",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "name": "created!: _",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "routes",
+            "name": "created"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "cc04e887c57868dbe16b048f1e05dd5552493e868b14c2a0c31ca713b422875d"
+}

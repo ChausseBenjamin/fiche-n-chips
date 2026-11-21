@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM routes\nWHERE kind != 0 AND id IN (\n    SELECT id FROM routes WHERE kind != 0\n    ORDER BY created ASC\n    LIMIT ?\n  )\n",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "e5d4d33f501af7cab843113e049c1f45d6ff3d826d93c7e07e8ff25bb1a36a32"
+}

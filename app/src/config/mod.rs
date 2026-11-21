@@ -5,6 +5,7 @@ use std::time::Duration;
 use clap::{Args, Parser};
 use logging::LoggingCfg;
 
+use crate::domain::RedirectLimits;
 use crate::util::{Secret, StorageSize};
 
 #[derive(Parser)]
@@ -13,25 +14,25 @@ pub struct Config {
 	/// Confirations related to networking and communication with the outside
 	/// world
 	#[clap(flatten)]
-	pub server:     ServerCfg,
+	pub server:   ServerCfg,
 	/// Settings exclusive to the management of pastebins
 	/// (creation/deletion/etc...)
 	#[clap(flatten)]
-	pub pastebin:   PastebinCfg,
+	pub pastebin: PastebinCfg,
 	/// Settings exclusive to the management of redirect urls
 	/// (creation/deletion/etc...)
 	#[clap(flatten)]
-	pub redirect:   RedirectCfg,
+	pub redirect: RedirectCfg,
 	/// Configurations that are either internal or relate to multiple areas at
 	/// once (ex: redirect+pastebin)
 	#[clap(flatten)]
-	pub management: ManagementCfg,
+	pub mgmt:     ManagementCfg,
 	/// Formatting and miscellaneous informations related to runtime logs
 	#[clap(flatten)]
-	pub logging:    LoggingCfg,
+	pub logging:  LoggingCfg,
 	/// Optional Ntfy.sh server configuration
 	#[clap(flatten)]
-	pub ntfy:       NtfyCfg,
+	pub ntfy:     NtfyCfg,
 }
 
 #[derive(Args)]
@@ -67,9 +68,12 @@ pub struct ManagementCfg {
 	/// How much of the database to cache in memory
 	#[arg(long, env = "DB_CACHE", default_value = "32MB")]
 	pub db_cache:          StorageSize,
-	/// Maximum size the database is allowed to have
-	#[arg(long, env = "DB_MAX_SIZE", default_value = "10GB")]
-	pub db_size:           StorageSize,
+	/// File size at which the database triggers a trim
+	#[arg(long, env = "DB_CAP", default_value = "12GB")]
+	pub db_cap:            StorageSize,
+	/// Size the database is trimmed back to after reaching its cap
+	#[arg(long, env = "DB_TARGET", default_value = "10GB")]
+	pub db_target:         StorageSize,
 	/// Seed location used to anonymize user IPs
 	#[arg(long, env = "SECRET_SEED_PATH", default_value = ".internal/seed")]
 	pub seed_path:         PathBuf,
@@ -86,11 +90,6 @@ pub struct ManagementCfg {
 	/// How long pastes and redirects are retained
 	#[arg(long, env = "RETENTION", default_value = "365days", value_parser = parse_duration)]
 	pub retention:         Duration,
-	/// Character length of generated slugs
-	/// - always the case for paste
-	/// - used for shortening when no short url is provided
-	#[arg(long, env = "SLUG_LEN", default_value_t = 4)]
-	pub slug_length:       u8,
 	/// At which time interval the server should check for expired entries and
 	/// clean them up
 	#[arg(long, env = "CLEANUP_INTERVAL", default_value = "1h", value_parser = parse_duration)]
@@ -148,6 +147,15 @@ pub struct RedirectCfg {
 	/// Maximum character length of generated redirect slugs
 	#[arg(long, env = "REDIRECT_SLUG_LIMIT", default_value_t = 144)]
 	pub max_short: u16,
+}
+
+impl From<&RedirectCfg> for RedirectLimits {
+	fn from(cfg: &RedirectCfg) -> Self {
+		Self {
+			dst: cfg.max_raw,
+			src: cfg.max_short,
+		}
+	}
 }
 
 pub fn parse_duration(s: &str) -> Result<Duration, String> {

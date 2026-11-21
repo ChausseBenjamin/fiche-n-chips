@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "VACUUM\n",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "03749bace89e00bc7373987623fd0f72e49ee0dd3482c987bd82e38a9e5cbcc4"
+}

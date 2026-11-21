@@ -41,7 +41,7 @@ impl ReservedPathProvider {
 			};
 		if cfg.ntfy.ntfy_url.as_deref().is_some_and(|s| !s.is_empty()) {
 			for path in alerting::reserved_paths() {
-				files.insert(path.clone(), ReservedPath::Alerting(path));
+				files.insert(path.to_path_buf(), ReservedPath::Alerting(path));
 			}
 		}
 		for api in api_paths() {
@@ -149,7 +149,9 @@ impl ReservedPathProvider {
 		files
 	}
 
-	pub fn paths(&self) -> Vec<&ReservedPath> { self.files.values().collect() }
+	pub fn paths(&self) -> impl Iterator<Item = &Path> + '_ {
+		self.files.keys().map(PathBuf::as_path)
+	}
 
 	pub fn get(&self, path: &Path) -> Option<&ReservedPath> {
 		self.files.get(path)

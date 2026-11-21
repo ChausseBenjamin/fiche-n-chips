@@ -2,17 +2,21 @@ use std::io::{self, Read, Write};
 
 use brotli::{CompressorWriter, Decompressor};
 
-pub fn compress(src: &str) -> Result<Vec<u8>, io::Error> {
+const WINDOW: u32 = 22; // 4MiB rolling window
+const QUALITY: u32 = 9;
+const BUF_SIZE: usize = 4096;
+
+pub fn compress(src: &[u8]) -> Result<Box<[u8]>, io::Error> {
 	let mut out = Vec::new();
 	{
-		let mut w = CompressorWriter::new(&mut out, 4096, 9, 22);
-		w.write_all(src.as_bytes())?;
+		let mut w = CompressorWriter::new(&mut out, BUF_SIZE, QUALITY, WINDOW);
+		w.write_all(src)?;
 	}
-	Ok(out)
+	Ok(out.into_boxed_slice())
 }
 
-pub fn decompress(src: &[u8]) -> Result<String, io::Error> {
-	let mut out = String::new();
-	Decompressor::new(src, 4096).read_to_string(&mut out)?;
-	Ok(out)
+pub fn decompress(src: &[u8]) -> Result<Box<[u8]>, io::Error> {
+	let mut out = Vec::new();
+	Decompressor::new(src, 4096).read_to_end(&mut out)?;
+	Ok(out.into_boxed_slice())
 }

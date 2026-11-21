@@ -26,6 +26,8 @@ mod opt {
 #[allow(unused_imports)]
 pub use self::opt::*;
 
+/// Backend implementation of the logger
+///
 /// Methods aimed at returning a copy of the handler are mutable to
 /// allow implementors to run optimizations (pre-computing/caching)
 /// before forking a copy of the logger.

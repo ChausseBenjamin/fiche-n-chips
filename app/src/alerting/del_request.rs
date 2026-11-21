@@ -3,7 +3,7 @@ use serde::Serialize;
 use super::Error;
 use super::emitter::AlertMsg;
 use crate::alerting::expiry::ContentKind;
-use crate::storage::model::DeletedRoute;
+use crate::domain::Brief;
 
 #[derive(Serialize)]
 pub struct DeletionRequest {
@@ -11,13 +11,13 @@ pub struct DeletionRequest {
 	kind: ContentKind,
 }
 
-impl TryFrom<&DeletedRoute> for DeletionRequest {
+impl TryFrom<&Brief> for DeletionRequest {
 	type Error = Error;
 
-	fn try_from(route: &DeletedRoute) -> Result<Self, Error> {
+	fn try_from(brief: &Brief) -> Result<Self, Error> {
 		Ok(Self {
-			slug: route.id.clone(),
-			kind: route.kind.try_into()?,
+			slug: brief.slug.to_string(),
+			kind: brief.kind.try_into()?,
 		})
 	}
 }

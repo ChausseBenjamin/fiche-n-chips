@@ -1,15 +1,26 @@
+use std::result;
+
+use sqlx::migrate::MigrateError;
 use thiserror::Error;
 
-pub type Result<T> = std::result::Result<T, Error>;
+use crate::domain::Slug;
+
+pub type Result<T> = result::Result<T, Error>;
 
 #[derive(Debug, Error)]
 pub enum Error {
+	#[error("slug `{0}` is already taken")]
+	SlugTaken(Slug),
+	#[error("no free slug after {0} attempts")]
+	Exhausted(usize),
 	#[error("Database error: {0}")]
-	Db(#[from] turso::Error),
-	#[error("Failed to read file: {0}")]
-	Io(#[from] std::io::Error),
-	#[error("Initialization failure: {0}")]
-	Setup(String),
-	#[error("Parsing error: {0}")]
-	Parse(String),
+	DB(#[from] sqlx::Error),
+	#[error("Database migration error: {0}")]
+	Migration(#[from] MigrateError),
+	#[error("Invalid database path: {0}")]
+	Path(#[from] std::io::Error),
+	#[error("Invalid configuration: {0}")]
+	Config(String),
+	#[error("Invalid row: {0}")]
+	Formatting(String),
 }

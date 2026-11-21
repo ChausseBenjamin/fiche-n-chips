@@ -6,11 +6,11 @@ use rslog::{attrs, debug, error, info, src};
 use tokio::time;
 use tokio_util::sync::CancellationToken;
 
+use crate::config::Config;
 use crate::config::logging::{
 	CLEANUP_INTERVAL_KEY, COUNT_KEY, ERR_KEY, OLDEST_KEY, RETENTION_KEY,
-	ROUTES_KEY, YOUNGEST_KEY,
+	ROUTES_KEY, SIZE_KEY, VACUUMED_KEY, YOUNGEST_KEY,
 };
-use crate::config::Config;
 use crate::limiter::RateLimiter;
 use crate::storage::Storage;
 
@@ -33,10 +33,10 @@ impl Cleaner {
 		debug(
 			"cleaner initialization",
 			attrs!(
-				CLEANUP_INTERVAL_KEY => format_duration(self.cfg.management.cleanup_interval),
-				RETENTION_KEY => format_duration(self.cfg.management.retention)),
+				CLEANUP_INTERVAL_KEY => format_duration(self.cfg.mgmt.cleanup_interval),
+				RETENTION_KEY => format_duration(self.cfg.mgmt.retention)),
 		);
-		let mut interval = time::interval(self.cfg.management.cleanup_interval);
+		let mut interval = time::interval(self.cfg.mgmt.cleanup_interval);
 
 		loop {
 			tokio::select! {
@@ -45,23 +45,23 @@ impl Cleaner {
 				_ = interval.tick() => {},
 			}
 			self.limiter.lock().unwrap_or_else(PoisonError::into_inner).cleanup();
-			match self.db.queries.del_expired(self.cfg.management.retention).await {
-				Ok(v) => {
-					if v.is_empty() {
+			match self.db.purge_expired(self.cfg.mgmt.retention).await {
+				Ok(list) => {
+					if list.is_empty() {
 						debug("no expired entries to clean", src!());
 					} else {
 						let now = SystemTime::now();
-						let routes: String = v
+						let routes: String = list
 							.iter()
-							.map(|route| format!("`{}`", route.id))
+							.map(|brief| brief.slug.to_string())
 							.collect::<Vec<String>>()
 							.join(",");
-						let (oldest, youngest) = v.iter().fold(
-							(&v[0].created, &v[0].created),
-							|(min, max), route| {
+						let (oldest, youngest) = list.iter().fold(
+							(&list[0].created, &list[0].created),
+							|(min, max), brief| {
 								(
-									if route.created < *min { &route.created } else { min },
-									if route.created > *max { &route.created } else { max },
+									if brief.created < *min { &brief.created } else { min },
+									if brief.created > *max { &brief.created } else { max },
 								)
 							},
 						);
@@ -84,20 +84,25 @@ impl Cleaner {
 				}
 			}
 
-			match self.db.shrink_to_fit(self.cfg.management.db_size.get()).await {
-				Ok(v) => {
-					if v.is_empty() {
-						debug("db is within size limit", src!());
-					} else {
-						info(
-							"freed space by deleting old entries",
-							attrs!(COUNT_KEY => v.len()),
-						);
-					}
+			let cap = self.cfg.mgmt.db_cap.get();
+			let target = self.cfg.mgmt.db_target.get();
+			match self.db.trim_to_spec(cap, target).await {
+				Ok(report) if report.before < cap => {
+					debug("db is within size limit", src!());
+				}
+				Ok(report) => {
+					info(
+						"trimmed database to target size",
+						attrs!(
+							COUNT_KEY => report.deleted,
+							SIZE_KEY => report.before.saturating_sub(report.after),
+							VACUUMED_KEY => report.vacuumed,
+						),
+					);
 				}
 				Err(e) => {
 					error(
-						"failure while shrinking database to max size",
+						"failure while trimming database to target size",
 						attrs!(ERR_KEY => e),
 					);
 				}
